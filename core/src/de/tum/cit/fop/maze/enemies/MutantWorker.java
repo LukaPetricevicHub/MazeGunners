@@ -1,4 +1,4 @@
 package de.tum.cit.fop.maze.enemies;
 
-public class MutantWorker {
+public class MutantWorker extends Enemy{
 }

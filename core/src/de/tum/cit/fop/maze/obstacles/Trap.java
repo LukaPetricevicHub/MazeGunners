@@ -1,4 +1,4 @@
 package de.tum.cit.fop.maze.obstacles;
 
-public abstract class Trap {
+public abstract class Trap extends Obstacle {
 }

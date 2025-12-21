@@ -1,4 +1,4 @@
 package de.tum.cit.fop.maze.enemies;
 
-public class RobotGuard {
+public class RobotGuard extends Enemy {
 }

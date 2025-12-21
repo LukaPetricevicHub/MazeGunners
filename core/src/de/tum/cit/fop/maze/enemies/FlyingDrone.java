@@ -1,4 +1,4 @@
 package de.tum.cit.fop.maze.enemies;
 
-public class FlyingDrone {
+public class FlyingDrone extends Enemy {
 }
