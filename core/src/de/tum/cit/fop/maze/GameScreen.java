@@ -5,7 +5,10 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
+import de.tum.cit.fop.maze.behavior.ChaseBehavior;
+import de.tum.cit.fop.maze.enemies.MutantWorker;
 
 /**
  * The GameScreen class is responsible for rendering the gameplay screen.
@@ -17,6 +20,8 @@ public class GameScreen implements Screen {
     private final OrthographicCamera camera;
     private final BitmapFont font;
 
+    private MutantWorker testEnemy; // Testing enemy logic
+    private float enemyStateTime = 0f; // Testing enemy animation
     private float sinusInput = 0f;
 
     /**
@@ -49,6 +54,11 @@ public class GameScreen implements Screen {
 
         camera.update(); // Update the camera
 
+        testEnemy.updateEnemyPosition(delta); // Testing enemy logic
+
+        enemyStateTime+= delta; // Testing enemy animation
+
+
         // Move text in a circular path to have an example of a moving object
         sinusInput += delta;
         float textX = (float) (camera.position.x + Math.sin(sinusInput) * 100);
@@ -59,6 +69,8 @@ public class GameScreen implements Screen {
 
         game.getSpriteBatch().begin(); // Important to call this before drawing anything
 
+
+
         // Render the text
         font.draw(game.getSpriteBatch(), "Press ESC to go to menu", textX, textY);
 
@@ -67,6 +79,15 @@ public class GameScreen implements Screen {
                 game.getCharacterDownAnimation().getKeyFrame(sinusInput, true),
                 textX - 96,
                 textY - 64,
+                64,
+                128
+        );
+
+        // Test a chasing enemy using Sprite Character
+        game.getSpriteBatch().draw(
+                game.getCharacterDownAnimation().getKeyFrame(enemyStateTime, true),
+                testEnemy.getPosition().x * 64,
+                testEnemy.getPosition().y * 64,
                 64,
                 128
         );
@@ -89,7 +110,7 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
-
+        testEnemy = new MutantWorker(new Vector2(0, 0), 2f, new ChaseBehavior()); // Testing enemy logic
     }
 
     @Override
