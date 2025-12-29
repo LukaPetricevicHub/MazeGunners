@@ -7,7 +7,6 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
-import de.tum.cit.fop.maze.behavior.ChaseBehavior;
 import de.tum.cit.fop.maze.enemies.MutantWorker;
 
 /**
@@ -107,7 +106,7 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
-        testEnemy = new MutantWorker(new Vector2(0, 0), 2f, new ChaseBehavior()); // Testing enemy logic
+        testEnemy = new MutantWorker(new Vector2(0, 0), 2f); // Testing enemy logic
     }
 
     @Override

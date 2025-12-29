@@ -12,6 +12,6 @@ public class RetreatBehavior implements BehaviorState {
 
     @Override
     public void execute(Enemy enemy, float delta) {
-
+        // Retreat logic for later (e.g. when shot)
     }
 }

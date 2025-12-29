@@ -13,7 +13,7 @@ public class ChaseBehavior implements BehaviorState {
     @Override
     public void execute(Enemy enemy, float delta) {
         Vector2 target = enemy.getPlayerPosition();
-        Vector2 direction = target.cpy().sub(enemy.getPosition()); // target - current
+        Vector2 direction = target.cpy().sub(enemy.getPosition());
         enemy.moveEnemy(direction, delta);
 
         // Terminal test

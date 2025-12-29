@@ -12,6 +12,6 @@ public class EvadeBehavior implements BehaviorState {
 
     @Override
     public void execute(Enemy enemy, float delta) {
-
+        // Evade logic for later
     }
 }
