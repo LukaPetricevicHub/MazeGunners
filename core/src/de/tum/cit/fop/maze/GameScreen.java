@@ -21,7 +21,6 @@ public class GameScreen implements Screen {
     private final BitmapFont font;
 
     private MutantWorker testEnemy; // Testing enemy logic
-    private float enemyStateTime = 0f; // Testing enemy animation
     private float sinusInput = 0f;
 
     /**
@@ -55,8 +54,7 @@ public class GameScreen implements Screen {
         camera.update(); // Update the camera
 
         testEnemy.updateEnemyPosition(delta); // Testing enemy logic
-
-        enemyStateTime+= delta; // Testing enemy animation
+        testEnemy.updateAnimation(delta); // Testing enemy animation
 
 
         // Move text in a circular path to have an example of a moving object
@@ -68,7 +66,6 @@ public class GameScreen implements Screen {
         game.getSpriteBatch().setProjectionMatrix(camera.combined);
 
         game.getSpriteBatch().begin(); // Important to call this before drawing anything
-
 
 
         // Render the text
@@ -83,9 +80,9 @@ public class GameScreen implements Screen {
                 128
         );
 
-        // Test a chasing enemy using Sprite Character
+        // Test enemy animation using the skeleton mob
         game.getSpriteBatch().draw(
-                game.getCharacterDownAnimation().getKeyFrame(enemyStateTime, true),
+                testEnemy.getCurrentFrame(),
                 testEnemy.getPosition().x * 64,
                 testEnemy.getPosition().y * 64,
                 64,

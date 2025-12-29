@@ -1,5 +1,6 @@
 package de.tum.cit.fop.maze.enemies;
 
+
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.Texture;
@@ -14,29 +15,33 @@ public class MutantWorker extends Enemy {
 
     public MutantWorker(Vector2 position, float speed, BehaviorState currentBehavior) {
         super(position, speed, currentBehavior);
-        loadWalkAnimation();
+        loadMutantWorkerWalkAnimation();
     }
 
-    private void loadWalkAnimation() {
-        Texture walkSheet = new Texture("character.png"); // Use the mutant_worker.png when done
-        int frameWidth = 16;
-        int frameHeight = 32;
-        int animationFrames = 4;
+    private void loadMutantWorkerWalkAnimation() {
+        Texture walkSheet = new Texture("mobs.png"); // Use the mutant_worker.png when done
+        int mutantWorkerX = 148;
+        int mutantWorkerY = 0;
+        int mutantWorkerWidth = 44 / 3;
+        int mutantWorkerHeight = 64 / 4;
 
         Array<TextureRegion> frames = new Array<>(TextureRegion.class);
-        for (int i = 0; i < animationFrames; i++) {
-            frames.add(new TextureRegion(walkSheet, i * frameWidth, 0, frameWidth, frameHeight));
+
+        for (int col = 0; col < 3; col++) {
+            frames.add(new TextureRegion(walkSheet, mutantWorkerX + col *  mutantWorkerWidth, 0, mutantWorkerWidth, mutantWorkerHeight));
         }
 
-        walkAnimation = new Animation<>(0.1f, frames);
+        walkAnimation = new Animation<>(0.15f, frames);
+        walkAnimation.setPlayMode(Animation.PlayMode.LOOP);
     }
 
     public void updateAnimation(float delta) {
         stateTime += delta;
+        updateEnemyPosition(delta);
     }
 
-    public Animation<TextureRegion> getWalkAnimation() {
-        return walkAnimation;
+    public TextureRegion getCurrentFrame() {
+        return walkAnimation.getKeyFrame(stateTime, true);
     }
 
     public float getStateTime() {
