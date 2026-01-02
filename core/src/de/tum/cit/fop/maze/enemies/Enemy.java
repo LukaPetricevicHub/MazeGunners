@@ -20,6 +20,22 @@ public abstract class Enemy {
         this.currentBehavior = currentBehavior;
     }
 
+    // Update the enemies Position
+    public void updateEnemyPosition(float deltaTime) {
+        if (currentBehavior != null) {
+            currentBehavior.execute(this, deltaTime);
+        }
+        collisionBox.setPosition(position.x, position.y);
+    }
+
+    // Enemy movement
+    public void moveEnemy(Vector2 direction, float deltaTime) {
+        position.mulAdd(direction.nor(), speed * deltaTime);
+    }
+
+    // Find our player
+    public abstract Vector2 getPlayerPosition();
+
     // Getters & Setters
     public Vector2 getPosition() {
         return position;
@@ -52,19 +68,5 @@ public abstract class Enemy {
     public void setCurrentBehavior(BehaviorState currentBehavior) {
         this.currentBehavior = currentBehavior;
     }
-
-    // Common methods
-    public void updateEnemyPosition(float deltaTime) {
-        if (currentBehavior != null) {
-            currentBehavior.execute(this, deltaTime);
-        }
-        collisionBox.setPosition(position.x, position.y);
-    }
-
-    public void moveEnemy(Vector2 direction, float deltaTime) {
-        position.mulAdd(direction.nor(), speed * deltaTime);
-    }
-
-    public abstract Vector2 getPlayerPosition();
 
 }

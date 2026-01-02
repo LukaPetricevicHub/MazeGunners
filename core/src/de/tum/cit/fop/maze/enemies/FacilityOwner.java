@@ -14,4 +14,6 @@ public class FacilityOwner extends Enemy{
     public Vector2 getPlayerPosition() {
         return null;
     }
+
+    // Outside of basic
 }

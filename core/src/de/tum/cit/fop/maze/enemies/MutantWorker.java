@@ -10,9 +10,11 @@ import de.tum.cit.fop.maze.behavior.ChaseBehavior;
 
 public class MutantWorker extends Enemy {
 
+    // MutantWorker attributes
     private Animation<TextureRegion> walkAnimation;
     private float stateTime = 0f;
 
+    // MutantWorker constructor
     public MutantWorker(Vector2 position, float speed) {
         super(position, speed, new ChaseBehavior());
         loadMutantWorkerWalkAnimation();
