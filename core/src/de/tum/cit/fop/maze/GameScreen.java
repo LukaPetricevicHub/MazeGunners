@@ -5,12 +5,15 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 import de.tum.cit.fop.maze.enemies.MutantWorker;
+import de.tum.cit.fop.maze.hud.Hud;
+import de.tum.cit.fop.maze.player.Player;
 
 /**
  * The GameScreen class is responsible for rendering the gameplay screen.
@@ -19,11 +22,14 @@ import de.tum.cit.fop.maze.enemies.MutantWorker;
 public class GameScreen implements Screen {
 
     private final MazeRunnerGame game;
-    private final OrthographicCamera camera;
-    private final BitmapFont font;
+    private OrthographicCamera camera;
+    private BitmapFont font;
+    private Viewport viewport;
 
-    private MutantWorker testEnemy; // Testing enemy logic
-    private float sinusInput = 0f;
+    private Player player;
+    private MutantWorker testEnemy;
+    private Hud hud;
+
 
     /**
      * Constructor for GameScreen. Sets up the camera and font.
@@ -32,14 +38,6 @@ public class GameScreen implements Screen {
      */
     public GameScreen(MazeRunnerGame game) {
         this.game = game;
-
-        // Create and configure the camera for the game view
-        camera = new OrthographicCamera();
-        camera.setToOrtho(false);
-        camera.zoom = 0.75f;
-
-        // Get the font from the game's skin
-        font = game.getSkin().getFont("font");
     }
 
     // Screen interface methods with necessary functionality
@@ -50,48 +48,80 @@ public class GameScreen implements Screen {
             game.goToMenu();
         }
 
+        player.update(delta);
+        testEnemy.update(delta);
+        hud.update(player);
+        hud.act(delta);
+
+        // Check collision (Player vs Enemy)
+        Rectangle playerBox = new Rectangle(player.getX(), player.getY(), 32, 64);
+        Rectangle enemyBox = testEnemy.getCollisionBox();
+
+        if (playerBox.overlaps(enemyBox)) {
+            player.takeDamage(1);
+        }
+
+        // Render
         ScreenUtils.clear(0, 0, 0, 1); // Clear the screen
         camera.update(); // Update the camera
 
-        testEnemy.updateEnemyPosition(delta); // Testing enemy logic
-        testEnemy.updateAnimation(delta); // Testing enemy animation
-
-        // Move text in a circular path to have an example of a moving object
-        sinusInput += delta;
-        float textX = (float) (camera.position.x + Math.sin(sinusInput) * 100);
-        float textY = (float) (camera.position.y + Math.cos(sinusInput) * 100);
-
-        // Set up and begin drawing with the sprite batch
         game.getSpriteBatch().setProjectionMatrix(camera.combined);
         game.getSpriteBatch().begin();
 
-        // Render the text
-        font.draw(game.getSpriteBatch(), "Press ESC to go to menu", textX, textY);
 
-        // Draw the character next to the text :)
-        game.getSpriteBatch().draw(
-                game.getCharacterDownAnimation().getKeyFrame(sinusInput, true),
-                textX - 96,
-                textY - 64,
-                64,
-                128
-        );
+        // Draw the player
+        player.draw(game.getSpriteBatch());
 
         // Test enemy animation using the skeleton mob
         game.getSpriteBatch().draw(
                 testEnemy.getCurrentFrame(),
-                testEnemy.getPosition().x * 64,
-                testEnemy.getPosition().y * 64,
-                64,
-                128
+                testEnemy.getPosition().x,
+                testEnemy.getPosition().y,
+                32,
+                64
         );
 
+        // Text
+        font.draw(game.getSpriteBatch(),
+                "Press ESC to go to menu",
+                camera.position.x - 100,
+                camera.position.y + 120);
+
         game.getSpriteBatch().end();
+
+        hud.draw();
+    }
+
+    @Override
+    public void show() {
+        camera = new OrthographicCamera();
+        viewport = new ScreenViewport(camera);
+        camera.zoom = 0.75f;
+        font = game.getSkin().getFont("font");
+
+        // Player
+        player = new Player(
+                200,
+                200,
+                game.getCharacterDownAnimation()
+        );
+
+        // TestEnemy
+        testEnemy = new MutantWorker(
+                new Vector2(400, 300),
+                100f,
+                player
+        );
+
+        // HUD
+        hud = new Hud(viewport, game.getSpriteBatch(), game.getSkin());
+        Gdx.input.setInputProcessor(hud.getStage());
     }
 
     @Override
     public void resize(int width, int height) {
-        camera.setToOrtho(false);
+        viewport.update(width, height, true);
+        hud.resize(width, height, true);
     }
 
     @Override
@@ -103,16 +133,12 @@ public class GameScreen implements Screen {
     }
 
     @Override
-    public void show() {
-        testEnemy = new MutantWorker(new Vector2(0, 0), 2f); // Testing enemy logic
-    }
-
-    @Override
     public void hide() {
     }
 
     @Override
     public void dispose() {
+        hud.dispose();
     }
 }
 

@@ -3,6 +3,8 @@ package de.tum.cit.fop.maze.enemies;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import de.tum.cit.fop.maze.behavior.BehaviorState;
+import de.tum.cit.fop.maze.player.Player;
+
 
 public abstract class Enemy {
 
@@ -12,12 +14,16 @@ public abstract class Enemy {
     protected Rectangle collisionBox;
     protected BehaviorState currentBehavior;
 
+    // Reference to the Player
+    protected Player player;
+
     // Constructor
-    public Enemy(Vector2 position, float speed, BehaviorState currentBehavior) {
+    public Enemy(Vector2 position, float speed, BehaviorState currentBehavior, Player player) {
         this.position = position;
         this.speed = speed;
         this.collisionBox = new Rectangle(position.x, position.y, 1f, 1f);
         this.currentBehavior = currentBehavior;
+        this.player = player;
     }
 
     // Update the enemies Position
@@ -34,7 +40,11 @@ public abstract class Enemy {
     }
 
     // Find our player
-    public abstract Vector2 getPlayerPosition();
+    public Vector2 getPlayerPosition() {
+        if (player != null)
+            return new Vector2(player.getX(), player.getY());
+        return new Vector2(0,0); // Fallback
+    }
 
     // Getters & Setters
     public Vector2 getPosition() {
@@ -67,6 +77,10 @@ public abstract class Enemy {
 
     public void setCurrentBehavior(BehaviorState currentBehavior) {
         this.currentBehavior = currentBehavior;
+    }
+
+    public void setPlayer(Player player) {
+        this.player = player;
     }
 
 }
