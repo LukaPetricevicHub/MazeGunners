@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze;
+package de.tum.cit.fop.maze.player;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;

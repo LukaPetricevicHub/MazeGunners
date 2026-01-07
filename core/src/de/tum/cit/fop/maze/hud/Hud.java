@@ -1,4 +1,6 @@
-package de.tum.cit.fop.maze;
+package de.tum.cit.fop.maze.hud;
+
+import de.tum.cit.fop.maze.player.Player;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -90,3 +92,4 @@ public class Hud {
         this.exitY = y;
     }
 }
+
