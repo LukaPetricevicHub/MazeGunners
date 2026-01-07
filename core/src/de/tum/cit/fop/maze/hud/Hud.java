@@ -2,13 +2,12 @@ package de.tum.cit.fop.maze.hud;
 
 import de.tum.cit.fop.maze.player.Player;
 
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
-import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 /**
@@ -22,40 +21,36 @@ public class Hud {
     private final Label keyLabel;
     private final Image arrow;
 
-    // Exit target (later: set to closest exit)
+    // Temporary exit target (until Member 1 provides real exits)
     private float exitX = 600;
     private float exitY = 400;
 
-    public Hud(Viewport viewport, com.badlogic.gdx.graphics.g2d.SpriteBatch batch, Skin skin, TextureRegion arrowRegion) {
+    public Hud(Viewport viewport, com.badlogic.gdx.graphics.g2d.SpriteBatch batch, Skin skin) {
         stage = new Stage(viewport, batch);
 
         livesLabel = new Label("Lives: 5", skin);
         keyLabel   = new Label("Key: NO", skin);
 
-        // FIX: do not new Texture() here. Use region from atlas/asset manager.
-        arrow = new Image(new TextureRegionDrawable(arrowRegion));
-        arrow.setSize(32, 32);
-        arrow.setOrigin(16, 16);
+        // arrow texture: you need an arrow png in assets.
+        // If you don't have one, use any small icon or create arrow.png quickly.
+        Texture arrowTex = new Texture("things.png"); // placeholder: you WILL replace later
+        arrow = new Image(arrowTex); // temporary: replace with a real arrow texture region later
 
         // Layout
-        Table root = new Table();
-        root.setFillParent(true);
-        root.top().left().pad(10);
+        Table table = new Table();
+        table.setFillParent(true);
+        table.top().left().pad(10);
 
-        root.add(livesLabel).left().row();
-        root.add(keyLabel).left().row();
+        table.add(livesLabel).left().row();
+        table.add(keyLabel).left().row();
 
-        stage.addActor(root);
+        stage.addActor(table);
+
+        // Put arrow on top-right (temporary)
+        arrow.setSize(32, 32);
+        arrow.setPosition(viewport.getWorldWidth() - 48, viewport.getWorldHeight() - 48);
+        arrow.setOrigin(16, 16);
         stage.addActor(arrow);
-
-        // position arrow initially
-        repositionArrow();
-    }
-
-    private void repositionArrow() {
-        float w = stage.getViewport().getWorldWidth();
-        float h = stage.getViewport().getWorldHeight();
-        arrow.setPosition(w - 48, h - 48);
     }
 
     public Stage getStage() {
@@ -86,12 +81,10 @@ public class Hud {
 
     public void resize(int width, int height, boolean centerCamera) {
         stage.getViewport().update(width, height, centerCamera);
-        repositionArrow(); // FIX: ensure arrow stays top-right after resize
     }
 
     public void dispose() {
         stage.dispose();
-        // DO NOT dispose arrow texture here because it's managed by AssetManager/atlas outside.
     }
 
     public void setExitTarget(float x, float y) {
@@ -99,3 +92,4 @@ public class Hud {
         this.exitY = y;
     }
 }
+
