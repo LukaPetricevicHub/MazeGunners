@@ -7,6 +7,9 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
+
 import de.tum.cit.fop.maze.enemies.MutantWorker;
 
 /**
@@ -39,7 +42,6 @@ public class GameScreen implements Screen {
         font = game.getSkin().getFont("font");
     }
 
-
     // Screen interface methods with necessary functionality
     @Override
     public void render(float delta) {
@@ -49,12 +51,10 @@ public class GameScreen implements Screen {
         }
 
         ScreenUtils.clear(0, 0, 0, 1); // Clear the screen
-
         camera.update(); // Update the camera
 
         testEnemy.updateEnemyPosition(delta); // Testing enemy logic
         testEnemy.updateAnimation(delta); // Testing enemy animation
-
 
         // Move text in a circular path to have an example of a moving object
         sinusInput += delta;
@@ -63,14 +63,12 @@ public class GameScreen implements Screen {
 
         // Set up and begin drawing with the sprite batch
         game.getSpriteBatch().setProjectionMatrix(camera.combined);
-
-        game.getSpriteBatch().begin(); // Important to call this before drawing anything
-
+        game.getSpriteBatch().begin();
 
         // Render the text
         font.draw(game.getSpriteBatch(), "Press ESC to go to menu", textX, textY);
 
-        // Draw the character next to the text :) / We can reuse sinusInput here
+        // Draw the character next to the text :)
         game.getSpriteBatch().draw(
                 game.getCharacterDownAnimation().getKeyFrame(sinusInput, true),
                 textX - 96,
@@ -88,7 +86,7 @@ public class GameScreen implements Screen {
                 128
         );
 
-        game.getSpriteBatch().end(); // Important to call this after drawing everything
+        game.getSpriteBatch().end();
     }
 
     @Override
@@ -116,6 +114,5 @@ public class GameScreen implements Screen {
     @Override
     public void dispose() {
     }
-
-    // Additional methods and logic can be added as needed for the game screen
 }
+
