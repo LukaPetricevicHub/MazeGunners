@@ -66,7 +66,7 @@ public class GameScreen implements Screen {
         game.getSpriteBatch().begin();
 
         // Render the text
-        font.draw(game.getSpriteBatch(), "Press ESC otherwise I will fuck you up <3", textX, textY);
+        font.draw(game.getSpriteBatch(), "Press ESC to go to menu", textX, textY);
 
         // Draw the character next to the text :)
         game.getSpriteBatch().draw(
