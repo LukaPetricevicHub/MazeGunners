@@ -3,11 +3,12 @@ package de.tum.cit.fop.maze.enemies;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.behavior.PatrolBehavior;
+import de.tum.cit.fop.maze.player.Player;
 
 public class RobotGuard extends Enemy {
 
-    public RobotGuard(Vector2 position, float speed) {
-        super(position, speed, new PatrolBehavior(testPatrolPoints())); // Replace with actual patrol points
+    public RobotGuard(Vector2 position, float speed, Player player) {
+        super(position, speed, new PatrolBehavior(testPatrolPoints()), player); // Replace with actual patrol points
     }
 
     // Example patrol points
@@ -20,9 +21,12 @@ public class RobotGuard extends Enemy {
         return patrolPoints;
     }
 
+    // Update the enemy's position
     @Override
-    public Vector2 getPlayerPosition() {
-        return new Vector2(5, 5); // Replace with player position
+    public void updateEnemyPosition(float deltaTime) {
+        if (currentBehavior != null)
+            currentBehavior.execute(this, deltaTime);
+        collisionBox.setPosition(position.x, position.y);
     }
 
 
