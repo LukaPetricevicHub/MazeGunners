@@ -81,11 +81,6 @@ public class GameScreen implements Screen {
                 64
         );
 
-        // Text
-        font.draw(game.getSpriteBatch(),
-                "Press ESC to go to menu",
-                camera.position.x - 100,
-                camera.position.y + 120);
 
         game.getSpriteBatch().end();
 
