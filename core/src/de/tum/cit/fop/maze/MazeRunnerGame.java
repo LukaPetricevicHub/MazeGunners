@@ -29,6 +29,9 @@ public class MazeRunnerGame extends Game {
     // Character animation downwards
     private Animation<TextureRegion> characterDownAnimation;
 
+    private Texture tileset;
+    private TextureRegion[][] tiles;
+
     /**
      * Constructor for MazeRunnerGame.
      *
@@ -54,6 +57,9 @@ public class MazeRunnerGame extends Game {
         backgroundMusic.play();
 
         goToMenu(); // Navigate to the menu screen
+
+        tileset = new Texture(Gdx.files.internal("basictiles.png"));
+        tiles = TextureRegion.split(tileset, 32, 32);
     }
 
     /**
@@ -107,7 +113,9 @@ public class MazeRunnerGame extends Game {
         getScreen().hide(); // Hide the current screen
         getScreen().dispose(); // Dispose the current screen
         spriteBatch.dispose(); // Dispose the spriteBatch
-        skin.dispose(); // Dispose the skin
+        skin.dispose();// Dispose the skin
+        tileset.dispose();
+
     }
 
     // Getter methods
@@ -121,5 +129,9 @@ public class MazeRunnerGame extends Game {
 
     public SpriteBatch getSpriteBatch() {
         return spriteBatch;
+    }
+
+    public TextureRegion getTile(int row, int col){
+        return tiles[row][col];
     }
 }
