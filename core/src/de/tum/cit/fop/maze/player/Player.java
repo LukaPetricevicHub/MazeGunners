@@ -6,43 +6,50 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
-/**
- * Player entity: handles movement, lives, key possession, and damage flash state.
- */
+
 public class Player {
 
+    // Position
     private float x;
     private float y;
 
+    // Player state
     private int lives = 5;
     private boolean hasKey = false;
 
-    // Damage / invulnerability
+
+    // Damage
     private boolean invulnerable = false;
     private float invulnTimeLeft = 0f;
 
-    // Flash (for VFX: you can tint red in renderer later)
+
+    // Flash
     private boolean damageFlash = false;
     private float flashTimeLeft = 0f;
+
 
     // Movement
     private final float walkSpeed = 220f; // pixels/sec
     private final float runMultiplier = 1.7f;
 
-    // Animation (reuse your existing down animation for now)
+
+    // Animation (only down Animation)
     private final Animation<TextureRegion> walkDownAnimation;
     private float animTime = 0f;
 
+
+    // Player Constructor
     public Player(float startX, float startY, Animation<TextureRegion> walkDownAnimation) {
         this.x = startX;
         this.y = startY;
         this.walkDownAnimation = walkDownAnimation;
     }
 
+
+
     public void update(float dt) {
         animTime += dt;
 
-        // timers
         if (invulnerable) {
             invulnTimeLeft -= dt;
             if (invulnTimeLeft <= 0f) invulnerable = false;
@@ -52,7 +59,7 @@ public class Player {
             if (flashTimeLeft <= 0f) damageFlash = false;
         }
 
-        // input
+        // Handle player movement input
         boolean run = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
         float speed = walkSpeed * (run ? runMultiplier : 1f);
         float move = speed * dt;
@@ -63,12 +70,15 @@ public class Player {
         if (Gdx.input.isKeyPressed(Input.Keys.DOWN))  y -= move;
     }
 
+
+    // Rendering
     public void draw(SpriteBatch batch) {
         TextureRegion frame = walkDownAnimation.getKeyFrame(animTime, true);
-        // draw bigger so you can see it
         batch.draw(frame, x, y, 32, 64);
     }
 
+
+    // Player state changes
     public void takeDamage(int amount) {
         if (invulnerable) return;
 
@@ -85,11 +95,10 @@ public class Player {
         hasKey = true;
     }
 
-    // getters for HUD
+    // Getters
     public int getLives() { return lives; }
     public boolean hasKey() { return hasKey; }
     public boolean isDamageFlashing() { return damageFlash; }
-
     public float getX() { return x; }
     public float getY() { return y; }
 }

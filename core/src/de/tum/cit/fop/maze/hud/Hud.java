@@ -10,11 +10,10 @@ import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
-/**
- * Basic HUD: lives, key status, and an arrow that points to an exit direction.
- */
+
 public class Hud {
 
+    // Stage & UI elements
     private final Stage stage;
 
     private final Label livesLabel;
@@ -31,10 +30,10 @@ public class Hud {
         livesLabel = new Label("Lives: 5", skin);
         keyLabel   = new Label("Key: NO", skin);
 
-        // arrow texture: you need an arrow png in assets.
+        // Arrow texture: arrow.png in assets.
         // If you don't have one, use any small icon or create arrow.png quickly.
-        Texture arrowTex = new Texture("things.png"); // placeholder: you WILL replace later
-        arrow = new Image(arrowTex); // temporary: replace with a real arrow texture region later
+        Texture arrowTex = new Texture("things.png"); // Placeholder: replace later
+        arrow = new Image(arrowTex); // Temporary: replace with a real arrow texture region later
 
         // Layout
         Table table = new Table();
@@ -53,10 +52,14 @@ public class Hud {
         stage.addActor(arrow);
     }
 
+
+    // Getter for stage
     public Stage getStage() {
         return stage;
     }
 
+
+    // Update HUD based on player
     public void update(Player player) {
         livesLabel.setText("Lives: " + player.getLives());
         keyLabel.setText("Key: " + (player.hasKey() ? "YES" : "NO"));
@@ -71,6 +74,8 @@ public class Hud {
         arrow.setRotation(angleDeg);
     }
 
+
+    // Stage act & draw
     public void act(float dt) {
         stage.act(dt);
     }
@@ -87,6 +92,7 @@ public class Hud {
         stage.dispose();
     }
 
+    // Set exit target
     public void setExitTarget(float x, float y) {
         this.exitX = x;
         this.exitY = y;
