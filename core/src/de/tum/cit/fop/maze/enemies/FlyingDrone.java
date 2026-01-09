@@ -55,17 +55,7 @@ public class FlyingDrone extends Enemy {
 
     @Override
     protected void updateEnemyPosition(float deltaTime) {
-        stateTime += deltaTime; // only increment here
-
-        // Switch behavior based on distance to player
-        if (position.dst(player.getX(), player.getY()) < chaseDistance)
-            currentBehavior = chaseBehavior;
-        else
-            currentBehavior = patrolBehavior;
-
-        // Execute current behavior
-        if (currentBehavior != null)
-            currentBehavior.execute(this, deltaTime);
+        // Add intersection of patrol and chase, when Player in certain range
     }
 
 }

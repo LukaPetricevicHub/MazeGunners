@@ -133,11 +133,10 @@ public class GameScreen implements Screen {
         // Draw player
         player.draw(game.getSpriteBatch());
 
-        // Draw enemies
+        // Draw example enemies to test simple behaviour animations
         for (Enemy enemy : enemies) {
             TextureRegion frame = null;
             if (enemy instanceof MutantWorker mw) frame = mw.getCurrentFrame();
-            else if (enemy instanceof FlyingDrone fd) frame = fd.getCurrentFrame();
             else if (enemy instanceof RobotGuard rg) frame = rg.getCurrentFrame();
 
             if (frame != null) {
