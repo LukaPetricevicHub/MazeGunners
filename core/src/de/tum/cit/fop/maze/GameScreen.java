@@ -4,8 +4,9 @@ package de.tum.cit.fop.maze;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -19,7 +20,6 @@ import de.tum.cit.fop.maze.camera.GameCamera;
 import de.tum.cit.fop.maze.level.Maze;
 import de.tum.cit.fop.maze.level.MazeRenderer;
 import de.tum.cit.fop.maze.player.Player;
-import de.tum.cit.fop.maze.level.Tiles;
 import de.tum.cit.fop.maze.level.MazeLoader;
 import de.tum.cit.fop.maze.level.MazeGenerator;
 
@@ -50,9 +50,65 @@ public class GameScreen implements Screen {
      * Constructor for GameScreen. Sets up the camera and font.
      *
      * @param game The main game class, used to access global resources and methods.
+     * @param mapPath
      */
-    public GameScreen(MazeRunnerGame game) {
+    public GameScreen(MazeRunnerGame game, String mapPath) {
         this.game = game;
+
+        FileHandle file = Gdx.files.internal(mapPath);
+
+        MazeLoader loader = new MazeLoader();
+        MazeLoader.LevelSpec spec = loader.loadFromProperties(file);
+
+        MazeGenerator generator = new MazeGenerator();
+        int tileSize = 16;
+        long seed = System.currentTimeMillis();
+        maze = generator.generate(spec, tileSize, seed);
+
+        float worldWidth = maze.getWidth() * tileSize;
+        float worldHeight = maze.getHeight() * tileSize;
+
+        viewport = new ScreenViewport();
+
+        gameCamera = new GameCamera( viewport.getWorldWidth(), viewport.getWorldHeight(), worldWidth, worldHeight);
+        gameCamera.setZoom(0.75f);
+
+        gameCamera  = new GameCamera(viewport.getWorldWidth(), viewport.getWorldHeight(), worldWidth, worldHeight);
+        gameCamera.setZoom(0.75f);
+
+        TextureRegion floor = game.getTile(0, 0);
+        TextureRegion wall = game.getTile(1, 0);
+        TextureRegion entry = game.getTile(3,2);
+        TextureRegion exit = game.getTile(2, 3);
+
+        if(floor == null || wall == null || entry == null || exit == null){
+            throw new IllegalStateException("One or more maze tiles are missing in basictiles.png!");
+        }
+
+        mazeRenderer = new MazeRenderer(floor, wall, entry, exit);
+
+        Point enter = maze.getEntryCell();
+        if(enter == null){
+            enter = new Point(1, 1);
+        }
+
+        // Player
+        player = new Player(
+                200,
+                200,
+                game.getCharacterDownAnimation()
+        );
+
+        // TestEnemy
+        testEnemy = new MutantWorker(
+                new Vector2(400, 300),
+                100f,
+                player
+        );
+
+        // HUD
+        hud = new Hud(viewport, game.getSpriteBatch(), game.getSkin());
+        Gdx.input.setInputProcessor(hud.getStage());
     }
 
     // Screen interface methods with necessary functionality
@@ -106,54 +162,8 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
-        viewport = new ScreenViewport();
-        viewport.apply();
-
-        Map<Point, Integer> overrides = new HashMap<>();
-        MazeLoader.LevelSpec spec = new MazeLoader.LevelSpec(20, 15, overrides);
-
-
-        MazeGenerator generator = new MazeGenerator();
-        int tileSize = 32;
-        long seed = System.currentTimeMillis();
-        maze = generator.generate(spec, tileSize, seed);
-
-        float worldWidth = maze.getWidth() * maze.getTileSize();
-        float worldHeight = maze.getHeight() * maze.getTileSize();
-
-        gameCamera  = new GameCamera(viewport.getWorldWidth(), viewport.getWorldHeight(), worldWidth, worldHeight);
-        gameCamera.setZoom(0.75f);
-        mazeRenderer = new MazeRenderer(
-                game.getTile(0, 0),
-                game.getTile(0, 1),
-                game.getTile(1, 0),
-                game.getTile(1, 1)
-        );
-
-        font = game.getSkin().getFont("font");
-
-        Point entry = maze.getEntryCell();
-        if(entry == null){
-            entry = new Point(1, 1);
-        }
-
-        // Player
-        player = new Player(
-                200,
-                200,
-                game.getCharacterDownAnimation()
-        );
-
-        // TestEnemy
-        testEnemy = new MutantWorker(
-                new Vector2(400, 300),
-                100f,
-                player
-        );
-
-        // HUD
-        hud = new Hud(viewport, game.getSpriteBatch(), game.getSkin());
         Gdx.input.setInputProcessor(hud.getStage());
+        font = game.getSkin().getFont("font");
     }
 
     @Override

@@ -59,7 +59,10 @@ public class MazeRunnerGame extends Game {
         goToMenu(); // Navigate to the menu screen
 
         tileset = new Texture(Gdx.files.internal("basictiles.png"));
-        tiles = TextureRegion.split(tileset, 32, 32);
+        tiles = TextureRegion.split(tileset, 16, 16);
+        if(tiles.length < 2 || tiles[0].length < 4){
+            throw new IllegalStateException("basictiles.png doesn't have enough tiles!");
+        }
     }
 
     /**
@@ -77,12 +80,13 @@ public class MazeRunnerGame extends Game {
      * Switches to the game screen.
      */
     public void goToGame() {
-        this.setScreen(new GameScreen(this)); // Set the current screen to GameScreen
+        this.setScreen(new LevelMenuScreen(this));
         if (menuScreen != null) {
-            menuScreen.dispose(); // Dispose the menu screen if it exists
+            menuScreen.dispose();
             menuScreen = null;
         }
     }
+
 
     /**
      * Loads the character animation from the character.png file.

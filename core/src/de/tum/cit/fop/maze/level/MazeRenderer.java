@@ -9,10 +9,14 @@ public class MazeRenderer {
 
     public MazeRenderer(TextureRegion floor, TextureRegion wall, TextureRegion entry, TextureRegion exit){
         this.tiles = new TextureRegion[6];
+        for(int i = 0; i < tiles.length; i++){
+            tiles[i] = floor;
+        }
         tiles[Tiles.Floor] = floor;
         tiles[Tiles.Wall] = wall;
         tiles[Tiles.Entry] = entry;
         tiles[Tiles.Exit] = exit;
+
 
     }
 
@@ -24,6 +28,10 @@ public class MazeRenderer {
                 int id = maze.getTile(x, y);
                 TextureRegion tile = tiles[id];
                 batch.draw(tile, x * ts, y * ts, ts, ts);
+
+                if(tile != null){
+                    batch.draw(tile, x * ts, y * ts, ts, ts);
+                }
             }
         }
     }
