@@ -29,6 +29,7 @@ import de.tum.cit.fop.maze.level.MazeGenerator;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The GameScreen class is responsible for rendering the gameplay screen.
@@ -47,6 +48,10 @@ public class GameScreen implements Screen {
     private List<Enemy> enemies;
     private Hud hud;
 
+    private static final int  tileSize = 16;
+    private static final float playerW = 16f;
+    private static final float playerH = 32f;
+
     /**
      * Constructor for GameScreen.
      * Maze loading / generation belongs here.
@@ -54,13 +59,17 @@ public class GameScreen implements Screen {
     public GameScreen(MazeRunnerGame game, String mapPath) {
         this.game = game;
 
-        FileHandle file = Gdx.files.internal(mapPath);
+        int mazeWidth  = 101;  // must be ODD for Prim/DFS mazes
+        int mazeHeight = 101;
 
-        MazeLoader loader = new MazeLoader();
-        MazeLoader.LevelSpec spec = loader.loadFromProperties(file);
+        MazeLoader.LevelSpec spec = new MazeLoader.LevelSpec(
+                mazeWidth,
+                mazeHeight,
+                Map.of()   // no overrides
+        );
+
 
         MazeGenerator generator = new MazeGenerator();
-        int tileSize = 16;
         long seed = System.currentTimeMillis();
         maze = generator.generate(spec, tileSize, seed);
 
@@ -77,8 +86,8 @@ public class GameScreen implements Screen {
         );
         gameCamera.setZoom(0.75f);
 
-        TextureRegion floor = game.getTile(0, 0);
-        TextureRegion wall = game.getTile(1, 0);
+        TextureRegion floor = game.getTile(1, 0);
+        TextureRegion wall = game.getTile(0, 0);
         TextureRegion entry = game.getTile(3, 2);
         TextureRegion exit = game.getTile(2, 3);
 
@@ -88,10 +97,6 @@ public class GameScreen implements Screen {
 
         mazeRenderer = new MazeRenderer(floor, wall, entry, exit);
 
-        Point enter = maze.getEntryCell();
-        if (enter == null) {
-            enter = new Point(1, 1);
-        }
     }
 
     @Override
@@ -101,7 +106,7 @@ public class GameScreen implements Screen {
             game.goToMenu();
         }
 
-        player.update(delta, maze);
+        player.update(delta, maze, game);
 
         for (Enemy enemy : enemies) {
             enemy.update(delta);
@@ -111,7 +116,7 @@ public class GameScreen implements Screen {
         hud.act(delta);
 
         // Collision: Player vs Enemies
-        Rectangle playerBox = new Rectangle(player.getX(), player.getY(), 32, 64);
+        Rectangle playerBox = new Rectangle(player.getX(), player.getY(), playerW, playerH);
 
         for (Enemy enemy : enemies) {
             if (playerBox.overlaps(enemy.getCollisionBox())) {
@@ -120,8 +125,8 @@ public class GameScreen implements Screen {
         }
 
         // Camera follow
-        float targetX = player.getX() + 16;
-        float targetY = player.getY() + 32;
+        float targetX = player.getX() + playerW / 2f;
+        float targetY = player.getY() + playerH / 2f;
         gameCamera.follow(targetX, targetY, 0.1f);
 
         ScreenUtils.clear(0, 0, 0, 1);
@@ -158,10 +163,18 @@ public class GameScreen implements Screen {
     public void show() {
         font = game.getSkin().getFont("font");
 
+        Point entry = maze.getEntryCell();
+        if(entry == null){
+            entry = new Point(1,1);
+        }
+
+        float spawnX = (entry.x + 0.5f) * tileSize - playerW / 2f;
+        float spawnY = (entry.y + 0.5f) * tileSize - playerH / 2f;
+
         // Player
         player = new Player(
-                200,
-                200,
+                spawnX,
+                spawnY,
                 game.getCharacterDownAnimation()
         );
 
@@ -184,6 +197,7 @@ public class GameScreen implements Screen {
         // HUD
         hud = new Hud(viewport, game.getSpriteBatch(), game.getSkin());
         Gdx.input.setInputProcessor(hud.getStage());
+
     }
 
     @Override

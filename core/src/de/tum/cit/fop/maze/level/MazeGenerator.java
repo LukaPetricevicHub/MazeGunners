@@ -7,7 +7,10 @@ import java.util.*;
 
 public class MazeGenerator {
 
-    private static final int MAX_ATTEMPTS = 60;
+    private static final int MAX_ATTEMPTS = 80;
+
+    // Corridor thickness in CELLS (2 or 3 looks good)
+    private static final int CORRIDOR_THICKNESS = 2;
 
     public Maze generate(MazeLoader.LevelSpec spec, int tileSize, long seed) {
         Objects.requireNonNull(spec, "LevelSpec must not be null");
@@ -17,62 +20,39 @@ public class MazeGenerator {
 
             Maze maze = new Maze(spec.width, spec.height, tileSize);
 
-            // 1) Fill walls
+            // 1) Start as all walls
             fill(maze, Tiles.Wall);
 
-            // 2) Carve paths
-            carveDFS(maze, rng);
+            // 2) Carve with Prim's algorithm
+            carvePrims(maze, rng, CORRIDOR_THICKNESS);
 
-            // 3) Apply overrides (forced tiles from .properties)
-            applyOverrides(maze, spec.overrides);
+            // 3) Force a solid border of walls
+            forceBorderWalls(maze);
 
-            // 4) Resolve Entry/Exit from overrides first, otherwise place procedurally
-            Point forcedEntry = findFirst(maze, Tiles.Entry);
-            Point forcedExit  = findFirst(maze, Tiles.Exit);
-
-            if (forcedEntry != null) {
-                maze.setEntryCell(forcedEntry);
-            }
-            if (forcedExit != null) {
-                maze.setExitCell(forcedExit);
+            // 4) Place entry and exit
+            Point entry = pickEdgeWalkable(maze, rng);
+            if (entry != null) {
+                maze.setTile(entry.x, entry.y, Tiles.Entry);
+                maze.setEntryCell(entry);
             }
 
-            if (maze.getEntryCell() == null) {
-                Point entry = pickEdgeWalkable(maze, rng);
-                if (entry != null) {
-                    maze.setTile(entry.x, entry.y, Tiles.Entry);
-                    maze.setEntryCell(entry);
-                }
+            Point exit = (entry == null) ? pickEdgeWalkable(maze, rng) : pickFarWalkable(maze, rng, entry);
+            if (exit != null && entry != null && exit.equals(entry)) {
+                exit = pickFarWalkableDistinct(maze, rng, entry);
+            }
+            if (exit != null) {
+                maze.setTile(exit.x, exit.y, Tiles.Exit);
+                maze.setExitCell(exit);
             }
 
-            if (maze.getExitCell() == null) {
-                // Prefer far from entry if possible
-                Point entry = maze.getEntryCell();
-                Point exit = (entry == null)
-                        ? pickEdgeWalkable(maze, rng)
-                        : pickFarWalkable(maze, rng, entry);
-
-                if (exit != null && entry != null && exit.equals(entry)) {
-                    // avoid overlap
-                    exit = pickFarWalkableDistinct(maze, rng, entry);
-                }
-
-                if (exit != null) {
-                    maze.setTile(exit.x, exit.y, Tiles.Exit);
-                    maze.setExitCell(exit);
-                }
-            }
-
-            // 5) Validate
-            Point entry = maze.getEntryCell();
-            Point exit  = maze.getExitCell();
-
-            if (entry != null && exit != null && MazeUtils.reachable(maze, entry, exit)) {
+            // 5) Validate solvable
+            if (maze.getEntryCell() != null && maze.getExitCell() != null &&
+                    MazeUtils.reachable(maze, maze.getEntryCell(), maze.getExitCell())) {
                 return maze;
             }
         }
 
-        // fallback: empty maze object (keeps game running)
+        // fallback
         return new Maze(spec.width, spec.height, tileSize);
     }
 
@@ -84,61 +64,86 @@ public class MazeGenerator {
         }
     }
 
-    private void applyOverrides(Maze maze, Map<Point, Integer> overrides) {
-        if (overrides == null) return;
-        for (Map.Entry<Point, Integer> e : overrides.entrySet()) {
-            Point p = e.getKey();
-            if (p == null) continue;
-            if (!GridUtils.inBounds(p.x, p.y, maze.getWidth(), maze.getHeight())) continue;
-            maze.setTile(p.x, p.y, e.getValue());
-        }
-    }
-
-    // Standard DFS maze carving: steps by 2 cells and knocks down walls between
-    private void carveDFS(Maze maze, Random rng) {
+    private void forceBorderWalls(Maze maze) {
         int w = maze.getWidth();
         int h = maze.getHeight();
 
-        // Need at least a 3x3 interior
-        if (w < 3 || h < 3) return;
+        for (int x = 0; x < w; x++) {
+            maze.setTile(x, 0, Tiles.Wall);
+            maze.setTile(x, h - 1, Tiles.Wall);
+        }
+        for (int y = 0; y < h; y++) {
+            maze.setTile(0, y, Tiles.Wall);
+            maze.setTile(w - 1, y, Tiles.Wall);
+        }
+    }
 
-        int sx = randomOdd(rng, 1, w - 2);
-        int sy = randomOdd(rng, 1, h - 2);
+    // ----------------------------
+    // Randomized Prim's algorithm
+    // ----------------------------
+    private void carvePrims(Maze maze, Random rng, int thickness) {
+        int w = maze.getWidth();
+        int h = maze.getHeight();
+        if (w < 5 || h < 5) return;
 
-        ArrayDeque<Point> stack = new ArrayDeque<>();
-        maze.setTile(sx, sy, Tiles.Floor);
-        stack.push(new Point(sx, sy));
+        // Work on an odd grid to keep clean walls between corridors.
+        // We treat "cells" as odd coordinates (1..w-2, 1..h-2).
+        int startX = randomOdd(rng, 1, w - 2);
+        int startY = randomOdd(rng, 1, h - 2);
 
-        int[][] dirs = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}};
+        paintFloorBlockCentered(maze, startX, startY, thickness);
 
-        while (!stack.isEmpty()) {
-            Point cur = stack.peek();
+        // Frontier edges from carved region to walls (step 2)
+        ArrayList<Edge> frontier = new ArrayList<>();
+        addFrontier(frontier, startX, startY, w, h);
 
-            List<int[]> shuffled = new ArrayList<>(Arrays.asList(dirs));
-            Collections.shuffle(shuffled, rng);
+        while (!frontier.isEmpty()) {
+            Edge e = frontier.remove(rng.nextInt(frontier.size()));
 
-            boolean moved = false;
+            // If target already carved, skip
+            if (maze.getTile(e.tx, e.ty) != Tiles.Wall) continue;
 
-            for (int[] d : shuffled) {
-                int nx = cur.x + d[0];
-                int ny = cur.y + d[1];
+            // Carve the wall between + the target cell
+            paintFloorBlockCentered(maze, e.wx, e.wy, thickness);
+            paintFloorBlockCentered(maze, e.tx, e.ty, thickness);
 
-                if (!GridUtils.inBounds(nx, ny, w, h)) continue;
-                if (maze.getTile(nx, ny) != Tiles.Wall) continue;
+            addFrontier(frontier, e.tx, e.ty, w, h);
+        }
+    }
 
-                int wx = cur.x + d[0] / 2;
-                int wy = cur.y + d[1] / 2;
+    private static class Edge {
+        final int wx, wy; // wall between
+        final int tx, ty; // target cell
+        Edge(int wx, int wy, int tx, int ty) {
+            this.wx = wx; this.wy = wy;
+            this.tx = tx; this.ty = ty;
+        }
+    }
 
-                maze.setTile(wx, wy, Tiles.Floor);
-                maze.setTile(nx, ny, Tiles.Floor);
+    private void addFrontier(List<Edge> frontier, int cx, int cy, int w, int h) {
+        int[][] dirs = {{2,0}, {-2,0}, {0,2}, {0,-2}};
+        for (int[] d : dirs) {
+            int tx = cx + d[0];
+            int ty = cy + d[1];
+            int wx = cx + d[0] / 2;
+            int wy = cy + d[1] / 2;
 
-                stack.push(new Point(nx, ny));
-                moved = true;
-                break;
-            }
+            if (!GridUtils.inBounds(tx, ty, w, h)) continue;
+            // frontier only makes sense if target is still wall
+            frontier.add(new Edge(wx, wy, tx, ty));
+        }
+    }
 
-            if (!moved) {
-                stack.pop();
+    // Thickness is "diameter" in cells; we paint a square centered on (x,y)
+    private void paintFloorBlockCentered(Maze maze, int x, int y, int thickness) {
+        int half = thickness / 2;
+        for (int oy = -half; oy <= half; oy++) {
+            for (int ox = -half; ox <= half; ox++) {
+                int px = x + ox;
+                int py = y + oy;
+                if (GridUtils.inBounds(px, py, maze.getWidth(), maze.getHeight())) {
+                    maze.setTile(px, py, Tiles.Floor);
+                }
             }
         }
     }
@@ -151,17 +156,17 @@ public class MazeGenerator {
         return v;
     }
 
+    // ----------------------------
+    // Entry/Exit placement helpers
+    // ----------------------------
     private Point pickEdgeWalkable(Maze maze, Random rng) {
         int w = maze.getWidth(), h = maze.getHeight();
         List<Point> candidates = new ArrayList<>();
 
-        // top/bottom inner edges
         for (int x = 1; x < w - 1; x++) {
             if (Tiles.isWalkable(maze.getTile(x, 1))) candidates.add(new Point(x, 1));
             if (Tiles.isWalkable(maze.getTile(x, h - 2))) candidates.add(new Point(x, h - 2));
         }
-
-        // left/right inner edges
         for (int y = 1; y < h - 1; y++) {
             if (Tiles.isWalkable(maze.getTile(1, y))) candidates.add(new Point(1, y));
             if (Tiles.isWalkable(maze.getTile(w - 2, y))) candidates.add(new Point(w - 2, y));
@@ -176,46 +181,20 @@ public class MazeGenerator {
         List<Point> floors = new ArrayList<>();
         for (int y = 1; y < maze.getHeight() - 1; y++) {
             for (int x = 1; x < maze.getWidth() - 1; x++) {
-                if (Tiles.isWalkable(maze.getTile(x, y))) {
-                    floors.add(new Point(x, y));
-                }
+                if (Tiles.isWalkable(maze.getTile(x, y))) floors.add(new Point(x, y));
             }
         }
-
         if (floors.isEmpty()) return null;
 
-        // Sort farthest first
         floors.sort((a, b) -> Integer.compare(MazeUtils.dist2(b, from), MazeUtils.dist2(a, from)));
-
-        // Choose randomly among top N farthest cells to keep variety
-        int top = Math.min(30, floors.size());
+        int top = Math.min(40, floors.size());
         return floors.get(rng.nextInt(top));
     }
 
     private Point pickFarWalkableDistinct(Maze maze, Random rng, Point from) {
-        // Try a few times to avoid same cell
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 30; i++) {
             Point p = pickFarWalkable(maze, rng, from);
             if (p != null && !p.equals(from)) return p;
-        }
-        // fallback: brute scan for any other walkable cell
-        for (int y = 1; y < maze.getHeight() - 1; y++) {
-            for (int x = 1; x < maze.getWidth() - 1; x++) {
-                if (Tiles.isWalkable(maze.getTile(x, y)) && !(x == from.x && y == from.y)) {
-                    return new Point(x, y);
-                }
-            }
-        }
-        return null;
-    }
-
-    private Point findFirst(Maze maze, int tileId) {
-        for (int y = 0; y < maze.getHeight(); y++) {
-            for (int x = 0; x < maze.getWidth(); x++) {
-                if (maze.getTile(x, y) == tileId) {
-                    return new Point(x, y);
-                }
-            }
         }
         return null;
     }

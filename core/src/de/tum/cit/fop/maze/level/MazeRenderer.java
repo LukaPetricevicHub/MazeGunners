@@ -20,16 +20,18 @@ public class MazeRenderer {
 
     }
 
-    public void render(Maze maze, SpriteBatch batch){
+    public void render(Maze maze, SpriteBatch batch) {
         int ts = maze.getTileSize();
 
-        for(int y = 0; y < maze.getHeight(); y++){
-            for(int x = 0; x < maze.getWidth(); x++){
+        for (int y = 0; y < maze.getHeight(); y++) {
+            for (int x = 0; x < maze.getWidth(); x++) {
                 int id = maze.getTile(x, y);
-                TextureRegion tile = tiles[id];
-                batch.draw(tile, x * ts, y * ts, ts, ts);
 
-                if(tile != null){
+                // safety: if id is ever out of range, render as wall
+                if (id < 0 || id >= tiles.length) id = Tiles.Wall;
+
+                TextureRegion tile = tiles[id];
+                if (tile != null) {
                     batch.draw(tile, x * ts, y * ts, ts, ts);
                 }
             }

@@ -5,6 +5,7 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.level.Maze;
 
 /**
@@ -40,7 +41,7 @@ public class Player {
         this.walkDownAnimation = walkDownAnimation;
     }
 
-    public void update(float dt, Maze maze) {
+    public void update(float dt, Maze maze, MazeRunnerGame game) {
         animTime += dt;
 
         // timers
@@ -69,12 +70,57 @@ public class Player {
         float nextX = x + dx;
         float nextY = y + dy;
 
-        if(!maze.isWallWorld(nextX, y)){
+        float w = 16f;
+        float h = 32f;
+
+        // shrink hitbox a bit so it feels nicer
+        float inset = 2f;
+        float left   = nextX + inset;
+        float right  = nextX + w - inset;
+        float bottom = y + inset;
+        float top    = y + h - inset;
+
+        // move X if no wall at any corner
+        if (!maze.isWallWorld(left, bottom) &&
+                !maze.isWallWorld(right, bottom) &&
+                !maze.isWallWorld(left, top) &&
+                !maze.isWallWorld(right, top)) {
             x = nextX;
         }
 
-        if(!maze.isWallWorld(x, nextY)){
+        // now test Y
+        left   = x + inset;
+        right  = x + w - inset;
+        bottom = nextY + inset;
+        top    = nextY + h - inset;
+
+        if (!maze.isWallWorld(left, bottom) &&
+                !maze.isWallWorld(right, bottom) &&
+                !maze.isWallWorld(left, top) &&
+                !maze.isWallWorld(right, top)) {
             y = nextY;
+        }
+
+        boolean blocked = false;
+        if(dx != 0f){
+            float testX = x + dx;
+            if(!maze.isWallWorld(testX, y)){
+                x = testX;
+            }
+            else{
+                blocked = true;
+            }
+        }
+
+        if(dy != 0f){
+            float testY = y + dy;
+            if(!maze.isWallWorld(x, testY)){
+                y = testY;
+            }
+        }
+
+        if(blocked){
+            game.playWallHitSound();
         }
     }
 
@@ -94,6 +140,10 @@ public class Player {
 
         damageFlash = true;
         flashTimeLeft = 0.25f;
+    }
+
+    public void setPosition(float x, float y){
+        this.x = x;
     }
 
     public void giveKey() {

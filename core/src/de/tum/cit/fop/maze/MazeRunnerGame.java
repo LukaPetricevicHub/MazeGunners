@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -32,6 +33,9 @@ public class MazeRunnerGame extends Game {
     private Texture tileset;
     private TextureRegion[][] tiles;
 
+    //Sound
+    private Sound wallHitSound;
+
     /**
      * Constructor for MazeRunnerGame.
      *
@@ -50,12 +54,22 @@ public class MazeRunnerGame extends Game {
         skin = new Skin(Gdx.files.internal("craft/craftacular-ui.json")); // Load UI skin
         this.loadCharacterAnimation(); // Load character animation
 
+        wallHitSound =Gdx.audio.newSound(Gdx.files.internal("bumpintowall_X5CNQPB.wav"));
+
+
+
         goToMenu(); // Navigate to the menu screen
 
         tileset = new Texture(Gdx.files.internal("basictiles.png"));
         tiles = TextureRegion.split(tileset, 16, 16);
         if(tiles.length < 2 || tiles[0].length < 4){
             throw new IllegalStateException("basictiles.png doesn't have enough tiles!");
+        }
+    }
+
+    public void playWallHitSound(){
+        if(wallHitSound != null){
+            wallHitSound.play(0.6f);
         }
     }
 
@@ -113,6 +127,9 @@ public class MazeRunnerGame extends Game {
         spriteBatch.dispose(); // Dispose the spriteBatch
         skin.dispose();// Dispose the skin
         tileset.dispose();
+        if(wallHitSound != null){
+            wallHitSound.dispose();
+        }
 
     }
 
