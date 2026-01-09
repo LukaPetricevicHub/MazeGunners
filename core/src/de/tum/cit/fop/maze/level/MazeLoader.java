@@ -112,7 +112,7 @@ public class MazeLoader {
             }
 
             if(width <= 0 || height <= 0){
-                throw new IllegalArgumentException("Maze width/height must be > 0. Chekc your properties file: " + file.path());
+                throw new IllegalArgumentException("Maze width/height must be > 0. Check your properties file: " + file.path());
             }
 
 

@@ -8,7 +8,7 @@ public class MazeRenderer {
     private final TextureRegion[] tiles;
 
     public MazeRenderer(TextureRegion floor, TextureRegion wall, TextureRegion entry, TextureRegion exit){
-        this.tiles = new TextureRegion[6];
+        this.tiles = new TextureRegion[4];
         for(int i = 0; i < tiles.length; i++){
             tiles[i] = floor;
         }
