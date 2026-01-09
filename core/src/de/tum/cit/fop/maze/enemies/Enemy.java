@@ -26,12 +26,17 @@ public abstract class Enemy {
         this.player = player;
     }
 
-    // Update the enemies Position
-    public void updateEnemyPosition(float deltaTime) {
+    // Update all enemies
+    public final void update(float deltaTime) {
+        updateEnemyPosition(deltaTime);
+        collisionBox.setPosition(position.x, position.y);
+    }
+
+    // Update a specific enemies position
+    protected void updateEnemyPosition(float deltaTime) {
         if (currentBehavior != null) {
             currentBehavior.execute(this, deltaTime);
         }
-        collisionBox.setPosition(position.x, position.y);
     }
 
     // Enemy movement

@@ -20,7 +20,7 @@ public class MutantWorker extends Enemy {
     }
 
     private void loadMutantWorkerWalkAnimation() {
-        Texture walkSheet = new Texture("mobs.png");
+        Texture walkSheet = new Texture("mobs.png"); // Adjust for later design png
         int mutantWorkerX = 147;
         int mutantWorkerY = 0;
         int mutantWorkerWidth = 44 / 3;
@@ -41,7 +41,8 @@ public class MutantWorker extends Enemy {
         walkAnimation.setPlayMode(Animation.PlayMode.LOOP);
     }
 
-    public void update(float delta) {
+    @Override
+    protected void updateEnemyPosition(float delta) {
         stateTime += delta;
 
         if (!isChasing && player != null) {
@@ -62,8 +63,4 @@ public class MutantWorker extends Enemy {
         return walkAnimation.getKeyFrame(stateTime, true);
     }
 
-    @Override
-    public Vector2 getPlayerPosition() {
-        return new Vector2(player.getX(), player.getY());
-    }
 }
