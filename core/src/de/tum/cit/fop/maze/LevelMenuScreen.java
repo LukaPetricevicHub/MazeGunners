@@ -14,6 +14,8 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
+import java.util.Arrays;
+
 
 /**
  * Screen for selecting a level/map to play.
@@ -42,11 +44,16 @@ public class LevelMenuScreen implements Screen {
 
         // List all .properties files in "maps" folder
         FileHandle mapDir = Gdx.files.internal("maps");
-        FileHandle[] mapFiles = mapDir.list(".properties");
+        FileHandle[] mapFiles = mapDir.list(".properties"); // Replace this with the TiledMazes
 
-        if (mapFiles == null || mapFiles.length == 0) {
-            buttonTable.add(new Label("No maps found!", skin));
-        } else {
+        if (mapFiles != null && mapFiles.length > 0) {
+            // Sort numerically by file name
+            Arrays.sort(mapFiles, (a, b) -> {
+                int numA = Integer.parseInt(a.nameWithoutExtension().replaceAll("\\D", ""));
+                int numB = Integer.parseInt(b.nameWithoutExtension().replaceAll("\\D", ""));
+                return Integer.compare(numA, numB);
+            });
+
             for(FileHandle mapFile : mapFiles){
                 TextButton button = new TextButton(mapFile.nameWithoutExtension(), skin);
 
@@ -59,6 +66,8 @@ public class LevelMenuScreen implements Screen {
 
                 buttonTable.add(button).width(300).pad(10).row();
             }
+        } else {
+            buttonTable.add(new Label("No maps found!", skin));
         }
 
         ScrollPane scrollPane = new ScrollPane(buttonTable, skin);
