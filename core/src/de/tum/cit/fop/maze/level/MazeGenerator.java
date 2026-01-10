@@ -8,8 +8,6 @@ import java.util.*;
 public class MazeGenerator {
 
     private static final int MAX_ATTEMPTS = 80;
-
-    // Corridor thickness in CELLS (2 or 3 looks good)
     private static final int CORRIDOR_THICKNESS = 2;
 
     public Maze generate(MazeLoader.LevelSpec spec, int tileSize, long seed) {
@@ -20,16 +18,12 @@ public class MazeGenerator {
 
             Maze maze = new Maze(spec.width, spec.height, tileSize);
 
-            // 1) Start as all walls
             fill(maze, Tiles.Wall);
 
-            // 2) Carve with Prim's algorithm
             carvePrims(maze, rng, CORRIDOR_THICKNESS);
 
-            // 3) Force a solid border of walls
             forceBorderWalls(maze);
 
-            // 4) Place entry and exit
             Point entry = pickEdgeWalkable(maze, rng);
             if (entry != null) {
                 maze.setTile(entry.x, entry.y, Tiles.Entry);
@@ -45,14 +39,13 @@ public class MazeGenerator {
                 maze.setExitCell(exit);
             }
 
-            // 5) Validate solvable
+
             if (maze.getEntryCell() != null && maze.getExitCell() != null &&
                     MazeUtils.reachable(maze, maze.getEntryCell(), maze.getExitCell())) {
                 return maze;
             }
         }
 
-        // fallback
         return new Maze(spec.width, spec.height, tileSize);
     }
 
@@ -78,32 +71,26 @@ public class MazeGenerator {
         }
     }
 
-    // ----------------------------
-    // Randomized Prim's algorithm
-    // ----------------------------
+
     private void carvePrims(Maze maze, Random rng, int thickness) {
         int w = maze.getWidth();
         int h = maze.getHeight();
         if (w < 5 || h < 5) return;
 
-        // Work on an odd grid to keep clean walls between corridors.
-        // We treat "cells" as odd coordinates (1..w-2, 1..h-2).
+
         int startX = randomOdd(rng, 1, w - 2);
         int startY = randomOdd(rng, 1, h - 2);
 
         paintFloorBlockCentered(maze, startX, startY, thickness);
 
-        // Frontier edges from carved region to walls (step 2)
         ArrayList<Edge> frontier = new ArrayList<>();
         addFrontier(frontier, startX, startY, w, h);
 
         while (!frontier.isEmpty()) {
             Edge e = frontier.remove(rng.nextInt(frontier.size()));
 
-            // If target already carved, skip
             if (maze.getTile(e.tx, e.ty) != Tiles.Wall) continue;
 
-            // Carve the wall between + the target cell
             paintFloorBlockCentered(maze, e.wx, e.wy, thickness);
             paintFloorBlockCentered(maze, e.tx, e.ty, thickness);
 
@@ -112,8 +99,8 @@ public class MazeGenerator {
     }
 
     private static class Edge {
-        final int wx, wy; // wall between
-        final int tx, ty; // target cell
+        final int wx, wy;
+        final int tx, ty;
         Edge(int wx, int wy, int tx, int ty) {
             this.wx = wx; this.wy = wy;
             this.tx = tx; this.ty = ty;
@@ -134,7 +121,6 @@ public class MazeGenerator {
         }
     }
 
-    // Thickness is "diameter" in cells; we paint a square centered on (x,y)
     private void paintFloorBlockCentered(Maze maze, int x, int y, int thickness) {
         int half = thickness / 2;
         for (int oy = -half; oy <= half; oy++) {
@@ -156,9 +142,7 @@ public class MazeGenerator {
         return v;
     }
 
-    // ----------------------------
-    // Entry/Exit placement helpers
-    // ----------------------------
+
     private Point pickEdgeWalkable(Maze maze, Random rng) {
         int w = maze.getWidth(), h = maze.getHeight();
         List<Point> candidates = new ArrayList<>();

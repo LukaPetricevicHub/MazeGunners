@@ -3,89 +3,91 @@ package de.tum.cit.fop.maze.enemies;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import de.tum.cit.fop.maze.behavior.BehaviorState;
+import de.tum.cit.fop.maze.level.Maze;
 import de.tum.cit.fop.maze.player.Player;
-
 
 public abstract class Enemy {
 
     // Attributes
-    protected Vector2 position;
-    protected float speed;
-    protected Rectangle collisionBox;
-    protected BehaviorState currentBehavior;
+    protected Vector2 worldPosition;
+    protected float movementSpeed;
+    protected Rectangle collisionBounds;
+    protected BehaviorState activeBehavior;
+    protected Player targetPlayer;
 
-    // Reference to the Player
-    protected Player player;
 
     // Constructor
-    public Enemy(Vector2 position, float speed, BehaviorState currentBehavior, Player player) {
-        this.position = position;
-        this.speed = speed;
-        this.collisionBox = new Rectangle(position.x, position.y, 1f, 1f);
-        this.currentBehavior = currentBehavior;
-        this.player = player;
+    public Enemy(Vector2 startWorldPosition, float movementSpeed, BehaviorState initialBehavior, Player targetPlayer) {
+        this.worldPosition = startWorldPosition;
+        this.movementSpeed = movementSpeed;
+        this.collisionBounds = new Rectangle(startWorldPosition.x, startWorldPosition.y, 1f, 1f);
+        this.activeBehavior = initialBehavior;
+        this.targetPlayer = targetPlayer;
     }
 
-    // Update all enemies
-    public final void update(float deltaTime) {
-        updateEnemyPosition(deltaTime);
-        collisionBox.setPosition(position.x, position.y);
+
+    // Update enemy logic and collision bounds
+    public final void update(float deltaTime, Maze maze) {
+        updateBehavior(deltaTime, maze);
+        collisionBounds.setPosition(worldPosition.x, worldPosition.y);
     }
 
-    // Update a specific enemies position
-    protected void updateEnemyPosition(float deltaTime) {
-        if (currentBehavior != null) {
-            currentBehavior.execute(this, deltaTime);
-        }
+
+    // Execute current behavior logic
+    protected void updateBehavior(float deltaTime, Maze maze) {
+        if (activeBehavior != null)
+            activeBehavior.execute(this, deltaTime, maze);
+
     }
 
-    // Enemy movement
+
+    // Move enemy in given direction
     public void moveEnemy(Vector2 direction, float deltaTime) {
-        position.mulAdd(direction.nor(), speed * deltaTime);
+        worldPosition.mulAdd(direction.nor(), movementSpeed * deltaTime);
     }
 
-    // Find our player
+    // Return player's current position
     public Vector2 getPlayerPosition() {
-        if (player != null)
-            return new Vector2(player.getX(), player.getY());
-        return new Vector2(0,0); // Fallback
+        if(targetPlayer != null) {
+            return new Vector2(targetPlayer.getX(), targetPlayer.getY());
+        }
+        return new Vector2(0f, 0f);
     }
 
     // Getters & Setters
     public Vector2 getPosition() {
-        return position;
+        return worldPosition;
     }
 
-    public void setPosition(Vector2 position) {
-        this.position = position;
+    public void setPosition(Vector2 worldPosition) {
+        this.worldPosition = worldPosition;
     }
 
     public float getSpeed() {
-        return speed;
+        return movementSpeed;
     }
 
-    public void setSpeed(float speed) {
-        this.speed = speed;
+    public void setSpeed(float movementSpeed) {
+        this.movementSpeed = movementSpeed;
     }
 
     public Rectangle getCollisionBox() {
-        return collisionBox;
+        return collisionBounds;
     }
 
-    public void setCollisionBox(Rectangle collisionBox) {
-        this.collisionBox = collisionBox;
+    public void setCollisionBox(Rectangle collisionBounds) {
+        this.collisionBounds = collisionBounds;
     }
 
     public BehaviorState getCurrentBehavior() {
-        return currentBehavior;
+        return activeBehavior;
     }
 
-    public void setCurrentBehavior(BehaviorState currentBehavior) {
-        this.currentBehavior = currentBehavior;
+    public void setCurrentBehavior(BehaviorState behavior) {
+        this.activeBehavior = behavior;
     }
 
     public void setPlayer(Player player) {
-        this.player = player;
+        this.targetPlayer = player;
     }
-
 }

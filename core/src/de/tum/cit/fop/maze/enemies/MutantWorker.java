@@ -5,35 +5,45 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import de.tum.cit.fop.maze.behavior.ChaseBehavior;
+import de.tum.cit.fop.maze.level.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
 public class MutantWorker extends Enemy {
 
-    private boolean isChasing = false;
-    private float detectionRange = 150f; // pixels
+    // Attributes
+    private boolean hasDetectedPlayer = false;
+    private final float detectionRange = 150f;
     private Animation<TextureRegion> walkAnimation;
-    private float stateTime = 0f;
 
-    public MutantWorker(Vector2 position, float speed, Player player) {
-        super(position, speed, null, player); // no behavior needed for straight-line chase
-        loadMutantWorkerWalkAnimation();
+    private float animationTime = 0f;
+
+
+    // Constructor
+    public MutantWorker(Vector2 startWorldPosition, float movementSpeed, Player targetPlayer) {
+        super(startWorldPosition, movementSpeed, new ChaseBehavior(), targetPlayer);
+        loadWalkAnimation();
     }
 
-    private void loadMutantWorkerWalkAnimation() {
-        Texture walkSheet = new Texture("mobs.png"); // Adjust for later design png
-        int mutantWorkerX = 147;
-        int mutantWorkerY = 0;
-        int mutantWorkerWidth = 44 / 3;
-        int mutantWorkerHeight = 64 / 4;
+
+    // Load walking animation frames
+    private void loadWalkAnimation() {
+        Texture spriteSheet = new Texture("mobs.png");
+
+        int startX = 147;
+        int startY = 0;
+        int frameWidth = 44 / 3;
+        int frameHeight = 64 / 4;
 
         Array<TextureRegion> frames = new Array<>(TextureRegion.class);
+
         for (int col = 0; col < 3; col++) {
             frames.add(new TextureRegion(
-                    walkSheet,
-                    mutantWorkerX + col * mutantWorkerWidth,
-                    mutantWorkerY,
-                    mutantWorkerWidth,
-                    mutantWorkerHeight
+                    spriteSheet,
+                    startX + col * frameWidth,
+                    startY,
+                    frameWidth,
+                    frameHeight
             ));
         }
 
@@ -41,26 +51,28 @@ public class MutantWorker extends Enemy {
         walkAnimation.setPlayMode(Animation.PlayMode.LOOP);
     }
 
+
+    // Update detection, animation and behavior
     @Override
-    protected void updateEnemyPosition(float delta) {
-        stateTime += delta;
+    protected void updateBehavior(float deltaTime, Maze maze) {
+        animationTime += deltaTime;
+        if (!hasDetectedPlayer && targetPlayer != null) {
+            float distanceToPlayer =
+                    worldPosition.dst(targetPlayer.getX(), targetPlayer.getY());
 
-        if (!isChasing && player != null) {
-            float distance = position.dst(player.getX(), player.getY());
-            if(distance <= detectionRange) {
-                isChasing = true;
-            }
+            if(distanceToPlayer <= detectionRange)
+                hasDetectedPlayer = true;
+
         }
-        if (isChasing) {
-            Vector2 target = getPlayerPosition();
-            Vector2 direction = target.cpy().sub(position);
-            direction.nor(); // normalize direction
-            position.mulAdd(direction, speed * delta); // move enemy
+
+        if (hasDetectedPlayer && activeBehavior != null) {
+            activeBehavior.execute(this, deltaTime, maze);
         }
     }
 
+
+    // Return current animation frame
     public TextureRegion getCurrentFrame() {
-        return walkAnimation.getKeyFrame(stateTime, true);
+        return walkAnimation.getKeyFrame(animationTime, true);
     }
-
 }

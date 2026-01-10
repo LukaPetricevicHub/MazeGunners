@@ -8,36 +8,45 @@ import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.behavior.BehaviorState;
 import de.tum.cit.fop.maze.behavior.ChaseBehavior;
 import de.tum.cit.fop.maze.behavior.PatrolBehavior;
+import de.tum.cit.fop.maze.level.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
 public class FlyingDrone extends Enemy {
 
-    private BehaviorState patrolBehavior;
-    private BehaviorState chaseBehavior;
-    private float chaseDistance = 3f; // distance to player to switch to chase
+    // Attributes
+    private final BehaviorState patrolBehavior;
+    private final BehaviorState chaseBehavior;
+    private final float chaseTriggerDistance = 150f;
+    private Animation<TextureRegion> flyingAnimation;
+    private float animationTime = 0f;
 
-    private Animation<TextureRegion> flyAnimation;
-    private float stateTime = 0f;
 
-    public FlyingDrone(Vector2 position, float speed, Array<Vector2> patrolPoints, Player player) {
-        super(position, speed, null, player);
-        patrolBehavior = new PatrolBehavior(patrolPoints);
-        chaseBehavior = new ChaseBehavior();
-        this.currentBehavior = patrolBehavior;
-        loadFlyingDroneAnimation();
+    // Constructor
+    public FlyingDrone(Vector2 startWorldPosition, float movementSpeed, Array<Vector2> patrolWorldPositions, Player targetPlayer) {
+        super(startWorldPosition, movementSpeed, null, targetPlayer);
+
+        this.patrolBehavior = new PatrolBehavior(patrolWorldPositions);
+        this.chaseBehavior = new ChaseBehavior();
+        this.activeBehavior = patrolBehavior;
+
+        loadFlyingAnimation();
     }
 
-    private void loadFlyingDroneAnimation() {
-        Texture droneSheet = new Texture("mobs.png"); // reuse the same sheet for now
-        int startX = 51; // adjust X position of flying drone in sheet
-        int startY = 64; // adjust Y position
+
+    // Load flying drone animation frames
+    private void loadFlyingAnimation() {
+        Texture droneSpriteSheet = new Texture("mobs.png");
+
+        int startX = 51;
+        int startY = 64;
         int frameWidth = 44 / 3;
         int frameHeight = 64 / 4;
 
         Array<TextureRegion> frames = new Array<>(TextureRegion.class);
-        for (int col = 0; col < 3; col++) { // 3 frames for flying
+
+        for (int col = 0; col < 3; col++) {
             frames.add(new TextureRegion(
-                    droneSheet,
+                    droneSpriteSheet,
                     startX + col * frameWidth,
                     startY,
                     frameWidth,
@@ -45,18 +54,32 @@ public class FlyingDrone extends Enemy {
             ));
         }
 
-        flyAnimation = new Animation<>(0.2f, frames);
-        flyAnimation.setPlayMode(Animation.PlayMode.LOOP);
+        flyingAnimation = new Animation<>(0.2f, frames);
+        flyingAnimation.setPlayMode(Animation.PlayMode.LOOP);
     }
 
+
+    // Return current animation frame
     public TextureRegion getCurrentFrame() {
-        return flyAnimation.getKeyFrame(stateTime, true);
+        return flyingAnimation.getKeyFrame(animationTime, true);
     }
 
+
+    // Update behavior and animation state
     @Override
-    protected void updateEnemyPosition(float deltaTime) {
-        // Add intersection of patrol and chase, when Player in certain range
+    protected void updateBehavior(float deltaTime, Maze maze) {
+        animationTime += deltaTime;
+
+
+        float distanceToPlayer = worldPosition.dst(targetPlayer.getX(), targetPlayer.getY());
+        if (distanceToPlayer < chaseTriggerDistance) {
+            activeBehavior = chaseBehavior;
+        } else {
+            activeBehavior = patrolBehavior;
+        }
+
+        if (activeBehavior != null)
+            activeBehavior.execute(this, deltaTime, maze);
+
     }
-
 }
-

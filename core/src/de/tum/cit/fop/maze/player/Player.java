@@ -8,53 +8,50 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.level.Maze;
 
-/**
- * Player entity: handles movement, lives, key possession, and damage flash state.
- */
 public class Player {
 
+    // Attributes
     private float x;
     private float y;
 
     private int lives = 5;
     private boolean hasKey = false;
 
-    // Damage / invulnerability
     private boolean invulnerable = false;
     private float invulnTimeLeft = 0f;
 
-    // Flash (for VFX: you can tint red in renderer later)
     private boolean damageFlash = false;
     private float flashTimeLeft = 0f;
 
-    // Movement
-    private final float walkSpeed = 220f; // pixels/sec
+    private final float walkSpeed = 220f;
     private final float runMultiplier = 1.7f;
 
-    // Animation (reuse your existing down animation for now)
     private final Animation<TextureRegion> walkDownAnimation;
     private float animTime = 0f;
 
+
+    // Constructor
     public Player(float startX, float startY, Animation<TextureRegion> walkDownAnimation) {
         this.x = startX;
         this.y = startY;
         this.walkDownAnimation = walkDownAnimation;
     }
 
+
+    // Update player logic and movement
     public void update(float dt, Maze maze, MazeRunnerGame game) {
         animTime += dt;
 
-        // timers
         if (invulnerable) {
             invulnTimeLeft -= dt;
             if (invulnTimeLeft <= 0f) invulnerable = false;
         }
+
         if (damageFlash) {
             flashTimeLeft -= dt;
-            if (flashTimeLeft <= 0f) damageFlash = false;
+            if(flashTimeLeft <= 0f) damageFlash = false;
         }
 
-        // input
         boolean run = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
         float speed = walkSpeed * (run ? runMultiplier : 1f);
         float move = speed * dt;
@@ -72,64 +69,58 @@ public class Player {
 
         float w = 16f;
         float h = 32f;
-
-        // shrink hitbox a bit so it feels nicer
         float inset = 2f;
+
         float left   = nextX + inset;
         float right  = nextX + w - inset;
         float bottom = y + inset;
         float top    = y + h - inset;
 
-        // move X if no wall at any corner
-        if (!maze.isWallWorld(left, bottom) &&
-                !maze.isWallWorld(right, bottom) &&
-                !maze.isWallWorld(left, top) &&
-                !maze.isWallWorld(right, top)) {
+        if (!maze.isWallWorld(left, bottom) && !maze.isWallWorld(right, bottom) && !maze.isWallWorld(left, top) && !maze.isWallWorld(right, top)) {
             x = nextX;
         }
 
-        // now test Y
         left   = x + inset;
         right  = x + w - inset;
         bottom = nextY + inset;
         top    = nextY + h - inset;
 
-        if (!maze.isWallWorld(left, bottom) &&
-                !maze.isWallWorld(right, bottom) &&
-                !maze.isWallWorld(left, top) &&
-                !maze.isWallWorld(right, top)) {
+        if (!maze.isWallWorld(left, bottom) && !maze.isWallWorld(right, bottom) && !maze.isWallWorld(left, top) && !maze.isWallWorld(right, top)) {
             y = nextY;
         }
 
         boolean blocked = false;
-        if(dx != 0f){
+
+        if (dx != 0f) {
             float testX = x + dx;
-            if(!maze.isWallWorld(testX, y)){
+            if (!maze.isWallWorld(testX, y))
                 x = testX;
-            }
-            else{
+            else
                 blocked = true;
-            }
+
         }
 
-        if(dy != 0f){
+        if(dy != 0f) {
             float testY = y + dy;
-            if(!maze.isWallWorld(x, testY)){
+            if (!maze.isWallWorld(x, testY)) {
                 y = testY;
             }
         }
 
-        if(blocked){
+        if (blocked) {
             game.playWallHitSound();
         }
     }
 
+
+    // Draw player sprite
     public void draw(SpriteBatch batch) {
         TextureRegion frame = walkDownAnimation.getKeyFrame(animTime, true);
-        // draw bigger so you can see it
         batch.draw(frame, x, y, 32, 64);
     }
 
+
+    // Apply damage and triggers effects
     public void takeDamage(int amount) {
         if (invulnerable) return;
 
@@ -142,15 +133,20 @@ public class Player {
         flashTimeLeft = 0.25f;
     }
 
-    public void setPosition(float x, float y){
+
+    // Set player position
+    public void setPosition(float x, float y) {
         this.x = x;
     }
 
+
+    // Grant exit key
     public void giveKey() {
         hasKey = true;
     }
 
-    // getters for HUD
+
+    // HUD getters
     public int getLives() { return lives; }
     public boolean hasKey() { return hasKey; }
     public boolean isDamageFlashing() { return damageFlash; }
@@ -158,3 +154,4 @@ public class Player {
     public float getX() { return x; }
     public float getY() { return y; }
 }
+

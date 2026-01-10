@@ -3,40 +3,46 @@ package de.tum.cit.fop.maze.behavior;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.enemies.Enemy;
+import de.tum.cit.fop.maze.level.Maze;
 
 public class PatrolBehavior implements BehaviorState {
 
-    private Array<Vector2> patrolPoints;
-    private int currentTargetIndex = 0;
+    // Attributes
+    private final Array<Vector2> patrolWorldPositions;
+    private int currentPatrolIndex = 0;
 
-    public PatrolBehavior(Array<Vector2> patrolPoints) {
-        this.patrolPoints = patrolPoints;
+
+    // Creates patrol behavior
+    public PatrolBehavior(Array<Vector2> patrolWorldPositions) {
+        this.patrolWorldPositions = patrolWorldPositions;
     }
 
+
+    // Identify behavior
     @Override
     public BehaviorStateType getType() {
         return BehaviorStateType.PATROL;
     }
 
+
+    // Move enemy
     @Override
-    public void execute(Enemy enemy, float delta) {
-        if (patrolPoints.size == 0)
+    public void execute(Enemy enemy, float deltaTime, Maze maze) {
+
+        if(patrolWorldPositions.size == 0)
             return;
 
-        Vector2 target = patrolPoints.get(currentTargetIndex);
-        Vector2 direction = target.cpy().sub(enemy.getPosition());
-        enemy.moveEnemy(direction, delta);
+        Vector2 currentTargetPosition = patrolWorldPositions.get(currentPatrolIndex);
+        Vector2 movementDirection = currentTargetPosition.cpy().sub(enemy.getPosition());
 
-        if (enemy.getPosition().dst(target) < 0.1f) {
-            currentTargetIndex++;
-            if (currentTargetIndex >= patrolPoints.size) {
-                currentTargetIndex = 0;
+        enemy.moveEnemy(movementDirection, deltaTime);
+
+        if(enemy.getPosition().dst(currentTargetPosition) < 2f) {
+            currentPatrolIndex++;
+
+            if (currentPatrolIndex >= patrolWorldPositions.size) {
+                currentPatrolIndex = 0;
             }
         }
-
-        // Terminal test
-        System.out.println("Patrolling enemy at "
-                + enemy.getPosition().x + ", "
-                + enemy.getPosition().y);
     }
 }

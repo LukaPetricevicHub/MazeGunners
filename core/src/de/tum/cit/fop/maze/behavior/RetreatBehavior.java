@@ -1,9 +1,9 @@
 package de.tum.cit.fop.maze.behavior;
 
 import de.tum.cit.fop.maze.enemies.Enemy;
+import de.tum.cit.fop.maze.level.Maze;
 
 public class RetreatBehavior implements BehaviorState {
-
 
     @Override
     public BehaviorStateType getType() {
@@ -11,7 +11,7 @@ public class RetreatBehavior implements BehaviorState {
     }
 
     @Override
-    public void execute(Enemy enemy, float delta) {
-        // Retreat logic for later (e.g. when shot)
+    public void execute(Enemy enemy, float delta, Maze maze) {
+        // Logic for returning to a home base or spawn point
     }
 }

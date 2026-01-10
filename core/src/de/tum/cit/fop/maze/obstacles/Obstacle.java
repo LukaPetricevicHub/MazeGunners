@@ -5,67 +5,75 @@ import com.badlogic.gdx.math.Vector2;
 
 public abstract class Obstacle {
 
-    // Obstacle attributes
-    protected Vector2 position;
-    protected Rectangle collisionBox;
+    // Attributes
+    protected Vector2 worldPosition;
+    protected Rectangle collisionBounds;
     protected boolean isActive;
     protected int damageToPlayer;
-    protected float cooldown;
+    protected float activationCooldown;
     protected float cooldownTimer;
-    protected boolean playerWasTrapped;
+    protected boolean wasPlayerInside;
 
-    // Obstacle constructor
-    public Obstacle(Vector2 position,int damageToPlayer, float cooldown, float width, float height) {
-        this.position = new Vector2(position);
-        this.collisionBox = new Rectangle(position.x, position.y, width, height);
+
+    // Constructor
+    public Obstacle(Vector2 startWorldPosition, int damageToPlayer, float activationCooldown, float width, float height) {
+        this.worldPosition = new Vector2(startWorldPosition);
+        this.collisionBounds = new Rectangle(startWorldPosition.x, startWorldPosition.y, width, height);
         this.damageToPlayer = damageToPlayer;
         this.isActive = true;
-        this.cooldown = cooldown;
+        this.activationCooldown = activationCooldown;
         this.cooldownTimer = 0f;
-        this.playerWasTrapped = false;
-
+        this.wasPlayerInside = false;
     }
 
-    // Player collides with obstacle
-    public boolean intersectsWithPlayerBounds(Rectangle playerBounds) { // To replace with actual player bounds (player.getCollisionBounds()
-        return collisionBox.overlaps(playerBounds);
+
+    // Check collision with player bounds
+    public boolean intersectsPlayer(Rectangle playerBounds) {
+        return collisionBounds.overlaps(playerBounds);
     }
 
-    // Obstacle activates
-    public boolean activateObstacle(Rectangle playerBounds) {
-        boolean playerIsTrapped = intersectsWithPlayerBounds(playerBounds);
 
-        if (playerIsTrapped && !playerWasTrapped && isActive && cooldownTimer <= 0f) {
-            playerWasTrapped = true;
+    // Determine whether obstacle triggers this frame
+    public boolean tryActivate(Rectangle playerBounds) {
+        boolean isPlayerInside = intersectsPlayer(playerBounds);
+
+        if (isPlayerInside && !wasPlayerInside && isActive && cooldownTimer <= 0f) {
+            wasPlayerInside = true;
             return true;
         }
 
-        playerWasTrapped = playerIsTrapped;
+        wasPlayerInside = isPlayerInside;
         return false;
     }
 
-    // Obstacle deals damageToPlayer
+
+    // Return damage dealt on activation
     public int getDamageToPlayer() {
         return damageToPlayer;
     }
 
-    // Start obstacle cooldown
-    public void startObstacleCooldown() {
-        cooldownTimer = cooldown;
+
+    // Start cooldown timer
+    public void startCooldown() {
+        cooldownTimer = activationCooldown;
     }
 
-    // Update cooldownTimer
-    public void updateCooldownTimer(float delta) {
+
+    // Update cooldown timer each frame
+    public void updateCooldown(float deltaTime) {
         if (cooldownTimer > 0f) {
-            cooldownTimer -= delta;
+            cooldownTimer -= deltaTime;
         }
     }
 
-    // Getters
+
+    // Return collision bounds
     public Rectangle getCollisionBox() {
-        return collisionBox;
+        return collisionBounds;
     }
 
+
+    // Return whether obstacle is active
     public boolean isActive() {
         return isActive;
     }
