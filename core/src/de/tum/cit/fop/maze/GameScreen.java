@@ -54,16 +54,17 @@ public class GameScreen implements Screen {
     private static final float PLAYER_WIDTH = 32f;
     private static final float PLAYER_HEIGHT = 64f;
 
-
     private GameState gameState = GameState.RUNNING;
 
 
+    // Constructor
     public GameScreen(MazeRunnerGame game, String mapPath) {
         this.game = game;
         this.viewport = new ScreenViewport();
     }
 
 
+    // Render
     @Override
     public void render(float delta) {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
@@ -71,12 +72,12 @@ public class GameScreen implements Screen {
         }
 
         // Update player
-        if (gameState == GameState.RUNNING) {
+        if (gameState == GameState.RUNNING)
             player.update(delta, maze, game);
-        }
 
 
-        if (gameState == GameState.RUNNING) {
+
+        if(gameState == GameState.RUNNING) {
 
             if (isPlayerOnExit(player, maze) && player.hasKey()) {
                 gameState = GameState.WON;
@@ -205,10 +206,10 @@ public class GameScreen implements Screen {
 
         if (gameState == GameState.WON || gameState == GameState.LOST) {
             game.goToMenu();
-            return;
         }
     }
 
+    // Show
     @Override
     public void show() {
         MazeLoader.LevelSpec spec = new MazeLoader.LevelSpec(101, 101, Map.of());
@@ -234,7 +235,7 @@ public class GameScreen implements Screen {
 
         // Spawn player
         Point entry = maze.getEntryCell();
-        if (entry == null) entry = new Point(1, 1);
+        if(entry == null) entry = new Point(1, 1);
 
         Point safeSpawnCell = findSafeSpawnPosition(entry, maze);
 
@@ -265,6 +266,7 @@ public class GameScreen implements Screen {
     }
 
 
+    // Resize
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height, true);
@@ -272,6 +274,8 @@ public class GameScreen implements Screen {
         gameCamera.resize(viewport.getWorldWidth(), viewport.getWorldHeight());
     }
 
+
+    // Find a spawn point, so fat player is not stuck
     private Point findSafeSpawnPosition(Point entryCell, Maze maze) {
         int maxRadius = 10; // search radius in tiles
 
@@ -300,7 +304,6 @@ public class GameScreen implements Screen {
             }
         }
 
-        // Fallback: entry itself (should rarely happen)
         return entryCell;
     }
 
@@ -333,6 +336,8 @@ public class GameScreen implements Screen {
         LOST
     }
 
+
+    // Find the nearest exit
     private Point findNearestExit(Player player, Maze maze) {
         Point nearest = null;
         float bestDistSq = Float.MAX_VALUE;
@@ -356,10 +361,6 @@ public class GameScreen implements Screen {
 
         return nearest;
     }
-
-
-
-
 
     @Override public void pause() {}
     @Override public void resume() {}

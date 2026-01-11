@@ -34,7 +34,7 @@ public class RobotGuard extends Enemy {
 
         Array<TextureRegion> frames = new Array<>();
 
-        for (int col = 0; col < 3; col++) {
+        for(int col = 0; col < 3; col++) {
             frames.add(new TextureRegion(
                     spriteSheet,
                     startX + col * (46 / 3),

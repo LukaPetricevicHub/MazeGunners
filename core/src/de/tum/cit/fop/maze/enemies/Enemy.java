@@ -14,11 +14,13 @@ public abstract class Enemy {
     protected Rectangle collisionBounds;
     protected BehaviorState activeBehavior;
     protected Player targetPlayer;
+    protected final Vector2 homeWorldPosition;
 
 
     // Constructor
     public Enemy(Vector2 startWorldPosition, float movementSpeed, BehaviorState initialBehavior, Player targetPlayer) {
         this.worldPosition = startWorldPosition;
+        this.homeWorldPosition = new Vector2(startWorldPosition);
         this.movementSpeed = movementSpeed;
         this.collisionBounds = new Rectangle(startWorldPosition.x, startWorldPosition.y, 1f, 1f);
         this.activeBehavior = initialBehavior;
@@ -90,4 +92,9 @@ public abstract class Enemy {
     public void setPlayer(Player player) {
         this.targetPlayer = player;
     }
+
+    public Vector2 getHomePosition() {
+        return homeWorldPosition;
+    }
+
 }

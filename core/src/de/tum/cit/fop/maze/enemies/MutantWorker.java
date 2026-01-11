@@ -6,6 +6,8 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.behavior.ChaseBehavior;
+import de.tum.cit.fop.maze.behavior.EvadeBehavior;
+import de.tum.cit.fop.maze.behavior.RetreatBehavior;
 import de.tum.cit.fop.maze.level.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
@@ -13,18 +15,22 @@ public class MutantWorker extends Enemy {
 
     // Attributes
     private boolean hasDetectedPlayer = false;
-    private final float detectionRange = 150f;
+    private static final float DETECTION_RANGE = 150f;
+    private final ChaseBehavior chaseBehavior = new ChaseBehavior();
+    private final EvadeBehavior evadeBehavior = new EvadeBehavior();
+    private final RetreatBehavior retreatBehavior = new RetreatBehavior();
+    private boolean isRetreating = false;
+    private static final float EVADE_DISTANCE = 40f;
+
+    // Animation
     private Animation<TextureRegion> walkAnimation;
-
     private float animationTime = 0f;
-
 
     // Constructor
     public MutantWorker(Vector2 startWorldPosition, float movementSpeed, Player targetPlayer) {
-        super(startWorldPosition, movementSpeed, new ChaseBehavior(), targetPlayer);
+        super(startWorldPosition, movementSpeed, null, targetPlayer);
         loadWalkAnimation();
     }
-
 
     // Load walking animation frames
     private void loadWalkAnimation() {
@@ -51,25 +57,41 @@ public class MutantWorker extends Enemy {
         walkAnimation.setPlayMode(Animation.PlayMode.LOOP);
     }
 
-
     // Update detection, animation and behavior
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
         animationTime += deltaTime;
-        if (!hasDetectedPlayer && targetPlayer != null) {
-            float distanceToPlayer =
-                    worldPosition.dst(targetPlayer.getX(), targetPlayer.getY());
 
-            if(distanceToPlayer <= detectionRange)
-                hasDetectedPlayer = true;
+        if (targetPlayer == null) return;
 
+        float dist = worldPosition.dst(targetPlayer.getX(), targetPlayer.getY());
+
+        if(!hasDetectedPlayer && dist <= DETECTION_RANGE)
+            hasDetectedPlayer = true;
+
+        if (!hasDetectedPlayer)
+            return;
+
+        if (isRetreating) {
+            activeBehavior = retreatBehavior;
+
+            if (worldPosition.dst(homeWorldPosition) < 8f) {
+                isRetreating = false;
+                activeBehavior = chaseBehavior;
+            }
+        }
+        else if(dist < EVADE_DISTANCE) {
+            activeBehavior = evadeBehavior;
+            isRetreating = true;
+        }
+        else {
+            activeBehavior = chaseBehavior;
         }
 
-        if (hasDetectedPlayer && activeBehavior != null) {
+        if (activeBehavior != null) {
             activeBehavior.execute(this, deltaTime, maze);
         }
     }
-
 
     // Return current animation frame
     public TextureRegion getCurrentFrame() {
