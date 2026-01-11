@@ -23,8 +23,13 @@ public class Player {
     private boolean damageFlash = false;
     private float flashTimeLeft = 0f;
 
-    private final float walkSpeed = 220f;
-    private final float runMultiplier = 1.7f;
+    private static final float WALK_SPEED = 220f;
+    private static final float RUN_MULTIPLIER = 1.7f;
+
+    private static final float WIDTH = 32f;
+    private static final float HEIGHT = 64f;
+
+    private static final float COLLISION_INSET = 2f;
 
     private final Animation<TextureRegion> walkDownAnimation;
     private float animTime = 0f;
@@ -38,22 +43,40 @@ public class Player {
     }
 
 
-    // Update player logic and movement
+    // Main Update
     public void update(float dt, Maze maze, MazeRunnerGame game) {
         animTime += dt;
 
+        updateTimers(dt);
+
+        MovementInput input = readMovementInput(dt);
+        attemptMove(input.dx, input.dy, maze, game);
+    }
+
+
+    // Timers & State
+    private void updateTimers(float dt) {
         if (invulnerable) {
             invulnTimeLeft -= dt;
-            if (invulnTimeLeft <= 0f) invulnerable = false;
+            if (invulnTimeLeft <= 0f) {
+                invulnerable = false;
+            }
         }
 
         if (damageFlash) {
             flashTimeLeft -= dt;
-            if(flashTimeLeft <= 0f) damageFlash = false;
+            if (flashTimeLeft <= 0f) {
+                damageFlash = false;
+            }
         }
+    }
 
+
+    // Keyboard input
+    private MovementInput readMovementInput(float dt) {
         boolean run = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
-        float speed = walkSpeed * (run ? runMultiplier : 1f);
+
+        float speed = WALK_SPEED * (run ? RUN_MULTIPLIER : 1f);
         float move = speed * dt;
 
         float dx = 0f;
@@ -64,63 +87,63 @@ public class Player {
         if (Gdx.input.isKeyPressed(Input.Keys.UP))    dy += move;
         if (Gdx.input.isKeyPressed(Input.Keys.DOWN))  dy -= move;
 
-        float nextX = x + dx;
-        float nextY = y + dy;
+        return new MovementInput(dx, dy);
+    }
 
-        float w = 16f;
-        float h = 32f;
-        float inset = 2f;
 
-        float left   = nextX + inset;
-        float right  = nextX + w - inset;
-        float bottom = y + inset;
-        float top    = y + h - inset;
+    // Collision & Movement
+    private void attemptMove(float dx, float dy, Maze maze, MazeRunnerGame game) {
 
-        if (!maze.isWallWorld(left, bottom) && !maze.isWallWorld(right, bottom) && !maze.isWallWorld(left, top) && !maze.isWallWorld(right, top)) {
-            x = nextX;
-        }
-
-        left   = x + inset;
-        right  = x + w - inset;
-        bottom = nextY + inset;
-        top    = nextY + h - inset;
-
-        if (!maze.isWallWorld(left, bottom) && !maze.isWallWorld(right, bottom) && !maze.isWallWorld(left, top) && !maze.isWallWorld(right, top)) {
-            y = nextY;
-        }
-
-        boolean blocked = false;
+        boolean hitWallX = false;
+        boolean hitWallY = false;
 
         if (dx != 0f) {
-            float testX = x + dx;
-            if (!maze.isWallWorld(testX, y))
-                x = testX;
-            else
-                blocked = true;
+            float nextX = x + dx;
 
-        }
-
-        if(dy != 0f) {
-            float testY = y + dy;
-            if (!maze.isWallWorld(x, testY)) {
-                y = testY;
+            if (canOccupy(nextX, y, maze)) {
+                x = nextX;
+            } else {
+                hitWallX = true;
             }
         }
 
-        if (blocked) {
+        if (dy != 0f) {
+            float nextY = y + dy;
+
+            if (canOccupy(x, nextY, maze)) {
+                y = nextY;
+            } else {
+                hitWallY = true;
+            }
+        }
+
+        if (hitWallX || hitWallY) {
             game.playWallHitSound();
         }
     }
 
+    private boolean canOccupy(float testX, float testY, Maze maze) {
+        float left   = testX + COLLISION_INSET;
+        float right  = testX + WIDTH - COLLISION_INSET;
+        float bottom = testY + COLLISION_INSET;
+        float top    = testY + HEIGHT - COLLISION_INSET;
 
-    // Draw player sprite
-    public void draw(SpriteBatch batch) {
-        TextureRegion frame = walkDownAnimation.getKeyFrame(animTime, true);
-        batch.draw(frame, x, y, 32, 64);
+        return !isBlocked(left, bottom, maze)
+                && !isBlocked(right, bottom, maze)
+                && !isBlocked(left, top, maze)
+                && !isBlocked(right, top, maze);
+
     }
 
 
-    // Apply damage and triggers effects
+    // Rendering
+    public void draw(SpriteBatch batch) {
+        TextureRegion frame = walkDownAnimation.getKeyFrame(animTime, true);
+        batch.draw(frame, x, y, WIDTH, HEIGHT);
+    }
+
+
+    // Player takes damage
     public void takeDamage(int amount) {
         if (invulnerable) return;
 
@@ -133,25 +156,32 @@ public class Player {
         flashTimeLeft = 0.25f;
     }
 
-
-    // Set player position
-    public void setPosition(float x, float y) {
-        this.x = x;
-    }
-
-
-    // Grant exit key
     public void giveKey() {
         hasKey = true;
     }
 
 
-    // HUD getters
+    // Getters
     public int getLives() { return lives; }
     public boolean hasKey() { return hasKey; }
     public boolean isDamageFlashing() { return damageFlash; }
 
     public float getX() { return x; }
     public float getY() { return y; }
+
+
+    // Internal helper
+    private record MovementInput(float dx, float dy) {}
+    private boolean isBlocked(float worldX, float worldY, Maze maze) {
+        int cx = (int) (worldX / maze.getTileSize());
+        int cy = (int) (worldY / maze.getTileSize());
+
+        if (maze.isWallCell(cx, cy)) return true;
+        if (maze.isBlockedExit(cx, cy, hasKey)) return true;
+
+        return false;
+    }
+
 }
+
 

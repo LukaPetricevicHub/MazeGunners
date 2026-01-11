@@ -56,6 +56,12 @@ public class Maze {
         return isWallCell(cx, cy);
     }
 
+    public boolean isBlockedExit(int cx, int cy, boolean hasKey) {
+        int tile = getTile(cx, cy);
+        return tile == Tiles.Exit && !hasKey;
+    }
+
+
     public Point getEntryCell(){
         return entryCell == null ? null : new Point(entryCell);
     }

@@ -16,10 +16,7 @@ import de.tum.cit.fop.maze.enemies.FlyingDrone;
 import de.tum.cit.fop.maze.enemies.MutantWorker;
 import de.tum.cit.fop.maze.enemies.RobotGuard;
 import de.tum.cit.fop.maze.hud.Hud;
-import de.tum.cit.fop.maze.level.Maze;
-import de.tum.cit.fop.maze.level.MazeGenerator;
-import de.tum.cit.fop.maze.level.MazeLoader;
-import de.tum.cit.fop.maze.level.MazeRenderer;
+import de.tum.cit.fop.maze.level.*;
 import de.tum.cit.fop.maze.obstacles.Obstacle;
 import de.tum.cit.fop.maze.obstacles.SpikeTrap;
 import de.tum.cit.fop.maze.player.Player;
@@ -56,6 +53,8 @@ public class GameScreen implements Screen {
     private static final float PLAYER_WIDTH = 16f;
     private static final float PLAYER_HEIGHT = 32f;
 
+    private boolean hasWon = false;
+
 
     public GameScreen(MazeRunnerGame game, String mapPath) {
         this.game = game;
@@ -71,8 +70,16 @@ public class GameScreen implements Screen {
 
         // Update player
         player.update(delta, maze, game);
-        Rectangle playerBounds =
-                new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
+
+        if (!hasWon && isPlayerOnExit(player, maze)) {
+            if (player.hasKey()) {
+                hasWon = true;
+                game.goToMenu(); // temporary victory handling
+                return;
+            }
+        }
+
+        Rectangle playerBounds = new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
 
         // Update room lock
         ambushRoom.update(playerBounds, maze);
@@ -224,6 +231,14 @@ public class GameScreen implements Screen {
         hud.resize(width, height, true);
         gameCamera.resize(viewport.getWorldWidth(), viewport.getWorldHeight());
     }
+
+    private boolean isPlayerOnExit(Player player, Maze maze) {
+        int tileX = (int) (player.getX() / maze.getTileSize());
+        int tileY = (int) (player.getY() / maze.getTileSize());
+
+        return maze.getTile(tileX, tileY) == Tiles.Exit;
+    }
+
 
     @Override public void pause() {}
     @Override public void resume() {}

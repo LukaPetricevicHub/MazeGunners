@@ -13,5 +13,4 @@ public class GridUtils {
         return tile * tileSize;
     }
 
-
 }

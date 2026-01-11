@@ -43,6 +43,3 @@ public class GameCamera {
         camera.zoom = Math.max(0.5f, Math.min(zoom, 2.5f));
     }
 }
-
-
-

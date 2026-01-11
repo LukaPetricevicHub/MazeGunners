@@ -7,5 +7,5 @@ public class SlimeTrap extends Obstacle {
         super(position, damageToPlayer, cooldown, width, height);
     }
 
-    // To be continued...
+    // To be implemented...
 }
