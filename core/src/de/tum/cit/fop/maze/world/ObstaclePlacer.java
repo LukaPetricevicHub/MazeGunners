@@ -20,7 +20,6 @@ public class ObstaclePlacer {
         List<Point> availableFloorCells = new ArrayList<>();
         Random random = new Random(seed);
 
-        // Collect valid floor tiles
         for (int y = 1; y < maze.getHeight() - 1; y++) {
             for (int x = 1; x < maze.getWidth() - 1; x++) {
                 if (maze.getTile(x, y) == Tiles.Floor) {

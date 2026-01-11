@@ -58,16 +58,16 @@ public class Player {
     private void updateTimers(float dt) {
         if (invulnerable) {
             invulnTimeLeft -= dt;
-            if (invulnTimeLeft <= 0f) {
+            if (invulnTimeLeft <= 0f)
                 invulnerable = false;
-            }
+
         }
 
         if (damageFlash) {
             flashTimeLeft -= dt;
-            if (flashTimeLeft <= 0f) {
+            if (flashTimeLeft <= 0f)
                 damageFlash = false;
-            }
+
         }
     }
 
@@ -110,11 +110,11 @@ public class Player {
         if (dy != 0f) {
             float nextY = y + dy;
 
-            if (canOccupy(x, nextY, maze)) {
+            if (canOccupy(x, nextY, maze))
                 y = nextY;
-            } else {
+            else
                 hitWallY = true;
-            }
+
         }
 
         if (hitWallX || hitWallY) {
@@ -126,14 +126,14 @@ public class Player {
         float left   = testX + COLLISION_INSET;
         float right  = testX + WIDTH - COLLISION_INSET;
         float bottom = testY + COLLISION_INSET;
-        float top    = testY + HEIGHT - COLLISION_INSET;
+        float top    = testY + 40.0f;
 
         return !isBlocked(left, bottom, maze)
                 && !isBlocked(right, bottom, maze)
                 && !isBlocked(left, top, maze)
                 && !isBlocked(right, top, maze);
-
     }
+
 
 
     // Rendering
@@ -181,7 +181,4 @@ public class Player {
 
         return false;
     }
-
 }
-
-

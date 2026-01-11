@@ -116,7 +116,6 @@ public class MazeGenerator {
             int wy = cy + d[1] / 2;
 
             if (!GridUtils.inBounds(tx, ty, w, h)) continue;
-            // frontier only makes sense if target is still wall
             frontier.add(new Edge(wx, wy, tx, ty));
         }
     }

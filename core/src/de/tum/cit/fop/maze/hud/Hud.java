@@ -31,34 +31,32 @@ public class Hud {
     public Hud(Viewport viewport, com.badlogic.gdx.graphics.g2d.SpriteBatch batch, Skin skin) {
         stage = new Stage(viewport, batch);
 
-        // === Hearts ===
+        // Hearts
         heartTexture = new Texture("heart.png");
         heartImages = new Image[MAX_LIVES];
 
         Table heartsTable = new Table();
-        heartsTable.left(); // Align content to the left
+        heartsTable.left();
 
         for (int i = 0; i < MAX_LIVES; i++) {
             heartImages[i] = new Image(new TextureRegion(heartTexture));
-            // Set the cell size to 16x16 and add padding
             heartsTable.add(heartImages[i]).size(16, 16).padRight(4);
         }
 
-        // === Key label ===
+        // Key
         keyLabel = new Label("Key: NO", skin);
 
 
-        // === Main HUD table ===
         Table mainContainer = new Table();
         mainContainer.setFillParent(true);
-        mainContainer.top().left().pad(10); // Positions the whole UI in top-left
+        mainContainer.top().left().pad(10);
 
-        mainContainer.add(heartsTable).left().row(); // Add hearts row
-        mainContainer.add(keyLabel).left().padTop(5); // Add key row with slight gap
+        mainContainer.add(heartsTable).left().row();
+        mainContainer.add(keyLabel).left().padTop(5);
 
         stage.addActor(mainContainer);
 
-        // === Exit arrow ===
+        // Arrow
         arrowTexture = new Texture("arrow.png");
         arrow = new Image(arrowTexture);
         arrow.setSize(32, 32);
@@ -71,17 +69,17 @@ public class Hud {
         stage.addActor(arrow);
     }
 
+
+    // Update HUD along Player
     public void update(Player player) {
-        // Update hearts
         int lives = player.getLives();
-        for (int i = 0; i < heartImages.length; i++) {
+        for(int i = 0; i < heartImages.length; i++) {
             heartImages[i].setVisible(i < lives);
         }
 
-        // Update key
+
         keyLabel.setText(player.hasKey() ? "Key: YES" : "Key: NO");
 
-        // Update arrow rotation
         if (hasExitTarget) {
             float px = player.getX() + 16f;
             float py = player.getY() + 32f;

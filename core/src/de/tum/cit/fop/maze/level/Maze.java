@@ -57,11 +57,9 @@ public class Maze {
     public int[][] getGridReadOnly(){
         return grid;
     }
-
     public boolean isWallCell(int cx, int cy){
         return Tiles.isWall(getTile(cx, cy));
     }
-
     public boolean isWallWorld(float worldX, float worldY){
         int cx = GridUtils.worldToTile(worldX, tileSize);
         int cy = GridUtils.worldToTile(worldY, tileSize);
@@ -89,6 +87,7 @@ public class Maze {
     public void setExitCell(Point p){
         exitCell = (p == null ? null : new Point(p));
     }
+
 
     public Point findFirstTile(int tileId){
         for(int y = 0; y < height; y++){

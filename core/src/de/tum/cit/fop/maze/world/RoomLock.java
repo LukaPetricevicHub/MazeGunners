@@ -55,7 +55,6 @@ public class RoomLock {
 
 
     // Is a room locked?
-
     public boolean isLocked() {
         return isLocked;
     }
