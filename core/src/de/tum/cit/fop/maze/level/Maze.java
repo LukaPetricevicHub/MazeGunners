@@ -1,5 +1,8 @@
 package de.tum.cit.fop.maze.level;
 import java.awt.Point;
+import java.util.ArrayList;
+import java.util.List;
+
 import de.tum.cit.fop.maze.util.GridUtils;
 
 public class Maze {
@@ -11,11 +14,11 @@ public class Maze {
     private Point entryCell;
     private Point exitCell;
 
-    public Maze(int width, int height, int tileSize) {
-        if(width <= 0 || height <= 0){
-                throw new IllegalArgumentException("Maze width/height must be > 0");
-        }
+    private final List<Point> exitCells = new ArrayList<>();
 
+
+    public Maze(int width, int height, int tileSize) {
+        if (width <= 0 || height <= 0){ throw new IllegalArgumentException("Maze width/height must be > 0");}
         this.width = width;
         this.height = height;
         this.tileSize = tileSize;
@@ -37,11 +40,20 @@ public class Maze {
         return grid[cy][cx];
     }
 
-    public void setTile(int cx, int cy, int value){
-        if(GridUtils.inBounds(cx, cy, width, height)){
+    public void setTile(int cx, int cy, int value) {
+        if (GridUtils.inBounds(cx, cy, width, height)) {
             grid[cy][cx] = value;
+
+            if (value == Tiles.Exit) {
+                exitCells.add(new Point(cx, cy));
+            }
         }
     }
+
+    public List<Point> getExitCells() {
+        return List.copyOf(exitCells);
+    }
+
     public int[][] getGridReadOnly(){
         return grid;
     }

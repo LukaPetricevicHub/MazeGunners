@@ -20,6 +20,7 @@ import de.tum.cit.fop.maze.level.*;
 import de.tum.cit.fop.maze.obstacles.Obstacle;
 import de.tum.cit.fop.maze.obstacles.SpikeTrap;
 import de.tum.cit.fop.maze.player.Player;
+import de.tum.cit.fop.maze.util.GridUtils;
 import de.tum.cit.fop.maze.world.EnemySpawner;
 import de.tum.cit.fop.maze.world.ObstaclePlacer;
 import de.tum.cit.fop.maze.world.RoomLock;
@@ -50,10 +51,11 @@ public class GameScreen implements Screen {
     private Hud hud;
 
     private static final int TILE_SIZE = 16;
-    private static final float PLAYER_WIDTH = 16f;
-    private static final float PLAYER_HEIGHT = 32f;
+    private static final float PLAYER_WIDTH = 32f;
+    private static final float PLAYER_HEIGHT = 64f;
 
-    private boolean hasWon = false;
+
+    private GameState gameState = GameState.RUNNING;
 
 
     public GameScreen(MazeRunnerGame game, String mapPath) {
@@ -69,49 +71,74 @@ public class GameScreen implements Screen {
         }
 
         // Update player
-        player.update(delta, maze, game);
+        if (gameState == GameState.RUNNING) {
+            player.update(delta, maze, game);
+        }
 
-        if (!hasWon && isPlayerOnExit(player, maze)) {
-            if (player.hasKey()) {
-                hasWon = true;
-                game.goToMenu(); // temporary victory handling
-                return;
+
+        if (gameState == GameState.RUNNING) {
+
+            if (isPlayerOnExit(player, maze) && player.hasKey()) {
+                gameState = GameState.WON;
+                Gdx.app.log("GAME", "Victory!");
+            }
+            if(player.getLives() <= 0) {
+                gameState = GameState.LOST;
+                Gdx.app.log("GAME", "Game Over!");
             }
         }
+
+        Point nearestExit = findNearestExit(player, maze);
+        if (nearestExit != null) {
+            float exitWorldX = nearestExit.x * maze.getTileSize() + maze.getTileSize() / 2f;
+            float exitWorldY = nearestExit.y * maze.getTileSize() + maze.getTileSize() / 2f;
+
+            hud.setExitTarget(exitWorldX, exitWorldY);
+        }
+
 
         Rectangle playerBounds = new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
 
         // Update room lock
-        ambushRoom.update(playerBounds, maze);
-        if (ambushRoom.isLocked()) {
-            ambushTimer += delta;
-            if (ambushTimer > 5f) {
-                ambushRoom.unlockRoom(maze);
+        if (gameState == GameState.RUNNING) {
+            ambushRoom.update(playerBounds, maze);
+
+            if (ambushRoom.isLocked()) {
+                ambushTimer += delta;
+                if (ambushTimer > 5f) {
+                    ambushRoom.unlockRoom(maze);
+                }
             }
         }
 
         // Update enemies
-        for (Enemy enemy : enemies) {
-            enemy.update(delta, maze);
+        if (gameState == GameState.RUNNING) {
+            for (Enemy enemy : enemies) {
+                enemy.update(delta, maze);
 
-            if (playerBounds.overlaps(enemy.getCollisionBox())) {
-                player.takeDamage(1);
+                if (playerBounds.overlaps(enemy.getCollisionBox()))
+                    player.takeDamage(1);
+
             }
         }
+
 
         // Update obstacles
-        for (Obstacle obstacle : obstacles) {
-            obstacle.updateCooldown(delta);
+        if (gameState == GameState.RUNNING) {
+            for (Obstacle obstacle : obstacles) {
+                obstacle.updateCooldown(delta);
 
-            if (obstacle.tryActivate(playerBounds)) {
-                player.takeDamage(obstacle.getDamageToPlayer());
-                obstacle.startCooldown();
-            }
+                if (obstacle.tryActivate(playerBounds)) {
+                    player.takeDamage(obstacle.getDamageToPlayer());
+                    obstacle.startCooldown();
+                }
 
-            if (obstacle instanceof SpikeTrap spikeTrap) {
-                spikeTrap.update(delta);
+                if (obstacle instanceof SpikeTrap spikeTrap) {
+                    spikeTrap.update(delta);
+                }
             }
         }
+
 
         // Update HUD and camera
         hud.update(player);
@@ -171,7 +198,15 @@ public class GameScreen implements Screen {
         }
 
         game.getSpriteBatch().end();
+
+        hud.getStage().getViewport().apply();
+
         hud.draw();
+
+        if (gameState == GameState.WON || gameState == GameState.LOST) {
+            game.goToMenu();
+            return;
+        }
     }
 
     @Override
@@ -201,10 +236,13 @@ public class GameScreen implements Screen {
         Point entry = maze.getEntryCell();
         if (entry == null) entry = new Point(1, 1);
 
-        float spawnX = (entry.x + 0.5f) * TILE_SIZE - PLAYER_WIDTH / 2f;
-        float spawnY = (entry.y + 0.5f) * TILE_SIZE - PLAYER_HEIGHT / 2f;
+        Point safeSpawnCell = findSafeSpawnPosition(entry, maze);
+
+        float spawnX = safeSpawnCell.x * TILE_SIZE;
+        float spawnY = safeSpawnCell.y * TILE_SIZE;
 
         player = new Player(spawnX, spawnY, game.getCharacterDownAnimation());
+
 
         // Spawn obstacles and enemies
         obstacles = new ObstaclePlacer().placeObstacles(maze, 40, seed);
@@ -220,7 +258,9 @@ public class GameScreen implements Screen {
         ambushRoom = new RoomLock(trigger, doors);
 
         // Setup HUD
-        hud = new Hud(viewport, game.getSpriteBatch(), game.getSkin());
+        Viewport hudViewport = new ScreenViewport();
+        hud = new Hud(hudViewport, game.getSpriteBatch(), game.getSkin());
+
         Gdx.input.setInputProcessor(hud.getStage());
     }
 
@@ -232,12 +272,93 @@ public class GameScreen implements Screen {
         gameCamera.resize(viewport.getWorldWidth(), viewport.getWorldHeight());
     }
 
+    private Point findSafeSpawnPosition(Point entryCell, Maze maze) {
+        int maxRadius = 10; // search radius in tiles
+
+        for (int r = 0; r <= maxRadius; r++) {
+            for (int dy = -r; dy <= r; dy++) {
+                for (int dx = -r; dx <= r; dx++) {
+
+                    int cx = entryCell.x + dx;
+                    int cy = entryCell.y + dy;
+
+                    if (!GridUtils.inBounds(cx, cy, maze.getWidth(), maze.getHeight())) {
+                        continue;
+                    }
+
+                    if (!Tiles.isWalkable(maze.getTile(cx, cy))) {
+                        continue;
+                    }
+
+                    float worldX = cx * maze.getTileSize();
+                    float worldY = cy * maze.getTileSize();
+
+                    if (canPlayerOccupy(worldX, worldY, maze)) {
+                        return new Point(cx, cy);
+                    }
+                }
+            }
+        }
+
+        // Fallback: entry itself (should rarely happen)
+        return entryCell;
+    }
+
+    private boolean canPlayerOccupy(float worldX, float worldY, Maze maze) {
+        float inset = 2f;
+
+        float left   = worldX + inset;
+        float right  = worldX + PLAYER_WIDTH - inset;
+        float bottom = worldY + inset;
+        float top    = worldY + PLAYER_HEIGHT - inset;
+
+        return !maze.isWallWorld(left, bottom)
+                && !maze.isWallWorld(right, bottom)
+                && !maze.isWallWorld(left, top)
+                && !maze.isWallWorld(right, top);
+    }
+
+
     private boolean isPlayerOnExit(Player player, Maze maze) {
-        int tileX = (int) (player.getX() / maze.getTileSize());
-        int tileY = (int) (player.getY() / maze.getTileSize());
+        int tileX = (int) ((player.getX() + 16) / maze.getTileSize());
+        int tileY = (int) ((player.getY() + 32) / maze.getTileSize());
 
         return maze.getTile(tileX, tileY) == Tiles.Exit;
     }
+
+
+    private enum GameState {
+        RUNNING,
+        WON,
+        LOST
+    }
+
+    private Point findNearestExit(Player player, Maze maze) {
+        Point nearest = null;
+        float bestDistSq = Float.MAX_VALUE;
+
+        float px = player.getX() + PLAYER_WIDTH / 2f;
+        float py = player.getY() + PLAYER_HEIGHT / 2f;
+
+        for (Point exit : maze.getExitCells()) {
+            float ex = exit.x * maze.getTileSize() + maze.getTileSize() / 2f;
+            float ey = exit.y * maze.getTileSize() + maze.getTileSize() / 2f;
+
+            float dx = ex - px;
+            float dy = ey - py;
+            float distSq = dx * dx + dy * dy;
+
+            if (distSq < bestDistSq) {
+                bestDistSq = distSq;
+                nearest = exit;
+            }
+        }
+
+        return nearest;
+    }
+
+
+
 
 
     @Override public void pause() {}
