@@ -11,48 +11,33 @@ import java.util.List;
 
 public class CombatSystem {
 
-    private static final float PLAYER_WIDTH = 32f;
-    private static final float PLAYER_HEIGHT = 64f;
+    public void update(
+            float delta,
+            Player player,
+            Maze maze,
+            List<Enemy> enemies,
+            List<Obstacle> obstacles
+    ) {
+        Rectangle playerBounds =
+                new Rectangle(player.getX(), player.getY(), 32f, 64f);
 
-
-    // Cordinate combat logic for obstacles and enemies
-    public void update(float delta, Player player, Maze maze, List<Enemy> enemies, List<Obstacle> obstacles) {
-        Rectangle playerBounds = new Rectangle(
-                player.getX(),
-                player.getY(),
-                PLAYER_WIDTH,
-                PLAYER_HEIGHT
-        );
-
-        updateEnemies(delta, player, maze, enemies, playerBounds);
-        updateObstacles(delta, player, obstacles, playerBounds);
-    }
-
-
-    // Moves enemies
-    private void updateEnemies(float delta, Player player, Maze maze, List<Enemy> enemies, Rectangle playerBounds) {
-        for (Enemy enemy : enemies) {
-            enemy.update(delta, maze);
-
-            if (playerBounds.overlaps(enemy.getCollisionBox())) {
+        for (Enemy e : enemies) {
+            e.update(delta, maze);
+            if (playerBounds.overlaps(e.getCollisionBox())) {
                 player.takeDamage(1);
             }
         }
-    }
 
+        for (Obstacle o : obstacles) {
+            o.updateCooldown(delta);
 
-    // Update traps
-    private void updateObstacles(float delta, Player player, List<Obstacle> obstacles, Rectangle playerBounds) {
-        for (Obstacle obstacle : obstacles) {
-            obstacle.updateCooldown(delta);
-
-            if (obstacle.tryActivate(playerBounds)) {
-                player.takeDamage(obstacle.getDamageToPlayer());
-                obstacle.startCooldown();
+            if (o.tryActivate(playerBounds)) {
+                player.takeDamage(o.getDamageToPlayer());
+                o.startCooldown();
             }
 
-            if (obstacle instanceof SpikeTrap spikeTrap) {
-                spikeTrap.update(delta);
+            if (o instanceof SpikeTrap s) {
+                s.update(delta);
             }
         }
     }

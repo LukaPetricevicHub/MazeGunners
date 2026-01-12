@@ -9,15 +9,18 @@ public class MazeRenderer {
     private final TextureRegion wall;
     private final TextureRegion entry;
     private final TextureRegion exit;
+    private final TextureRegion key;   // NEW
 
     public MazeRenderer(TextureRegion floor,
                         TextureRegion wall,
                         TextureRegion entry,
-                        TextureRegion exit) {
+                        TextureRegion exit,
+                        TextureRegion key) {   // NEW
         this.floor = floor;
         this.wall = wall;
         this.entry = entry;
         this.exit = exit;
+        this.key = key;
     }
 
     public void render(Maze maze, SpriteBatch batch) {
@@ -27,10 +30,11 @@ public class MazeRenderer {
             for (int y = 0; y < maze.getHeight(); y++) {
 
                 TextureRegion tex = switch (maze.getTile(x, y)) {
-                    case WALL -> wall;
+                    case WALL  -> wall;
                     case ENTRY -> entry;
-                    case EXIT -> exit;
-                    default -> floor;
+                    case EXIT  -> exit;
+                    case KEY   -> key;    // 🔑 HERE
+                    default    -> floor;
                 };
 
                 batch.draw(tex, x * ts, y * ts, ts, ts);

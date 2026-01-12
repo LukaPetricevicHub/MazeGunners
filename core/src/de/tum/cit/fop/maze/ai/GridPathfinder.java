@@ -40,9 +40,10 @@ public class GridPathfinder {
                         currentNode.tilePosition.y + direction[1]
                 );
 
-                if (neighborTile.x < 0 || neighborTile.x >= maze.getWidth() || neighborTile.y < 0 || neighborTile.y >= maze.getHeight() || maze.getTile(neighborTile.x, neighborTile.y).isWalkable()) {
+                if (neighborTile.x < 0 || neighborTile.x >= maze.getWidth() || neighborTile.y < 0 || neighborTile.y >= maze.getHeight() || !maze.getTile(neighborTile.x, neighborTile.y).isWalkable()) {
                     continue;
                 }
+
 
 
                 int newCostFromStart = costFromStart.getOrDefault(currentNode.tilePosition, Integer.MAX_VALUE) + 1;

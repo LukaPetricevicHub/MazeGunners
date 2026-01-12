@@ -60,13 +60,16 @@ public class GameScreen implements Screen {
     private static final float PLAYER_HEIGHT = 64f;
 
     private Texture keyTexture;
-
+    private final int level;
 
     // Constructor
-    public GameScreen(MazeRunnerGame game, String mapPath) {
+
+    public GameScreen(MazeRunnerGame game, int level) {
         this.game = game;
+        this.level = level;
         this.viewport = new ScreenViewport();
     }
+
 
 
     // Render
@@ -142,18 +145,7 @@ public class GameScreen implements Screen {
 
         mazeRenderer.render(maze, game.getSpriteBatch());
 
-        for (Point key : maze.getKeyCells()) {
-            float wx = key.x * maze.getTileSize();
-            float wy = key.y * maze.getTileSize();
 
-            game.getSpriteBatch().draw(
-                    keyTexture,
-                    wx,
-                    wy,
-                    maze.getTileSize(),
-                    maze.getTileSize()
-            );
-        }
 
 
         // Draw obstacles
@@ -208,7 +200,9 @@ public class GameScreen implements Screen {
     public void show() {
         MazeLoader.LevelSpec spec = new MazeLoader.LevelSpec(101, 101, Map.of());
         long seed = System.currentTimeMillis();
-        maze = new MazeGenerator().generate(spec, TILE_SIZE, seed);
+        int cell = 4;
+        maze = new MazeGenerator(cell).generate(101, 101, TILE_SIZE, seed);
+
 
         // Setup camera
         gameCamera = new GameCamera(
@@ -221,11 +215,13 @@ public class GameScreen implements Screen {
 
         // Setup renderer
         mazeRenderer = new MazeRenderer(
-                game.getTile(1, 0),
-                game.getTile(0, 0),
-                game.getTile(3, 2),
-                game.getTile(2, 3)
+                game.getTile(1, 0), // floor
+                game.getTile(0, 0), // wall
+                game.getTile(3, 2), // entry
+                game.getTile(2, 3), // exit
+                new TextureRegion(new Texture("key.png")) // KEY
         );
+
 
         // Spawn player
         Point entry = maze.getEntryCell();
@@ -264,12 +260,6 @@ public class GameScreen implements Screen {
 
         Random rng = new Random(seed);
 
-        Point keyCell = MazeUtils.pickRandomWalkable(maze, rng, maze.getEntryCell(), maze.getExitCell());
-
-        if (keyCell != null) {
-            maze.addKey(keyCell);
-        }
-
         // Setup HUD
         Viewport hudViewport = new ScreenViewport();
         hud = new Hud(hudViewport, game.getSpriteBatch(), game.getSkin());
@@ -302,7 +292,7 @@ public class GameScreen implements Screen {
                         continue;
                     }
 
-                    if (!Tiles.isWalkable(maze.getTile(cx, cy))) {
+                    if (!maze.getTile(cx, cy).isWalkable()) {
                         continue;
                     }
 
