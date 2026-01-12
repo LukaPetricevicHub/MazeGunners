@@ -5,9 +5,9 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import de.tum.cit.fop.maze.behavior.BehaviorState;
 import de.tum.cit.fop.maze.behavior.ChaseBehavior;
 import de.tum.cit.fop.maze.behavior.PatrolBehavior;
-import de.tum.cit.fop.maze.collision.CollisionHandler;
 import de.tum.cit.fop.maze.level.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
@@ -15,9 +15,6 @@ public class FlyingDrone extends Enemy {
 
     // Attributes
     private final PatrolBehavior patrolBehavior;
-    private final ChaseBehavior chaseBehavior;
-
-    private static final float CHASE_DISTANCE = 180f;
 
     // Animation
     private Animation<TextureRegion> flyingAnimation;
@@ -31,15 +28,20 @@ public class FlyingDrone extends Enemy {
             Array<Vector2> patrolWorldPositions,
             Player targetPlayer
     ) {
-        super(startWorldPosition, movementSpeed, null, targetPlayer);
+        super(
+                startWorldPosition,
+                movementSpeed,
+                new PatrolBehavior(patrolWorldPositions),
+                targetPlayer
+        );
 
-        this.patrolBehavior = new PatrolBehavior(patrolWorldPositions);
-        this.chaseBehavior = new ChaseBehavior();
-        this.activeBehavior = patrolBehavior;
+        this.patrolBehavior = (PatrolBehavior) activeBehavior;
+
+        // Detection radius for chase
+        this.chaseRadius = 180f;
 
         loadFlyingAnimation();
     }
-
 
 
     // Load flying drone animation frames
@@ -68,23 +70,21 @@ public class FlyingDrone extends Enemy {
     }
 
 
-    // Update behavior and animation
+    @Override
+    protected BehaviorState createChaseBehavior() {
+        return new ChaseBehavior();
+    }
+
+    @Override
+    protected BehaviorState createDefaultBehavior() {
+        return patrolBehavior;
+    }
+
+
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
         animationTime += deltaTime;
-
-        float dist = worldPosition.dst(
-                targetPlayer.getX(),
-                targetPlayer.getY()
-        );
-
-        if (dist < CHASE_DISTANCE) {
-            activeBehavior = chaseBehavior;
-        } else {
-            activeBehavior = patrolBehavior;
-        }
-
-        activeBehavior.execute(this, deltaTime, maze);
+        super.updateBehavior(deltaTime, maze);
     }
 
 
@@ -93,4 +93,5 @@ public class FlyingDrone extends Enemy {
         return flyingAnimation.getKeyFrame(animationTime, true);
     }
 }
+
 

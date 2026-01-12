@@ -17,36 +17,39 @@ public class CollisionHandler {
 
 
     public void move(Vector2 position, Vector2 velocity, float deltaTime, Maze maze) {
-        if (velocity.isZero()) return;
+
+        if (velocity.isZero())
+            return;
 
         Vector2 step = velocity.cpy().scl(deltaTime);
 
-
-        float dx = step.x;
-        float dy = step.y;
-
-        if (!hitsWall(position.x + dx, position.y, maze)) {
-            position.x += dx;
+        Vector2 nextX = new Vector2(position.x + step.x, position.y);
+        if (!hitsWall(nextX, maze)) {
+            position.x += step.x;
         }
 
-
-        if (!hitsWall(position.x, position.y + dy, maze)) {
-            position.y += dy;
+        Vector2 nextY = new Vector2(position.x, position.y + step.y);
+        if (!hitsWall(nextY, maze)) {
+            position.y += step.y;
         }
 
         bounds.setPosition(position.x, position.y);
     }
 
-    private boolean hitsWall(float x, float y, Maze maze) {
-        float left   = x + inset;
-        float right  = x + bounds.width - inset;
-        float bottom = y + inset;
-        float top    = y + bounds.height - inset;
 
-        return maze.isWallWorld(left, bottom)
-                || maze.isWallWorld(right, bottom)
-                || maze.isWallWorld(left, top)
-                || maze.isWallWorld(right, top);
+    private boolean hitsWall(Vector2 position, Maze maze) {
+
+        float centerX = position.x + bounds.width / 2f;
+        float centerY = position.y + bounds.height / 2f;
+
+        return maze.isWallWorld(centerX, centerY);
     }
+
+
+
+    private boolean isWallAt(float x, float y, Maze maze) {
+        return maze.isWallWorld(x, y);
+    }
+
 }
 

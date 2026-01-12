@@ -14,7 +14,12 @@ public enum Tiles {
     }
 
     public boolean isWalkable() {
-        return this == FLOOR || this == ENTRY || this == EXIT || this == KEY;
+        return this == FLOOR
+                || this == ENTRY
+                || this == EXIT
+                || this == KEY
+                || this == ENEMY;
     }
+
 }
 

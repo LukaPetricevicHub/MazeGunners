@@ -5,18 +5,12 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import de.tum.cit.fop.maze.behavior.BehaviorState;
 import de.tum.cit.fop.maze.behavior.ChaseBehavior;
-import de.tum.cit.fop.maze.collision.CollisionHandler;
 import de.tum.cit.fop.maze.level.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
 public class MutantWorker extends Enemy {
-
-    // Attributes
-    private boolean hasDetectedPlayer = false;
-    private static final float DETECTION_RANGE = 150f;
-
-    private final ChaseBehavior chaseBehavior = new ChaseBehavior();
 
     // Animation
     private Animation<TextureRegion> walkAnimation;
@@ -29,10 +23,13 @@ public class MutantWorker extends Enemy {
             float movementSpeed,
             Player targetPlayer
     ) {
-        super(startWorldPosition, movementSpeed, null, targetPlayer);
+        super(startWorldPosition, movementSpeed, new ChaseBehavior(), targetPlayer);
+
+        // MutantWorker is very aggressive
+        this.chaseRadius = 250f;
+
         loadWalkAnimation();
     }
-
 
 
     // Load walking animation frames
@@ -61,27 +58,22 @@ public class MutantWorker extends Enemy {
     }
 
 
-    // Update detection, animation and chase behavior
+    @Override
+    protected BehaviorState createChaseBehavior() {
+        return new ChaseBehavior();
+    }
+
+    @Override
+    protected BehaviorState createDefaultBehavior() {
+        // MutantWorker never stops chasing
+        return new ChaseBehavior();
+    }
+
+
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
         animationTime += deltaTime;
-
-        if (targetPlayer == null)
-            return;
-
-        float dist = worldPosition.dst(
-                targetPlayer.getX(),
-                targetPlayer.getY()
-        );
-
-        if (!hasDetectedPlayer && dist <= DETECTION_RANGE)
-            hasDetectedPlayer = true;
-
-        if (!hasDetectedPlayer)
-            return;
-
-        activeBehavior = chaseBehavior;
-        activeBehavior.execute(this, deltaTime, maze);
+        super.updateBehavior(deltaTime, maze);
     }
 
 
@@ -90,3 +82,5 @@ public class MutantWorker extends Enemy {
         return walkAnimation.getKeyFrame(animationTime, true);
     }
 }
+
+

@@ -70,7 +70,7 @@ public class GridPathfinder {
             }
         }
 
-        return null;
+        return Collections.emptyList();
     }
 
 

@@ -95,4 +95,3 @@ public class Maze {
         return getTile(x, y) == Tiles.EXIT && !hasKey;
     }
 }
-

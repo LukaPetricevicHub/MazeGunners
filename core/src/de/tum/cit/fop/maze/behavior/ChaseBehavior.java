@@ -7,25 +7,35 @@ import de.tum.cit.fop.maze.level.Maze;
 import de.tum.cit.fop.maze.util.GridUtils;
 
 import java.awt.Point;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 
 public class ChaseBehavior implements BehaviorState {
 
-    // Attributes
-    private List<Point> currentTilePath;
+    private Deque<Point> currentTilePath;
     private Point lastPlayerTile;
+    private float repathTimer = 0f;
+    private static final float REPATH_INTERVAL = 0.5f;
+
+    private Vector2 lastWorldPosition;
 
 
-    // Identify behavior type
     @Override
     public BehaviorStateType getType() {
         return BehaviorStateType.CHASE;
     }
 
 
-    // Move enemy to player using grid pathfinding
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
+
+        // Detect stuck enemy → force re-path
+        if (lastWorldPosition != null &&
+                enemy.getPosition().epsilonEquals(lastWorldPosition, 0.1f)) {
+            currentTilePath = null;
+        }
+        lastWorldPosition = enemy.getPosition().cpy();
 
         Point enemyTile = new Point(
                 GridUtils.worldToTile(enemy.getPosition().x, maze.getTileSize()),
@@ -37,39 +47,51 @@ public class ChaseBehavior implements BehaviorState {
                 GridUtils.worldToTile(enemy.getPlayerPosition().y, maze.getTileSize())
         );
 
+        if (enemyTile.equals(playerTile))
+            return;
+
         boolean playerMovedTile =
                 lastPlayerTile == null || !lastPlayerTile.equals(playerTile);
 
-        if (currentTilePath == null || currentTilePath.isEmpty() || playerMovedTile) {
-            currentTilePath = GridPathfinder.findTilePath(
-                    maze,
-                    enemyTile,
-                    playerTile
-            );
+        repathTimer -= deltaTime;
+
+        if (currentTilePath == null || currentTilePath.isEmpty()
+                || playerMovedTile || repathTimer <= 0f) {
+
+            List<Point> newPath =
+                    GridPathfinder.findTilePath(maze, enemyTile, playerTile);
+
+            currentTilePath = new ArrayDeque<>(newPath);
             lastPlayerTile = playerTile;
+            repathTimer = REPATH_INTERVAL;
         }
 
-        if (currentTilePath == null || currentTilePath.isEmpty())
+        if (currentTilePath.isEmpty())
             return;
 
+        Point nextTile = currentTilePath.peekFirst();
 
-        Point nextTile = currentTilePath.get(0);
-
-        Vector2 targetWorldPosition = new Vector2(
+        Vector2 targetWorldPos = new Vector2(
                 (nextTile.x + 0.5f) * maze.getTileSize(),
                 (nextTile.y + 0.5f) * maze.getTileSize()
         );
 
-        Vector2 movementDirection =
-                targetWorldPosition.cpy().sub(enemy.getPosition());
+        Point enemyTileNow = new Point(
+                GridUtils.worldToTile(enemy.getPosition().x, maze.getTileSize()),
+                GridUtils.worldToTile(enemy.getPosition().y, maze.getTileSize())
+        );
 
-        if (movementDirection.len() < 2f) {
-            currentTilePath.remove(0);
+        if (enemyTileNow.equals(nextTile)) {
+            enemy.getPosition().set(targetWorldPos);
+            currentTilePath.pollFirst();
             return;
         }
 
-        Vector2 velocity =
-                movementDirection.nor().scl(enemy.getSpeed());
+        Vector2 dir = targetWorldPos.cpy().sub(enemy.getPosition());
+        if (dir.isZero(0.01f))
+            return;
+
+        Vector2 velocity = dir.nor().scl(enemy.getSpeed());
 
         enemy.getCollisionHandler().move(
                 enemy.getPosition(),
@@ -79,5 +101,3 @@ public class ChaseBehavior implements BehaviorState {
         );
     }
 }
-
-
