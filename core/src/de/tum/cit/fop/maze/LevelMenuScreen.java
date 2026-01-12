@@ -2,7 +2,6 @@ package de.tum.cit.fop.maze;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -14,11 +13,8 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
-import java.util.Arrays;
-
-
 /**
- * Screen for selecting a level/map to play.
+ * Screen for selecting a level to play (Option A: regenerate every entry).
  */
 public class LevelMenuScreen implements Screen {
 
@@ -28,10 +24,10 @@ public class LevelMenuScreen implements Screen {
 
     public LevelMenuScreen(MazeRunnerGame game) {
         this.game = game;
-        stage = new Stage(new ScreenViewport(), game.getSpriteBatch());
-        Gdx.input.setInputProcessor(stage);
+        this.stage = new Stage(new ScreenViewport(), game.getSpriteBatch());
+        this.skin = game.getSkin();
 
-        skin = game.getSkin();
+        Gdx.input.setInputProcessor(stage);
 
         Table mainTable = new Table();
         mainTable.setFillParent(true);
@@ -42,37 +38,29 @@ public class LevelMenuScreen implements Screen {
 
         Table buttonTable = new Table();
 
-        // List all .properties files in "maps" folder
-        FileHandle mapDir = Gdx.files.internal("maps");
-        FileHandle[] mapFiles = mapDir.list(".properties"); // Replace this with the TiledMazes
+        // Fixed levels 1..5 (each click regenerates that level)
+        for (int level = 1; level <= 5; level++) {
+            final int lvl = level;
 
-        if (mapFiles != null && mapFiles.length > 0) {
-            // Sort numerically by file name
-            Arrays.sort(mapFiles, (a, b) -> {
-                int numA = Integer.parseInt(a.nameWithoutExtension().replaceAll("\\D", ""));
-                int numB = Integer.parseInt(b.nameWithoutExtension().replaceAll("\\D", ""));
-                return Integer.compare(numA, numB);
+            TextButton button = new TextButton("Level " + lvl, skin);
+            button.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    game.setScreen(new GameScreen(game, lvl));
+                }
             });
 
-            for(FileHandle mapFile : mapFiles){
-                TextButton button = new TextButton(mapFile.nameWithoutExtension(), skin);
-
-                button.addListener(new ChangeListener() {
-                    @Override
-                    public void changed(ChangeEvent event, Actor actor) {
-                        game.setScreen(new GameScreen(game, "maps/" + mapFile.name()));
-                    }
-                });
-
-                buttonTable.add(button).width(300).pad(10).row();
-            }
-        } else {
-            buttonTable.add(new Label("No maps found!", skin));
+            buttonTable.add(button).width(300).pad(10).row();
         }
 
         ScrollPane scrollPane = new ScrollPane(buttonTable, skin);
         scrollPane.setFadeScrollBars(false);
         mainTable.add(scrollPane).fill().expand();
+    }
+
+    @Override
+    public void show() {
+        Gdx.input.setInputProcessor(stage);
     }
 
     @Override
@@ -92,11 +80,6 @@ public class LevelMenuScreen implements Screen {
     @Override
     public void dispose() {
         stage.dispose();
-    }
-
-    @Override
-    public void show() {
-        Gdx.input.setInputProcessor(stage);
     }
 
     @Override public void hide() {}

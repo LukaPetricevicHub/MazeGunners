@@ -1,7 +1,6 @@
 package de.tum.cit.fop.maze.ai;
 
 import de.tum.cit.fop.maze.level.Maze;
-import de.tum.cit.fop.maze.level.Tiles;
 
 import java.awt.Point;
 import java.util.*;
@@ -41,8 +40,9 @@ public class GridPathfinder {
                         currentNode.tilePosition.y + direction[1]
                 );
 
-                if (neighborTile.x < 0 || neighborTile.x >= maze.getWidth() || neighborTile.y < 0 || neighborTile.y >= maze.getHeight() || Tiles.isWall(maze.getTile(neighborTile.x, neighborTile.y)))
+                if (neighborTile.x < 0 || neighborTile.x >= maze.getWidth() || neighborTile.y < 0 || neighborTile.y >= maze.getHeight() || maze.getTile(neighborTile.x, neighborTile.y).isWalkable()) {
                     continue;
+                }
 
 
                 int newCostFromStart = costFromStart.getOrDefault(currentNode.tilePosition, Integer.MAX_VALUE) + 1;

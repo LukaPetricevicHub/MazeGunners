@@ -14,7 +14,7 @@ import java.util.Random;
 
 public class ObstaclePlacer {
 
-    // Place obstacles randomly
+    // Place obstacles randomly on floor tiles
     public List<Obstacle> placeObstacles(Maze maze, int obstacleCount, long seed) {
         List<Obstacle> placedObstacles = new ArrayList<>();
         List<Point> availableFloorCells = new ArrayList<>();
@@ -22,7 +22,7 @@ public class ObstaclePlacer {
 
         for (int y = 1; y < maze.getHeight() - 1; y++) {
             for (int x = 1; x < maze.getWidth() - 1; x++) {
-                if (maze.getTile(x, y) == Tiles.Floor) {
+                if (maze.getTile(x, y) == Tiles.FLOOR) {
                     availableFloorCells.add(new Point(x, y));
                 }
             }

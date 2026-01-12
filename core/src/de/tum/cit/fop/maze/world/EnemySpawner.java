@@ -26,7 +26,7 @@ public class EnemySpawner {
 
         for (int y = 1; y < maze.getHeight() - 1; y++) {
             for (int x = 1; x < maze.getWidth() - 1; x++) {
-                if (maze.getTile(x, y) == Tiles.Floor) {
+                if (maze.getTile(x, y) == Tiles.FLOOR) {
                     availableFloorCells.add(new Point(x, y));
                 }
             }
@@ -68,13 +68,24 @@ public class EnemySpawner {
             int targetX = startCell.x + direction[0];
             int targetY = startCell.y + direction[1];
 
-            if(targetX > 0 && targetX < maze.getWidth() && targetY > 0 && targetY < maze.getHeight() && maze.getTile(targetX, targetY) == Tiles.Floor) {
+            if(targetX > 0 && targetX < maze.getWidth() && targetY > 0 && targetY < maze.getHeight() && maze.getTile(targetX, targetY) == Tiles.FLOOR) {
                 patrolPoints.add(new Vector2(targetX * tileSize, targetY * tileSize));
                 return patrolPoints;
             }
         }
 
-        patrolPoints.add(new Vector2(startCell.x * tileSize, (startCell.y + 1) * tileSize));
+        // fallback: 1 tile step if 3-step isn't possible
+        int fallbackX = startCell.x;
+        int fallbackY = Math.min(startCell.y + 1, maze.getHeight() - 2);
+
+        if(maze.getTile(fallbackX, fallbackY) == Tiles.FLOOR){
+            patrolPoints.add(new Vector2(fallbackX * tileSize, fallbackY * tileSize));
+        }
+        else{
+            patrolPoints.add(new Vector2(startCell.x * tileSize, startCell.y * tileSize));
+        }
+
+        // patrolPoints.add(new Vector2(startCell.x * tileSize, (startCell.y + 1) * tileSize));
         return patrolPoints;
     }
 }

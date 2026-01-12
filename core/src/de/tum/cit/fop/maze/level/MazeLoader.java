@@ -4,14 +4,13 @@ import com.badlogic.gdx.files.FileHandle;
 
 import java.awt.Point;
 import java.io.IOException;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 public class MazeLoader {
 
-    public static final class LevelSpec{
+    public static final class LevelSpec {
         public final int width;
         public final int height;
         public final Map<Point, Integer> overrides;
@@ -23,57 +22,6 @@ public class MazeLoader {
         }
     }
 
-    private static final Pattern Cell = Pattern.compile("^\\s*(\\d+)\\s*,\\s*(\\d+)\\s*=\\s*(-?\\d+)\\s*$");
-
-    public LevelSpec loadFromText(String text){
-        int width = 0;
-        int height = 0;
-        int maxX = -1;
-        int maxY = -1;
-
-        Map<Point, Integer> overrides = new HashMap<>();
-
-        for (String raw : text.split("\\R")){
-            String line = raw.trim();
-            if(line.isEmpty()){
-                continue;
-            }
-
-            if(line.startsWith("Width=")){
-                width = Integer.parseInt(line.substring("Width=".length()).trim());
-                continue;
-            }
-
-            if(line.startsWith("Height=")){
-                height = Integer.parseInt(line.substring("Height=".length()).trim());
-                continue;
-            }
-
-            Matcher m = Cell.matcher(line);
-            if(!m.matches()){
-                continue;
-            }
-
-            int x = Integer.parseInt(m.group(1));
-            int y = Integer.parseInt(m.group(2));
-            int z = Integer.parseInt(m.group(3));
-
-            overrides.put(new Point(x,y), z);
-            maxX= Math.max(maxX, x);
-            maxY = Math.max(maxY, y);
-        }
-        if(width <= 0){
-            width = maxX + 1;
-        }
-
-        if(height <= 0){
-            height = maxY + 1;
-        }
-
-        return new LevelSpec(width, height, overrides);
-
-    }
-
     public LevelSpec loadFromProperties(FileHandle file) {
         try {
             Properties props = new Properties();
@@ -81,19 +29,17 @@ public class MazeLoader {
 
             int width = Integer.parseInt(props.getProperty("Width", "0"));
             int height = Integer.parseInt(props.getProperty("Height", "0"));
+
             Map<Point, Integer> overrides = new HashMap<>();
+
             int maxX = -1;
             int maxY = -1;
 
             for (String key : props.stringPropertyNames()) {
-                if (key.equals("Width") || key.equalsIgnoreCase("Height")) {
-                    continue;
-                }
+                if (key.equalsIgnoreCase("Width") || key.equalsIgnoreCase("Height")) continue;
 
                 String[] parts = key.split(",");
-                if (parts.length != 2) {
-                    continue;
-                }
+                if (parts.length != 2) continue;
 
                 int x = Integer.parseInt(parts[0].trim());
                 int y = Integer.parseInt(parts[1].trim());
@@ -102,25 +48,51 @@ public class MazeLoader {
                 overrides.put(new Point(x, y), tileId);
                 maxX = Math.max(maxX, x);
                 maxY = Math.max(maxY, y);
-
-            }
-            if(width <= 0){
-                width = maxX + 1;
-            }
-            if(height <= 0){
-                height = maxY + 1;
             }
 
-            if(width <= 0 || height <= 0){
-                throw new IllegalArgumentException("Maze width/height must be > 0" + file.path());
-            }
+            if (width <= 0) width = maxX + 1;
+            if (height <= 0) height = maxY + 1;
 
+            if (width <= 0 || height <= 0) {
+                throw new IllegalArgumentException("Invalid maze size in " + file.path());
+            }
 
             return new LevelSpec(width, height, overrides);
 
         } catch (IOException e) {
-            e.printStackTrace();
-            return null;
+            throw new RuntimeException("Failed to load " + file.path(), e);
         }
+    }
+
+    public Maze buildMaze(LevelSpec spec, int tileSize) {
+        Maze maze = new Maze(spec.width, spec.height, tileSize);
+
+        // Default floor everywhere
+        for (int x = 0; x < spec.width; x++) {
+            for (int y = 0; y < spec.height; y++) {
+                maze.setTile(x, y, Tiles.FLOOR);
+            }
+        }
+
+        // Apply overrides (numbers from file -> enum)
+        for (var e : spec.overrides.entrySet()) {
+            Point p = e.getKey();
+            int id = e.getValue();
+            maze.setTile(p.x, p.y, fromFileId(id));
+        }
+
+        return maze;
+    }
+
+    private Tiles fromFileId(int id) {
+        return switch (id) {
+            case 0 -> Tiles.WALL;
+            case 1 -> Tiles.ENTRY;
+            case 2 -> Tiles.EXIT;
+            case 3 -> Tiles.TRAP;
+            case 4 -> Tiles.ENEMY;
+            case 5 -> Tiles.KEY;
+            default -> Tiles.FLOOR;
+        };
     }
 }

@@ -37,7 +37,7 @@ public class RoomLock {
         isLocked = true;
 
         for (Point cell : doorCells) {
-            maze.setTile(cell.x, cell.y, Tiles.Wall);
+            maze.setTile(cell.x, cell.y, Tiles.WALL);
         }
     }
 
@@ -47,7 +47,7 @@ public class RoomLock {
         if (!isLocked) return;
 
         for (Point cell : doorCells) {
-            maze.setTile(cell.x, cell.y, Tiles.Floor);
+            maze.setTile(cell.x, cell.y, Tiles.FLOOR);
         }
 
         isLocked = false;

@@ -149,4 +149,5 @@ public class MazeRunnerGame extends Game {
     public TextureRegion getTile(int row, int col){
         return tiles[row][col];
     }
+
 }

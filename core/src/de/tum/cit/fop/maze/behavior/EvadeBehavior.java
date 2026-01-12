@@ -4,7 +4,6 @@ import com.badlogic.gdx.math.Vector2;
 import de.tum.cit.fop.maze.ai.GridPathfinder;
 import de.tum.cit.fop.maze.enemies.Enemy;
 import de.tum.cit.fop.maze.level.Maze;
-import de.tum.cit.fop.maze.level.Tiles;
 import de.tum.cit.fop.maze.util.GridUtils;
 
 import java.awt.Point;
@@ -79,7 +78,7 @@ public class EvadeBehavior implements BehaviorState {
                 int cy = enemy.y + dy;
 
                 if (cx < 0 || cy < 0 || cx >= maze.getWidth() || cy >= maze.getHeight()) continue;
-                if (!Tiles.isWalkable(maze.getTile(cx, cy))) continue;
+                if (!maze.getTile(cx, cy).isWalkable()) continue;
 
                 int distToPlayer = Math.abs(cx - player.x) + Math.abs(cy - player.y);
                 if(distToPlayer > SEARCH_RADIUS / 2) {

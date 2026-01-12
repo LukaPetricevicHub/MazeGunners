@@ -1,61 +1,46 @@
 package de.tum.cit.fop.maze.level;
 
-import de.tum.cit.fop.maze.util.GridUtils;
-
 import java.awt.Point;
-import java.util.*;
+import java.util.ArrayDeque;
 
 public class MazeUtils {
 
-    public static boolean inBounds(int x, int y, int w, int h){
-        return x >= 0 && y >= 0 && x < w && y <h;
-    }
+    public static boolean reachable(Maze maze, Point start, Point goal) {
+        if (start == null || goal == null) return false;
+        if (!maze.inBounds(start.x, start.y) || !maze.inBounds(goal.x, goal.y)) return false;
+        if (!maze.getTile(start.x, start.y).isWalkable()) return false;
+        if (!maze.getTile(goal.x, goal.y).isWalkable()) return false;
 
-    public static int dist2(Point a, Point b){
-        int dx = a.x - b.x, dy = a.y - b.y;
-        return dx * dx + dy * dy;
-    }
+        boolean[][] visited = new boolean[maze.getWidth()][maze.getHeight()];
+        ArrayDeque<Point> queue = new ArrayDeque<>();
 
-    public static boolean reachable (Maze maze, Point start, Point goal){
-        if(start == null || goal == null){
-            return false;
-        }
-
-        int h = maze.getHeight();
-        int w = maze.getWidth();
-        boolean[][] vis = new boolean [h][w];
-        ArrayDeque<Point> q = new ArrayDeque<>();
-
-        q.add(start);
-        vis[start.y][start.x] = true;
+        queue.add(start);
+        visited[start.x][start.y] = true;
 
         int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
 
-        while(!q.isEmpty()){
-            Point p = q.removeFirst();
-            if(p.equals(goal)){
-                return true;
-            }
-            for(int[] d : dirs){
-                int nx = p.x +d[0], ny = p.y + d[1];
+        while (!queue.isEmpty()) {
+            Point p = queue.poll();
+            if (p.equals(goal)) return true;
 
-                if(!inBounds(nx, ny, w, h)){
-                    continue;
-                }
-                if(vis[ny][nx]){
-                    continue;
-                }
+            for (int[] d : dirs) {
+                int nx = p.x + d[0];
+                int ny = p.y + d[1];
 
-                if (!Tiles.isWalkable(maze.getTile(nx, ny))) {
-                    continue;
-                }
+                if (!maze.inBounds(nx, ny)) continue;
+                if (visited[nx][ny]) continue;
+                if (!maze.getTile(nx, ny).isWalkable()) continue;
 
-                vis[ny][nx] = true;
-                q.addLast(new Point(nx, ny));
-
+                visited[nx][ny] = true;
+                queue.add(new Point(nx, ny));
             }
         }
         return false;
     }
 
+    public static int dist2(Point a, Point b) {
+        int dx = a.x - b.x;
+        int dy = a.y - b.y;
+        return dx * dx + dy * dy;
+    }
 }
