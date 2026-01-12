@@ -14,7 +14,7 @@ public class Player {
     private float x;
     private float y;
 
-    private int lives = 5;
+    private int lives = 100;
     private boolean hasKey = false;
 
     private boolean invulnerable = false;

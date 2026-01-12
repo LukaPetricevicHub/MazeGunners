@@ -33,7 +33,7 @@ public class MazeRenderer {
                     case WALL  -> wall;
                     case ENTRY -> entry;
                     case EXIT  -> exit;
-                    case KEY   -> key;    // 🔑 HERE
+                    case KEY   -> key;    // HERE
                     default    -> floor;
                 };
 

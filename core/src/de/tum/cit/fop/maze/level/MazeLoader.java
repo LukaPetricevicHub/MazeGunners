@@ -64,23 +64,27 @@ public class MazeLoader {
         }
     }
 
+
+
     public Maze buildMaze(LevelSpec spec, int tileSize) {
         Maze maze = new Maze(spec.width, spec.height, tileSize);
 
-        // Default floor everywhere
-        for (int x = 0; x < spec.width; x++) {
-            for (int y = 0; y < spec.height; y++) {
-                maze.setTile(x, y, Tiles.FLOOR);
-            }
-        }
-
-        // Apply overrides (numbers from file -> enum)
         for (var e : spec.overrides.entrySet()) {
             Point p = e.getKey();
-            int id = e.getValue();
-            maze.setTile(p.x, p.y, fromFileId(id));
-        }
+            int v = e.getValue();
 
+            Tiles t = switch (v) {
+                case 0 -> Tiles.WALL;
+                case 1 -> Tiles.ENTRY;
+                case 2 -> Tiles.EXIT;
+                case 3 -> Tiles.TRAP;
+                case 4 -> Tiles.ENEMY;
+                case 5 -> Tiles.KEY;
+                default -> Tiles.FLOOR;
+            };
+
+            maze.setTile(p.x, p.y, t);
+        }
         return maze;
     }
 

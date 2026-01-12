@@ -106,7 +106,7 @@ public class MazeRunnerGame extends Game {
         int frameHeight = 112;
         int animationFrames = 5;
 
-        int rowIndex = 4; // ✅ 5th row (0-based)
+        int rowIndex = 4; //  5th row (0-based)
 
         Array<TextureRegion> walkFrames = new Array<>(TextureRegion.class);
 
@@ -114,7 +114,7 @@ public class MazeRunnerGame extends Game {
             walkFrames.add(new TextureRegion(
                     walkSheet,
                     col * frameWidth,
-                    rowIndex * frameHeight, // ✅ 여기만 바뀜
+                    rowIndex * frameHeight, //  여기만 바뀜
                     frameWidth,
                     frameHeight
             ));
