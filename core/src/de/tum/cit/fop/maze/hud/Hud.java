@@ -1,5 +1,6 @@
 package de.tum.cit.fop.maze.hud;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -28,6 +29,9 @@ public class Hud {
     private float exitY;
     private boolean hasExitTarget = false;
 
+    private final Label centerMessage;
+
+
     public Hud(Viewport viewport, com.badlogic.gdx.graphics.g2d.SpriteBatch batch, Skin skin) {
         stage = new Stage(viewport, batch);
 
@@ -55,6 +59,20 @@ public class Hud {
         mainContainer.add(keyLabel).left().padTop(5);
 
         stage.addActor(mainContainer);
+
+        centerMessage = new Label("", skin);
+        centerMessage.setFontScale(5f);
+        centerMessage.setColor(Color.WHITE);
+        centerMessage.setVisible(false);
+
+
+        Table centerTable = new Table();
+        centerTable.setFillParent(true);
+        centerTable.center();
+        centerTable.add(centerMessage);
+
+        stage.addActor(centerTable);
+
 
         // Arrow
         arrowTexture = new Texture("arrow.png");
@@ -114,11 +132,14 @@ public class Hud {
         this.hasExitTarget = true;
     }
 
+    public void showCenterMessage(String text) {
+        centerMessage.setText(text);
+        centerMessage.setVisible(true);
+    }
+
     public void dispose() {
         stage.dispose();
         heartTexture.dispose();
         arrowTexture.dispose();
     }
 }
-
-

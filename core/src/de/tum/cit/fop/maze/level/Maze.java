@@ -1,107 +1,139 @@
 package de.tum.cit.fop.maze.level;
-
-import com.badlogic.gdx.math.Rectangle;
-import de.tum.cit.fop.maze.util.GridUtils;
-
 import java.awt.Point;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
+import de.tum.cit.fop.maze.util.GridUtils;
 
 public class Maze {
-
-    private final int width;     // tiles
-    private final int height;    // tiles
-    private final int tileSize;  // pixels
-
-    // IMPORTANT: grid[x][y]
-    private final Tiles[][] grid;
+    private final int width;
+    private final int height;
+    private final int tileSize;
+    private final int[][] grid;
 
     private Point entryCell;
     private Point exitCell;
+
     private final List<Point> exitCells = new ArrayList<>();
+    private final Set<Point> keyCells = new HashSet<>();
+
 
     public Maze(int width, int height, int tileSize) {
-        if (width <= 0 || height <= 0) throw new IllegalArgumentException("Invalid maze size");
+        if (width <= 0 || height <= 0){ throw new IllegalArgumentException("Maze width/height must be > 0");}
         this.width = width;
         this.height = height;
         this.tileSize = tileSize;
+        this.grid = new int[height][width];
+    }
 
-        grid = new Tiles[width][height];
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                grid[x][y] = Tiles.FLOOR;
+    public int worldWidth(){
+        return width * tileSize;
+    }
+
+    public int worldHeight(){
+        return height * tileSize;
+    }
+
+    public int getTile(int cx, int cy){
+        if(!GridUtils.inBounds(cx, cy, width, height)){
+            return Tiles.Wall;
+        }
+        return grid[cy][cx];
+    }
+
+    public void setTile(int cx, int cy, int value) {
+        if (GridUtils.inBounds(cx, cy, width, height)) {
+            grid[cy][cx] = value;
+
+            if (value == Tiles.Exit) {
+                exitCells.add(new Point(cx, cy));
             }
         }
     }
 
-    public int getWidth() { return width; }
-    public int getHeight() { return height; }
-    public int getTileSize() { return tileSize; }
 
-    public int worldWidth() { return width * tileSize; }
-    public int worldHeight() { return height * tileSize; }
-
-    public boolean inBounds(int x, int y) {
-        return GridUtils.inBounds(x, y, width, height);
-    }
-
-    public Tiles getTile(int x, int y) {
-        if (!inBounds(x, y)) return Tiles.WALL;
-        return grid[x][y];
-    }
-
-    public void setTile(int x, int y, Tiles tile) {
-        if (!inBounds(x, y)) return;
-
-        grid[x][y] = tile;
-
-        // Track entry/exit so MazeUtils.reachable() works
-        if (tile == Tiles.ENTRY) {
-            entryCell = new Point(x, y);
-        } else if (tile == Tiles.EXIT) {
-            exitCell = new Point(x, y);
-            exitCells.add(new Point(x, y));
-        }
-    }
-
-    public Point getEntryCell() {
-        return entryCell == null ? null : new Point(entryCell);
-    }
-
-    public Point getExitCell() {
-        return exitCell == null ? null : new Point(exitCell);
-    }
 
     public List<Point> getExitCells() {
         return List.copyOf(exitCells);
     }
 
-    public boolean isWallCell(int cx, int cy) {
-        return getTile(cx, cy).isWall();
+
+    public void addKey(Point p) {
+        if (p != null) {
+            keyCells.add(new Point(p));
+        }
     }
 
-    public boolean isWallWorld(float worldX, float worldY) {
+    public boolean hasKeyAt(int cx, int cy) {
+        return keyCells.contains(new Point(cx, cy));
+    }
+
+    public void removeKeyAt(int cx, int cy) {
+        keyCells.remove(new Point(cx, cy));
+    }
+
+    public Set<Point> getKeyCells() {
+        return Set.copyOf(keyCells);
+    }
+
+    public int[][] getGridReadOnly(){
+        return grid;
+    }
+    public boolean isWallCell(int cx, int cy){
+        return Tiles.isWall(getTile(cx, cy));
+    }
+    public boolean isWallWorld(float worldX, float worldY){
         int cx = GridUtils.worldToTile(worldX, tileSize);
         int cy = GridUtils.worldToTile(worldY, tileSize);
         return isWallCell(cx, cy);
     }
 
-    public boolean isWallRect(Rectangle r){
-        float inset = 1f;
-
-        float left = r.x + inset;
-        float right = r.x + r.width - inset;
-        float bottom = r.y + inset;
-        float top = r.y + r.height - inset;
-
-        return isWallWorld(left, bottom)
-            || isWallWorld(right, bottom)
-            || isWallWorld(left, top)
-            || isWallWorld(right, top);
-    }
-
-    // If you still use exit-locking in Player:
     public boolean isBlockedExit(int cx, int cy, boolean hasKey) {
-        return getTile(cx, cy) == Tiles.EXIT && !hasKey;
+        int tile = getTile(cx, cy);
+        return tile == Tiles.Exit && !hasKey;
     }
+
+
+    public Point getEntryCell(){
+        return entryCell == null ? null : new Point(entryCell);
+    }
+
+    public Point getExitCell(){
+        return exitCell == null ? null : new Point(exitCell);
+    }
+
+    public void setEntryCell(Point p){
+        entryCell = (p == null ? null : new Point(p));
+    }
+
+    public void setExitCell(Point p){
+        exitCell = (p == null ? null : new Point(p));
+    }
+
+
+    public Point findFirstTile(int tileId){
+        for(int y = 0; y < height; y++){
+            for (int x = 0; x < width; x++){
+                if(grid[y][x] == tileId){
+                    return new Point(x, y);
+                }
+            }
+        }
+        return null;
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
+    public int getTileSize() {
+        return tileSize;
+    }
+
 }
