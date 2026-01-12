@@ -19,9 +19,6 @@ public class EvadeBehavior implements BehaviorState {
 
     private static final int SEARCH_RADIUS = 10;
 
-    private static final float ENEMY_W = 32f;
-    private static final float ENEMY_H = 64f;
-
     @Override
     public BehaviorStateType getType() {
         return BehaviorStateType.EVADE;
@@ -30,14 +27,6 @@ public class EvadeBehavior implements BehaviorState {
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
         pathTimer += deltaTime;
-
-        float ts = maze.getTileSize();
-        float arriveEps = ts * 0.20f;
-
-        Vector2 enemyCenter = new Vector2(enemy.getPosition().x + ENEMY_W / 2f, enemy.getPosition().y + ENEMY_H / 2f);
-
-        Vector2 playerPos = enemy.getPlayerPosition();
-        Vector2 playerCenter = new Vector2(playerPos.x + ENEMY_W / 2f, playerPos.y + ENEMY_H / 2f);
 
         if (currentPath == null || pathTimer >= RECALC_INTERVAL) {
 
@@ -56,34 +45,25 @@ public class EvadeBehavior implements BehaviorState {
             if (escapeTarget != null) {
                 currentPath = GridPathfinder.findTilePath(maze, enemyTile, escapeTarget);
             }
-            else{
-                currentPath = null;
-            }
 
             pathTimer = 0f;
+        }
 
-            if(currentPath != null && !currentPath.isEmpty() && currentPath.get(0).equals(enemyTile)){
+        if (currentPath != null && !currentPath.isEmpty()) {
+            Point next = currentPath.get(0);
+
+            Vector2 targetWorld = new Vector2(
+                    next.x * maze.getTileSize(),
+                    next.y * maze.getTileSize()
+            );
+
+            Vector2 dir = targetWorld.sub(enemy.getPosition());
+
+            if (dir.len() < 2f) {
                 currentPath.remove(0);
+            } else {
+                enemy.moveEnemy(dir, deltaTime);
             }
-        }
-
-        if (currentPath == null || currentPath.isEmpty()) {
-            return;
-        }
-
-        Point next = currentPath.get(0);
-
-        Vector2 targetWorld = new Vector2(
-                (next.x + 0.5f) * ts,
-                (next.y + 0.5f) * ts
-        );
-
-        Vector2 dir = targetWorld.cpy().sub(enemyCenter);
-
-        if (dir.len() <= arriveEps) {
-            currentPath.remove(0);
-        } else {
-            enemy.moveEnemy(dir, deltaTime, maze);
         }
     }
 
@@ -97,7 +77,7 @@ public class EvadeBehavior implements BehaviorState {
                 int cx = enemy.x + dx;
                 int cy = enemy.y + dy;
 
-                if (!maze.inBounds(cx, cy)) continue;
+                if (cx < 0 || cy < 0 || cx >= maze.getWidth() || cy >= maze.getHeight()) continue;
                 if (!maze.getTile(cx, cy).isWalkable()) continue;
 
                 int distToPlayer = Math.abs(cx - player.x) + Math.abs(cy - player.y);
@@ -108,7 +88,10 @@ public class EvadeBehavior implements BehaviorState {
         }
 
         if (candidates.isEmpty()) return null;
+
         return candidates.get(new Random().nextInt(candidates.size()));
     }
 }
+
+
 

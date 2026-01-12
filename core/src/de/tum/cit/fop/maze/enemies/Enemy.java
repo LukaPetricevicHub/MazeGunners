@@ -30,9 +30,6 @@ public abstract class Enemy {
 
     // Update enemy logic and collision bounds
     public final void update(float deltaTime, Maze maze) {
-        if (movementSpeed == 0f) {
-            com.badlogic.gdx.Gdx.app.log("ENEMY", "Speed is 0 for " + getClass().getSimpleName());
-        }
         updateBehavior(deltaTime, maze);
         collisionBounds.setPosition(worldPosition.x, worldPosition.y);
     }
@@ -40,22 +37,15 @@ public abstract class Enemy {
 
     // Execute current behavior logic
     protected void updateBehavior(float deltaTime, Maze maze) {
-        if (activeBehavior != null) {
-            Vector2 p = getPlayerPosition();
-            if (p.x == 0f && p.y == 0f) {
-                com.badlogic.gdx.Gdx.app.log("ENEMY", "targetPlayer is NULL -> chasing (0,0)");
-            }
+        if (activeBehavior != null)
             activeBehavior.execute(this, deltaTime, maze);
-        }
+
     }
 
 
-
     // Move enemy in given direction
-    public void moveEnemy(Vector2 direction, float deltaTime, Maze maze) {
-        if (direction.len2() < 0.0001f) return;
-        Vector2 dir = new Vector2(direction).nor();
-        worldPosition.mulAdd(dir, movementSpeed * deltaTime);
+    public void moveEnemy(Vector2 direction, float deltaTime) {
+        worldPosition.mulAdd(direction.nor(), movementSpeed * deltaTime);
     }
 
     // Return player's current position
