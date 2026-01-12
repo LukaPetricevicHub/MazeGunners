@@ -52,7 +52,7 @@ public class EnemySpawner {
 
             switch (type) {
                 case 0 -> enemies.add(
-                        new MutantWorker(spawnPos, 200f, targetPlayer)
+                        new MutantWorker(spawnPos, 150f, targetPlayer)
                 );
                 case 1 -> enemies.add(
                         new RobotGuard(

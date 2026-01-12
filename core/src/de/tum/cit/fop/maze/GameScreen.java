@@ -244,7 +244,7 @@ public class GameScreen implements Screen {
 
         // Spawn obstacles and enemies
         obstacles = new ObstaclePlacer().placeObstacles(maze, 40, seed);
-        enemies = new EnemySpawner().spawnEnemies(maze, player, 50, seed);
+        enemies = new EnemySpawner().spawnEnemies(maze, player, 200, seed);
 
         // Setup room lock
         Rectangle trigger = new Rectangle(50 * TILE_SIZE, 50 * TILE_SIZE, 5 * TILE_SIZE, 5 * TILE_SIZE);

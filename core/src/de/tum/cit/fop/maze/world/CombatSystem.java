@@ -31,7 +31,9 @@ public class CombatSystem {
             float dy = e.getPosition().y - py;
 
             // Skip inactive enemies
-            if (dx * dx + dy * dy > activeRadius2)
+            boolean outsideActiveRadius = dx * dx + dy * dy > activeRadius2;
+
+            if (outsideActiveRadius && !e.isAggroLocked())
                 continue;
 
             e.update(delta, maze);

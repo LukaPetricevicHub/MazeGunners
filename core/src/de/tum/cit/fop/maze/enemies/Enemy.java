@@ -17,15 +17,12 @@ public abstract class Enemy {
     protected BehaviorState activeBehavior;
     protected Player targetPlayer;
     protected final Vector2 homeWorldPosition;
-
     protected final CollisionHandler collisionHandler;
-
     private static final float COLLISION_INSET = 2f;
-
-    // AI attributes
     protected float chaseRadius = 200f;
     private float chaseMemoryTimer = 0f;
     private static final float CHASE_MEMORY_DURATION = 2.0f;
+    protected boolean aggroLocked = false;
 
 
     // Constructor
@@ -66,12 +63,20 @@ public abstract class Enemy {
         boolean playerInRange = dist2 <= chaseRadius * chaseRadius;
 
         if (playerInRange) {
+
             chaseMemoryTimer = 0f;
+
+            if (supportsAggroLock()) {
+                aggroLocked = true;
+            }
 
             if (activeBehavior.getType() != BehaviorStateType.CHASE) {
                 setCurrentBehavior(createChaseBehavior());
             }
-        } else {
+        }
+
+
+        else if (!aggroLocked) {
             chaseMemoryTimer += deltaTime;
 
             if (chaseMemoryTimer >= CHASE_MEMORY_DURATION
@@ -80,6 +85,7 @@ public abstract class Enemy {
             }
         }
     }
+
 
 
     // Execute current behavior
@@ -110,5 +116,14 @@ public abstract class Enemy {
     public void setCurrentBehavior(BehaviorState behavior) {
         this.activeBehavior = behavior;
     }
+
+    public boolean isAggroLocked() {
+        return aggroLocked;
+    }
+
+    protected boolean supportsAggroLock() {
+        return false;
+    }
+
 }
 

@@ -77,6 +77,12 @@ public class MutantWorker extends Enemy {
     }
 
 
+    @Override
+    protected boolean supportsAggroLock() {
+        return true;
+    }
+
+
     // Return current animation frame
     public TextureRegion getCurrentFrame() {
         return walkAnimation.getKeyFrame(animationTime, true);
