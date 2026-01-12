@@ -1,6 +1,5 @@
 package de.tum.cit.fop.maze.collision;
 
-
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import de.tum.cit.fop.maze.level.Maze;
@@ -15,7 +14,6 @@ public class CollisionHandler {
         this.inset = inset;
     }
 
-
     public void move(Vector2 position, Vector2 velocity, float deltaTime, Maze maze) {
 
         if (velocity.isZero())
@@ -23,33 +21,37 @@ public class CollisionHandler {
 
         Vector2 step = velocity.cpy().scl(deltaTime);
 
-        Vector2 nextX = new Vector2(position.x + step.x, position.y);
-        if (!hitsWall(nextX, maze)) {
-            position.x += step.x;
+        // X axis
+        if (step.x != 0f) {
+            Vector2 nextX = new Vector2(position.x + step.x, position.y);
+            if (!hitsWall(nextX, maze)) {
+                position.x += step.x;
+            }
         }
 
-        Vector2 nextY = new Vector2(position.x, position.y + step.y);
-        if (!hitsWall(nextY, maze)) {
-            position.y += step.y;
+        // Y axis
+        if (step.y != 0f) {
+            Vector2 nextY = new Vector2(position.x, position.y + step.y);
+            if (!hitsWall(nextY, maze)) {
+                position.y += step.y;
+            }
         }
 
         bounds.setPosition(position.x, position.y);
     }
 
+    private boolean hitsWall(Vector2 pos, Maze maze) {
 
-    private boolean hitsWall(Vector2 position, Maze maze) {
+        float left   = pos.x + inset;
+        float right  = pos.x + bounds.width  - inset;
+        float bottom = pos.y + inset;
+        float top    = pos.y + bounds.height - inset;
 
-        float centerX = position.x + bounds.width / 2f;
-        float centerY = position.y + bounds.height / 2f;
-
-        return maze.isWallWorld(centerX, centerY);
+        return maze.isWallWorld(left, bottom)
+                || maze.isWallWorld(right, bottom)
+                || maze.isWallWorld(left, top)
+                || maze.isWallWorld(right, top);
     }
-
-
-
-    private boolean isWallAt(float x, float y, Maze maze) {
-        return maze.isWallWorld(x, y);
-    }
-
 }
+
 

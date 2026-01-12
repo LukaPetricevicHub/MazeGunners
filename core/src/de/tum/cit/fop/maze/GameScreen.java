@@ -136,8 +136,9 @@ public class GameScreen implements Screen {
         gameCamera.follow(
                 player.getX() + PLAYER_WIDTH / 2f,
                 player.getY() + PLAYER_HEIGHT / 2f,
-                0.1f
+                delta
         );
+
 
         // Render world
         ScreenUtils.clear(0, 0, 0, 1);
@@ -243,7 +244,7 @@ public class GameScreen implements Screen {
 
         // Spawn obstacles and enemies
         obstacles = new ObstaclePlacer().placeObstacles(maze, 40, seed);
-        enemies = new EnemySpawner().spawnEnemies(maze, player, 20, seed);
+        enemies = new EnemySpawner().spawnEnemies(maze, player, 50, seed);
 
         // Setup room lock
         Rectangle trigger = new Rectangle(50 * TILE_SIZE, 50 * TILE_SIZE, 5 * TILE_SIZE, 5 * TILE_SIZE);

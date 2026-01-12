@@ -13,29 +13,22 @@ import java.util.List;
 
 public class ChaseBehavior implements BehaviorState {
 
-    private Deque<Point> currentTilePath;
+    private Deque<Point> currentPath;
     private Point lastPlayerTile;
+
+    private static final float ARRIVAL_DIST = 3f;
+    private static final float REPATH_COOLDOWN = 0.6f;
     private float repathTimer = 0f;
-    private static final float REPATH_INTERVAL = 0.5f;
-
-    private Vector2 lastWorldPosition;
-
 
     @Override
     public BehaviorStateType getType() {
         return BehaviorStateType.CHASE;
     }
 
-
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
 
-        // Detect stuck enemy → force re-path
-        if (lastWorldPosition != null &&
-                enemy.getPosition().epsilonEquals(lastWorldPosition, 0.1f)) {
-            currentTilePath = null;
-        }
-        lastWorldPosition = enemy.getPosition().cpy();
+        repathTimer -= deltaTime;
 
         Point enemyTile = new Point(
                 GridUtils.worldToTile(enemy.getPosition().x, maze.getTileSize()),
@@ -47,51 +40,46 @@ public class ChaseBehavior implements BehaviorState {
                 GridUtils.worldToTile(enemy.getPlayerPosition().y, maze.getTileSize())
         );
 
-        if (enemyTile.equals(playerTile))
+        // Already at player tile → no thinking needed
+        if (enemyTile.equals(playerTile)) {
+            currentPath = null;
             return;
+        }
 
-        boolean playerMovedTile =
+        boolean playerChangedTile =
                 lastPlayerTile == null || !lastPlayerTile.equals(playerTile);
 
-        repathTimer -= deltaTime;
+        if (currentPath == null
+                || currentPath.isEmpty()
+                || (playerChangedTile && repathTimer <= 0f)) {
 
-        if (currentTilePath == null || currentTilePath.isEmpty()
-                || playerMovedTile || repathTimer <= 0f) {
-
-            List<Point> newPath =
+            List<Point> path =
                     GridPathfinder.findTilePath(maze, enemyTile, playerTile);
 
-            currentTilePath = new ArrayDeque<>(newPath);
+            currentPath = new ArrayDeque<>(path);
             lastPlayerTile = playerTile;
-            repathTimer = REPATH_INTERVAL;
+            repathTimer = REPATH_COOLDOWN;
         }
 
-        if (currentTilePath.isEmpty())
+        if (currentPath == null || currentPath.isEmpty())
             return;
 
-        Point nextTile = currentTilePath.peekFirst();
+        Point next = currentPath.peekFirst();
 
-        Vector2 targetWorldPos = new Vector2(
-                (nextTile.x + 0.5f) * maze.getTileSize(),
-                (nextTile.y + 0.5f) * maze.getTileSize()
+        Vector2 target = new Vector2(
+                (next.x + 0.5f) * maze.getTileSize(),
+                (next.y + 0.5f) * maze.getTileSize()
         );
 
-        Point enemyTileNow = new Point(
-                GridUtils.worldToTile(enemy.getPosition().x, maze.getTileSize()),
-                GridUtils.worldToTile(enemy.getPosition().y, maze.getTileSize())
-        );
+        Vector2 toTarget = target.cpy().sub(enemy.getPosition());
 
-        if (enemyTileNow.equals(nextTile)) {
-            enemy.getPosition().set(targetWorldPos);
-            currentTilePath.pollFirst();
+        if (toTarget.len() <= ARRIVAL_DIST) {
+            currentPath.pollFirst();
             return;
         }
 
-        Vector2 dir = targetWorldPos.cpy().sub(enemy.getPosition());
-        if (dir.isZero(0.01f))
-            return;
-
-        Vector2 velocity = dir.nor().scl(enemy.getSpeed());
+        Vector2 velocity =
+                toTarget.nor().scl(enemy.getSpeed());
 
         enemy.getCollisionHandler().move(
                 enemy.getPosition(),
