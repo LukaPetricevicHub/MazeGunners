@@ -196,26 +196,18 @@ public class GameScreen implements Screen {
     // Show
     @Override
     public void show() {
-        int logicalW = 25;
-        int logicalH = 25;
-        int cell = 5;
+        MazeLoader.LevelSpec spec = new MazeLoader.LevelSpec(101, 101, Map.of());
         long seed = System.currentTimeMillis();
+        int cell = 4;
+        maze = new MazeGenerator(cell).generate(101, 101, TILE_SIZE, seed);
 
-        Maze generated = new MazeGenerator(cell).generate(logicalW, logicalH, TILE_SIZE, seed);
-
-        FileHandle file = Gdx.files.local("maps/level-" + level + ".properties");
-        MazeExporter.saveToProperties(generated, file);
-
-        MazeLoader loader = new MazeLoader();
-        MazeLoader.LevelSpec spec = loader.loadFromProperties(file);
-        maze = loader.buildMaze(spec, TILE_SIZE);
 
         // Setup camera
         gameCamera = new GameCamera(
                 viewport.getWorldWidth(),
                 viewport.getWorldHeight(),
-                maze.worldWidth(),
-                maze.worldHeight()
+                maze.getWidth() * TILE_SIZE,
+                maze.getHeight() * TILE_SIZE
         );
         gameCamera.setZoom(0.75f);
 
@@ -253,13 +245,8 @@ public class GameScreen implements Screen {
         obstacles = new ObstaclePlacer().placeObstacles(maze, 40, seed);
         enemies = new EnemySpawner().spawnEnemies(maze, player, 20, seed);
 
-        int cx = maze.getWidth() / 2;
-        int cy = maze.getHeight()  / 2;
-
-
-
         // Setup room lock
-        Rectangle trigger = new Rectangle(cx * TILE_SIZE, cy * TILE_SIZE, 6 * TILE_SIZE, 6 * TILE_SIZE);
+        Rectangle trigger = new Rectangle(50 * TILE_SIZE, 50 * TILE_SIZE, 5 * TILE_SIZE, 5 * TILE_SIZE);
 
         List<Point> doors = new ArrayList<>();
         doors.add(new Point(50, 49));
