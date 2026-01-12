@@ -195,10 +195,10 @@ public class GameScreen implements Screen {
     // Show
     @Override
     public void show() {
-        MazeLoader.LevelSpec spec = new MazeLoader.LevelSpec(101, 101, Map.of());
+        MazeLoader.LevelSpec spec = new MazeLoader.LevelSpec(50, 50, Map.of());
         long seed = System.currentTimeMillis();
-        int cell = 4;
-        maze = new MazeGenerator(cell).generate(101, 101, TILE_SIZE, seed);
+        int cell = 3;
+        maze = new MazeGenerator(cell).generate(50, 50, TILE_SIZE, seed);
 
 
         // Setup camera
