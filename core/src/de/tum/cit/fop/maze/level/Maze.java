@@ -1,5 +1,6 @@
 package de.tum.cit.fop.maze.level;
 
+import com.badlogic.gdx.math.Rectangle;
 import de.tum.cit.fop.maze.util.GridUtils;
 
 import java.awt.Point;
@@ -83,6 +84,20 @@ public class Maze {
         int cx = GridUtils.worldToTile(worldX, tileSize);
         int cy = GridUtils.worldToTile(worldY, tileSize);
         return isWallCell(cx, cy);
+    }
+
+    public boolean isWallRect(Rectangle r){
+        float inset = 1f;
+
+        float left = r.x + inset;
+        float right = r.x + r.width - inset;
+        float bottom = r.y + inset;
+        float top = r.y + r.height - inset;
+
+        return isWallWorld(left, bottom)
+            || isWallWorld(right, bottom)
+            || isWallWorld(left, top)
+            || isWallWorld(right, top);
     }
 
     // If you still use exit-locking in Player:

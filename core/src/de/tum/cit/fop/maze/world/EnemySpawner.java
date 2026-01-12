@@ -44,10 +44,14 @@ public class EnemySpawner {
 
             switch (enemyType) {
                 case 0 -> spawnedEnemies.add(new MutantWorker(worldPosition, 85f, targetPlayer));
-                case 1 -> {Array<Vector2> patrolPath = generatePatrolPath(maze, cell);
+                case 1 -> {
+                    Array<Vector2> patrolPath = generatePatrolPath(maze, cell);
                     spawnedEnemies.add(new RobotGuard(worldPosition, 60f, patrolPath, targetPlayer));
                 }
-                case 2 -> spawnedEnemies.add(new FlyingDrone(worldPosition, 110f, new Array<>(), targetPlayer));
+                case 2 -> {
+                    Array<Vector2> patrolPath = generatePatrolPath(maze, cell);
+                    spawnedEnemies.add(new FlyingDrone(worldPosition, 110f,patrolPath, targetPlayer));
+                }
             }
         }
 
@@ -58,34 +62,49 @@ public class EnemySpawner {
     // Generate simple patrol path
     private Array<Vector2> generatePatrolPath(Maze maze, Point startCell) {
         Array<Vector2> patrolPoints = new Array<>();
-        float tileSize = maze.getTileSize();
+        float ts = maze.getTileSize();
 
-        patrolPoints.add(new Vector2(startCell.x * tileSize, startCell.y * tileSize));
+        // center of start tile
+        Vector2 start = new Vector2((startCell.x + 0.5f) * ts, (startCell.y + 0.5f) * ts);
+        patrolPoints.add(start);
 
         int[][] directions = {{3, 0}, {-3, 0}, {0, 3}, {0, -3}};
 
         for (int[] direction : directions) {
-            int targetX = startCell.x + direction[0];
-            int targetY = startCell.y + direction[1];
+            int tx = startCell.x + direction[0];
+            int ty = startCell.y + direction[1];
 
-            if(targetX > 0 && targetX < maze.getWidth() && targetY > 0 && targetY < maze.getHeight() && maze.getTile(targetX, targetY) == Tiles.FLOOR) {
-                patrolPoints.add(new Vector2(targetX * tileSize, targetY * tileSize));
+            if (!maze.inBounds(tx, ty)) continue;
+            if (maze.getTile(tx, ty) != Tiles.FLOOR) continue;
+
+            Vector2 target = new Vector2((tx + 0.5f) * ts, (ty + 0.5f) * ts);
+
+            // ensure different from start
+            if (target.dst2(start) > 1f) {
+                patrolPoints.add(target);
                 return patrolPoints;
             }
+
+
         }
 
         // fallback: 1 tile step if 3-step isn't possible
-        int fallbackX = startCell.x;
-        int fallbackY = Math.min(startCell.y + 1, maze.getHeight() - 2);
+        for (int r = 1; r <= 6; r++) {
+            for (int dy = -r; dy <= r; dy++) {
+                for (int dx = -r; dx <= r; dx++) {
+                    int tx = startCell.x + dx;
+                    int ty = startCell.y + dy;
+                    if (!maze.inBounds(tx, ty)) continue;
+                    if (maze.getTile(tx, ty) != Tiles.FLOOR) continue;
 
-        if(maze.getTile(fallbackX, fallbackY) == Tiles.FLOOR){
-            patrolPoints.add(new Vector2(fallbackX * tileSize, fallbackY * tileSize));
+                    Vector2 target = new Vector2((tx + 0.5f) * ts, (ty + 0.5f) * ts);
+                    if (target.dst2(start) > 1f) {
+                        patrolPoints.add(target);
+                        return patrolPoints;
+                    }
+                }
+            }
         }
-        else{
-            patrolPoints.add(new Vector2(startCell.x * tileSize, startCell.y * tileSize));
-        }
-
-        // patrolPoints.add(new Vector2(startCell.x * tileSize, (startCell.y + 1) * tileSize));
         return patrolPoints;
     }
 }

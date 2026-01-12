@@ -57,7 +57,7 @@ public class RetreatBehavior implements BehaviorState {
         if(dir.len() < ARRIVAL_DISTANCE)
             path.remove(0);
         else
-            enemy.moveEnemy(dir, deltaTime);
+            enemy.moveEnemy(dir, deltaTime, maze);
 
     }
 }
