@@ -5,26 +5,32 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
-import de.tum.cit.fop.maze.behavior.*;
+import de.tum.cit.fop.maze.behavior.ChaseBehavior;
+import de.tum.cit.fop.maze.behavior.PatrolBehavior;
+import de.tum.cit.fop.maze.collision.CollisionHandler;
 import de.tum.cit.fop.maze.level.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
 public class FlyingDrone extends Enemy {
 
     // Attributes
-    private final BehaviorState patrolBehavior;
-    private final BehaviorState chaseBehavior;
-    private final BehaviorState evadeBehavior = new EvadeBehavior();
-    private final BehaviorState retreatBehavior = new RetreatBehavior();
-    private final float evadeDistance = 50f;
-    private boolean isRetreating = false;
-    private final float chaseTriggerDistance = 150f;
+    private final PatrolBehavior patrolBehavior;
+    private final ChaseBehavior chaseBehavior;
+
+    private static final float CHASE_DISTANCE = 180f;
+
+    // Animation
     private Animation<TextureRegion> flyingAnimation;
     private float animationTime = 0f;
 
 
     // Constructor
-    public FlyingDrone(Vector2 startWorldPosition, float movementSpeed, Array<Vector2> patrolWorldPositions, Player targetPlayer) {
+    public FlyingDrone(
+            Vector2 startWorldPosition,
+            float movementSpeed,
+            Array<Vector2> patrolWorldPositions,
+            Player targetPlayer
+    ) {
         super(startWorldPosition, movementSpeed, null, targetPlayer);
 
         this.patrolBehavior = new PatrolBehavior(patrolWorldPositions);
@@ -33,6 +39,7 @@ public class FlyingDrone extends Enemy {
 
         loadFlyingAnimation();
     }
+
 
 
     // Load flying drone animation frames
@@ -61,40 +68,29 @@ public class FlyingDrone extends Enemy {
     }
 
 
-    // Return current animation frame
-    public TextureRegion getCurrentFrame() {
-        return flyingAnimation.getKeyFrame(animationTime, true);
-    }
-
-
-    // Update behavior and animation state
+    // Update behavior and animation
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
         animationTime += deltaTime;
 
-        float dist = worldPosition.dst(targetPlayer.getX(), targetPlayer.getY());
+        float dist = worldPosition.dst(
+                targetPlayer.getX(),
+                targetPlayer.getY()
+        );
 
-        if (isRetreating) {
-            activeBehavior = retreatBehavior;
-
-            if(worldPosition.dst(homeWorldPosition) < 8f) {
-                isRetreating = false;
-                activeBehavior = patrolBehavior;
-            }
-        }
-        else if (dist < evadeDistance) {
-            activeBehavior = evadeBehavior;
-            isRetreating = true;
-        }
-        else if (dist < chaseTriggerDistance) {
+        if (dist < CHASE_DISTANCE) {
             activeBehavior = chaseBehavior;
-        }
-        else {
+        } else {
             activeBehavior = patrolBehavior;
         }
 
-        if (activeBehavior != null)
-            activeBehavior.execute(this, deltaTime, maze);
+        activeBehavior.execute(this, deltaTime, maze);
+    }
 
+
+    // Return current animation frame
+    public TextureRegion getCurrentFrame() {
+        return flyingAnimation.getKeyFrame(animationTime, true);
     }
 }
+

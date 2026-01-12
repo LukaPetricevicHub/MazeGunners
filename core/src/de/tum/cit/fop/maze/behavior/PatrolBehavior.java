@@ -25,24 +25,34 @@ public class PatrolBehavior implements BehaviorState {
     }
 
 
-    // Move enemy
+    // Move enemy along patrol points
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
 
-        if(patrolWorldPositions.size == 0)
+        if (patrolWorldPositions.size == 0)
             return;
 
-        Vector2 currentTargetPosition = patrolWorldPositions.get(currentPatrolIndex);
-        Vector2 movementDirection = currentTargetPosition.cpy().sub(enemy.getPosition());
+        Vector2 currentTarget = patrolWorldPositions.get(currentPatrolIndex);
+        Vector2 direction = currentTarget.cpy().sub(enemy.getPosition());
 
-        enemy.moveEnemy(movementDirection, deltaTime);
-
-        if(enemy.getPosition().dst(currentTargetPosition) < 2f) {
+        if (direction.len() < 2f) {
             currentPatrolIndex++;
 
-            if (currentPatrolIndex >= patrolWorldPositions.size) {
+            if (currentPatrolIndex >= patrolWorldPositions.size)
                 currentPatrolIndex = 0;
-            }
+
+            return;
         }
+
+        Vector2 velocity =
+                direction.nor().scl(enemy.getSpeed());
+
+        enemy.getCollisionHandler().move(
+                enemy.getPosition(),
+                velocity,
+                deltaTime,
+                maze
+        );
     }
 }
+

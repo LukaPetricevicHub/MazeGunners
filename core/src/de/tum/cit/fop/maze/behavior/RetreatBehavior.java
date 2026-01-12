@@ -11,21 +11,24 @@ import java.util.List;
 
 public class RetreatBehavior implements BehaviorState {
 
+    // Attributes
     private List<Point> path;
     private float timer = 0f;
     private static final float RECALC_INTERVAL = 0.7f;
     private static final float ARRIVAL_DISTANCE = 4f;
+
 
     @Override
     public BehaviorStateType getType() {
         return BehaviorStateType.RETREAT;
     }
 
+
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
         timer += deltaTime;
 
-        if (path == null || timer >= RECALC_INTERVAL) {
+        if (path == null || path.isEmpty() || timer >= RECALC_INTERVAL) {
 
             Point enemyTile = new Point(
                     GridUtils.worldToTile(enemy.getPosition().x, maze.getTileSize()),
@@ -47,19 +50,28 @@ public class RetreatBehavior implements BehaviorState {
 
 
         Point next = path.get(0);
+
         Vector2 target = new Vector2(
-                next.x * maze.getTileSize(),
-                next.y * maze.getTileSize()
+                (next.x + 0.5f) * maze.getTileSize(),
+                (next.y + 0.5f) * maze.getTileSize()
         );
 
-        Vector2 dir = target.sub(enemy.getPosition());
+        Vector2 direction = target.sub(enemy.getPosition());
 
-        if(dir.len() < ARRIVAL_DISTANCE)
+        if (direction.len() < ARRIVAL_DISTANCE) {
             path.remove(0);
-        else
-            enemy.moveEnemy(dir, deltaTime);
+            return;
+        }
 
+        Vector2 velocity =
+                direction.nor().scl(enemy.getSpeed());
+
+        enemy.getCollisionHandler().move(
+                enemy.getPosition(),
+                velocity,
+                deltaTime,
+                maze
+        );
     }
 }
-
 

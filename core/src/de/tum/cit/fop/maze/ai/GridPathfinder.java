@@ -20,16 +20,25 @@ public class GridPathfinder {
             return Collections.emptyList();
 
 
-        PriorityQueue<PathNode> openNodes = new PriorityQueue<>(Comparator.comparingInt(n -> n.estimatedTotalCost));
+        PriorityQueue<PathNode> openNodes =
+                new PriorityQueue<>(Comparator.comparingInt(n -> n.estimatedTotalCost));
 
         Map<Point, Point> parentByNode = new HashMap<>();
         Map<Point, Integer> costFromStart = new HashMap<>();
+        Set<Point> closedNodes = new HashSet<>();
+
 
         costFromStart.put(startTile, 0);
         openNodes.add(new PathNode(startTile, estimateCostToGoal(startTile, goalTile)));
 
         while (!openNodes.isEmpty()) {
             PathNode currentNode = openNodes.poll();
+
+            if (closedNodes.contains(currentNode.tilePosition))
+                continue;
+
+            closedNodes.add(currentNode.tilePosition);
+
 
             if (currentNode.tilePosition.equals(goalTile)) {
                 return buildPathFromParents(parentByNode, goalTile);
@@ -40,6 +49,10 @@ public class GridPathfinder {
                         currentNode.tilePosition.x + direction[0],
                         currentNode.tilePosition.y + direction[1]
                 );
+
+                if (closedNodes.contains(neighborTile))
+                    continue;
+
 
                 if (neighborTile.x < 0 || neighborTile.x >= maze.getWidth() || neighborTile.y < 0 || neighborTile.y >= maze.getHeight() || !maze.getTile(neighborTile.x, neighborTile.y).isWalkable()) {
                     continue;

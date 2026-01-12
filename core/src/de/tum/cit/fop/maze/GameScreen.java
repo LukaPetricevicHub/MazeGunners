@@ -145,9 +145,6 @@ public class GameScreen implements Screen {
 
         mazeRenderer.render(maze, game.getSpriteBatch());
 
-
-
-
         // Draw obstacles
         for (Obstacle obstacle : obstacles) {
             if (obstacle instanceof SpikeTrap spikeTrap) {
@@ -279,7 +276,7 @@ public class GameScreen implements Screen {
 
     // Find a spawn point, so fat player is not stuck
     private Point findSafeSpawnPosition(Point entryCell, Maze maze) {
-        int maxRadius = 10; // search radius in tiles
+        int maxRadius = 10;
 
         for (int r = 0; r <= maxRadius; r++) {
             for (int dy = -r; dy <= r; dy++) {
