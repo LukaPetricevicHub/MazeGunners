@@ -139,7 +139,7 @@ public class Player {
     // Rendering
     public void draw(SpriteBatch batch) {
         TextureRegion frame = walkDownAnimation.getKeyFrame(animTime, true);
-        batch.draw(frame, x, y, WIDTH, HEIGHT);
+        batch.draw(frame, x, y, 52f, 52f);
     }
 
 
