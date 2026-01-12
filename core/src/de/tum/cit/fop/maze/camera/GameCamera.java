@@ -10,7 +10,6 @@ public class GameCamera {
     private float worldWidth;
     private float worldHeight;
 
-    // smoothing strength (higher = snappier)
     private static final float FOLLOW_SMOOTHNESS = 8f;
 
     public GameCamera(
@@ -27,12 +26,9 @@ public class GameCamera {
         this.worldHeight = worldHeight;
     }
 
-    /**
-     * Smoothly follows a target position using time-based interpolation.
-     */
+    // Smoothly follow player ps
     public void follow(float targetX, float targetY, float deltaTime) {
 
-        // exponential smoothing (frame-rate independent)
         float alpha = 1f - (float) Math.exp(-FOLLOW_SMOOTHNESS * deltaTime);
 
         camera.position.x += (targetX - camera.position.x) * alpha;

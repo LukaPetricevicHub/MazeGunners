@@ -25,18 +25,8 @@ public class RobotGuard extends Enemy {
 
 
     // Constructor
-    public RobotGuard(
-            Vector2 startWorldPosition,
-            float movementSpeed,
-            Array<Vector2> patrolWorldPositions,
-            Player targetPlayer
-    ) {
-        super(
-                startWorldPosition,
-                movementSpeed,
-                new PatrolBehavior(patrolWorldPositions),
-                targetPlayer
-        );
+    public RobotGuard(Vector2 startWorldPosition, float movementSpeed, Array<Vector2> patrolWorldPositions, Player targetPlayer) {
+        super(startWorldPosition, movementSpeed, new PatrolBehavior(patrolWorldPositions), targetPlayer);
 
         this.patrolBehavior = (PatrolBehavior) activeBehavior;
 

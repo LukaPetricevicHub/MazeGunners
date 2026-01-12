@@ -24,10 +24,7 @@ public class MutantWorker extends Enemy {
             Player targetPlayer
     ) {
         super(startWorldPosition, movementSpeed, new ChaseBehavior(), targetPlayer);
-
-        // MutantWorker is very aggressive
         this.chaseRadius = 250f;
-
         loadWalkAnimation();
     }
 
@@ -63,9 +60,10 @@ public class MutantWorker extends Enemy {
         return new ChaseBehavior();
     }
 
+
+    // Never stop chasing your dreams, who's going to carry the boats
     @Override
     protected BehaviorState createDefaultBehavior() {
-        // MutantWorker never stops chasing
         return new ChaseBehavior();
     }
 

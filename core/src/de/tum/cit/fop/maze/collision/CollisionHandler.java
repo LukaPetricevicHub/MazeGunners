@@ -9,10 +9,12 @@ public class CollisionHandler {
     private final Rectangle bounds;
     private final float inset;
 
+
     public CollisionHandler(Rectangle bounds, float inset) {
         this.bounds = bounds;
         this.inset = inset;
     }
+
 
     public void move(Vector2 position, Vector2 velocity, float deltaTime, Maze maze) {
 
@@ -21,15 +23,15 @@ public class CollisionHandler {
 
         Vector2 step = velocity.cpy().scl(deltaTime);
 
-        // X axis
-        if (step.x != 0f) {
+
+        if(step.x != 0f) {
             Vector2 nextX = new Vector2(position.x + step.x, position.y);
-            if (!hitsWall(nextX, maze)) {
+            if (!hitsWall(nextX, maze))
                 position.x += step.x;
-            }
+
         }
 
-        // Y axis
+
         if (step.y != 0f) {
             Vector2 nextY = new Vector2(position.x, position.y + step.y);
             if (!hitsWall(nextY, maze)) {

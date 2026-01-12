@@ -17,11 +17,9 @@ public class MazeGenerator {
     public Maze generate(int logicalW, int logicalH, int tileSize, long seed) {
         Random rng = new Random(seed);
 
-        // --- 1) Ensure odd dimensions for a proper maze grid ---
         int baseW = makeOdd(Math.max(5, logicalW));
         int baseH = makeOdd(Math.max(5, logicalH));
 
-        // Base maze tiles (WALL everywhere initially)
         Tiles[][] base = new Tiles[baseW][baseH];
         for (int x = 0; x < baseW; x++) {
             for (int y = 0; y < baseH; y++) {
@@ -29,20 +27,17 @@ public class MazeGenerator {
             }
         }
 
-        // Cells exist at odd coordinates: (1,1), (3,1), ...
         int cellW = (baseW - 1) / 2;
         int cellH = (baseH - 1) / 2;
 
         boolean[][] visited = new boolean[cellW][cellH];
 
-        // --- 2) Hunt & Kill ---
         int cx = rng.nextInt(cellW);
         int cy = rng.nextInt(cellH);
         carveCell(base, cx, cy);
         visited[cx][cy] = true;
 
         while (true) {
-            // KILL phase: random walk until dead end
             boolean moved = true;
             while (moved) {
                 moved = false;
@@ -55,7 +50,6 @@ public class MazeGenerator {
                     if (nx < 0 || ny < 0 || nx >= cellW || ny >= cellH) continue;
                     if (visited[nx][ny]) continue;
 
-                    // carve passage between (cx,cy) and (nx,ny)
                     carvePassage(base, cx, cy, nx, ny);
                     visited[nx][ny] = true;
 
@@ -66,14 +60,13 @@ public class MazeGenerator {
                 }
             }
 
-            // HUNT phase: find an unvisited cell that has a visited neighbor
+
             Point hunt = huntNext(visited, rng);
             if (hunt == null) break; // done
 
             cx = hunt.x;
             cy = hunt.y;
 
-            // connect hunted cell to a visited neighbor
             List<Point> visitedNeighbors = new ArrayList<>();
             if (cx > 0 && visited[cx - 1][cy]) visitedNeighbors.add(new Point(cx - 1, cy));
             if (cx < cellW - 1 && visited[cx + 1][cy]) visitedNeighbors.add(new Point(cx + 1, cy));
@@ -87,16 +80,13 @@ public class MazeGenerator {
             visited[cx][cy] = true;
         }
 
-        // --- 3) Build final Maze (optionally scaled by CELL) ---
         Maze maze = buildScaledMaze(base, tileSize);
 
-        // --- 4) Place ENTRY/EXIT/KEY robustly ---
         placeEntryExitKey(maze, rng);
 
         return maze;
     }
 
-    // -------------------- internals --------------------
 
     private int makeOdd(int v) {
         return (v % 2 == 0) ? v - 1 : v;
@@ -138,7 +128,7 @@ public class MazeGenerator {
         int w = visited.length;
         int h = visited[0].length;
 
-        // random scan start so it doesn't look patterned
+
         int startX = rng.nextInt(w);
         int startY = rng.nextInt(h);
 
@@ -192,7 +182,6 @@ public class MazeGenerator {
             }
         }
         if (floors.size() < 10) {
-            // extremely unlikely with hunt & kill, but just in case
             maze.setTile(1, 1, Tiles.ENTRY);
             maze.setTile(maze.getWidth() - 2, maze.getHeight() - 2, Tiles.EXIT);
             maze.setTile(2, 1, Tiles.KEY);
@@ -204,7 +193,6 @@ public class MazeGenerator {
 
         Point exit = farthestPoint(component, entry);
 
-        // key somewhere “not too close” to entry
         component.sort((a, b) -> Integer.compare(MazeUtils.dist2(b, entry), MazeUtils.dist2(a, entry)));
         Point key = component.get(rng.nextInt(Math.min(component.size(), 200)));
 

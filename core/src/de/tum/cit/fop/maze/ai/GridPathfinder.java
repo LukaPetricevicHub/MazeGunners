@@ -7,31 +7,19 @@ import java.util.*;
 
 public class GridPathfinder {
 
-    // 4-way movement
     private static final int[][] CARDINAL_DIRS = {
             {0, 1}, {0, -1}, {1, 0}, {-1, 0}
     };
 
-    /**
-     * Finds a walkable tile path from startTile to goalTile using A*.
-     *
-     * @return a list of tiles to move to (excluding the start tile).
-     *         Returns empty list if no path exists or start == goal.
-     */
-    public static List<Point> findTilePath(
-            Maze maze,
-            Point startTile,
-            Point goalTile
-    ) {
-        if (startTile == null || goalTile == null)
+
+    public static List<Point> findTilePath(Maze maze, Point startTile, Point goalTile) {
+        if(startTile == null || goalTile == null)
             return Collections.emptyList();
 
-        if (!maze.inBounds(startTile.x, startTile.y)
-                || !maze.inBounds(goalTile.x, goalTile.y))
+        if (!maze.inBounds(startTile.x, startTile.y) || !maze.inBounds(goalTile.x, goalTile.y))
             return Collections.emptyList();
 
-        if (!maze.getTile(startTile.x, startTile.y).isWalkable()
-                || !maze.getTile(goalTile.x, goalTile.y).isWalkable())
+        if (!maze.getTile(startTile.x, startTile.y).isWalkable() || !maze.getTile(goalTile.x, goalTile.y).isWalkable())
             return Collections.emptyList();
 
         if (startTile.equals(goalTile))
@@ -50,7 +38,7 @@ public class GridPathfinder {
         while (!open.isEmpty()) {
             PathNode current = open.poll();
 
-            if (closed.contains(current.pos))
+            if(closed.contains(current.pos))
                 continue;
 
             if (current.pos.equals(goalTile)) {
@@ -98,9 +86,6 @@ public class GridPathfinder {
         return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
     }
 
-    /**
-     * Builds path excluding the start tile.
-     */
     private static List<Point> reconstructPath(
             Map<Point, Point> parents,
             Point goal
@@ -127,11 +112,9 @@ public class GridPathfinder {
     }
 
     private static boolean isTileWalkableForEnemy(Maze maze, int x, int y) {
-        // Must itself be walkable
         if (!maze.getTile(x, y).isWalkable())
             return false;
 
-        // Disallow tiles adjacent to walls (clearance = 1 tile)
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
                 int nx = x + dx;
@@ -148,4 +131,3 @@ public class GridPathfinder {
     }
 
 }
-

@@ -76,7 +76,8 @@ public class EnemySpawner {
         return enemies;
     }
 
-    // Ensures the full enemy body fits inside walkable tiles
+
+    // Ensure the full enemy body fits inside walkable tiles
     private boolean canSpawnEnemyAt(float x, float y, Maze maze) {
         float inset = 2f;
 
@@ -91,7 +92,7 @@ public class EnemySpawner {
                 && !maze.isWallWorld(right, top);
     }
 
-    // unchanged
+
     private Array<Vector2> generatePatrolPath(Maze maze, Point startCell) {
         Array<Vector2> patrolPoints = new Array<>();
         float ts = maze.getTileSize();

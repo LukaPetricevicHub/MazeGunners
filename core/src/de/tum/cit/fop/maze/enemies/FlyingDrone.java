@@ -22,24 +22,12 @@ public class FlyingDrone extends Enemy {
 
 
     // Constructor
-    public FlyingDrone(
-            Vector2 startWorldPosition,
-            float movementSpeed,
-            Array<Vector2> patrolWorldPositions,
-            Player targetPlayer
-    ) {
-        super(
-                startWorldPosition,
-                movementSpeed,
-                new PatrolBehavior(patrolWorldPositions),
-                targetPlayer
-        );
+    public FlyingDrone(Vector2 startWorldPosition, float movementSpeed, Array<Vector2> patrolWorldPositions, Player targetPlayer) {
+        super(startWorldPosition, movementSpeed, new PatrolBehavior(patrolWorldPositions), targetPlayer);
 
         this.patrolBehavior = (PatrolBehavior) activeBehavior;
 
-        // Detection radius for chase
         this.chaseRadius = 180f;
-
         loadFlyingAnimation();
     }
 
