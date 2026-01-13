@@ -107,6 +107,8 @@ public abstract class Enemy {
         return new Vector2(0f, 0f);
     }
 
+
+    // Getters
     public Vector2 getPosition() { return worldPosition; }
     public float getSpeed() { return movementSpeed; }
     public Rectangle getCollisionBox() { return collisionBounds; }
