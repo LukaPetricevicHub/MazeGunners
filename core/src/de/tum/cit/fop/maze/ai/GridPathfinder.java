@@ -1,109 +1,133 @@
 package de.tum.cit.fop.maze.ai;
 
-import de.tum.cit.fop.maze.level.Maze;
-import de.tum.cit.fop.maze.level.Tiles;
+import de.tum.cit.fop.maze.map.Maze;
 
 import java.awt.Point;
 import java.util.*;
 
 public class GridPathfinder {
 
+    private static final int[][] CARDINAL_DIRS = {
+            {0, 1}, {0, -1}, {1, 0}, {-1, 0}
+    };
 
-    // Movement offsets
-    private static final int[][] cardinalDirections= {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
 
-
-    // Find walkable path between two tile positions
     public static List<Point> findTilePath(Maze maze, Point startTile, Point goalTile) {
-
-        if(startTile.equals(goalTile))
+        if(startTile == null || goalTile == null)
             return Collections.emptyList();
 
+        if (!maze.inBounds(startTile.x, startTile.y) || !maze.inBounds(goalTile.x, goalTile.y))
+            return Collections.emptyList();
 
-        PriorityQueue<PathNode> openNodes =
-                new PriorityQueue<>(Comparator.comparingInt(n -> n.estimatedTotalCost));
+        if (!maze.getTile(startTile.x, startTile.y).isWalkable() || !maze.getTile(goalTile.x, goalTile.y).isWalkable())
+            return Collections.emptyList();
 
-        Map<Point, Point> parentByNode = new HashMap<>();
-        Map<Point, Integer> costFromStart = new HashMap<>();
-        Set<Point> closedNodes = new HashSet<>();
+        if (startTile.equals(goalTile))
+            return Collections.emptyList();
 
+        PriorityQueue<PathNode> open =
+                new PriorityQueue<>(Comparator.comparingInt(n -> n.fCost));
 
-        costFromStart.put(startTile, 0);
-        openNodes.add(new PathNode(startTile, estimateCostToGoal(startTile, goalTile)));
+        Map<Point, Point> cameFrom = new HashMap<>();
+        Map<Point, Integer> gCost = new HashMap<>();
+        Set<Point> closed = new HashSet<>();
 
-        while (!openNodes.isEmpty()) {
-            PathNode currentNode = openNodes.poll();
+        gCost.put(startTile, 0);
+        open.add(new PathNode(startTile, heuristic(startTile, goalTile)));
 
-            if (closedNodes.contains(currentNode.tilePosition))
+        while (!open.isEmpty()) {
+            PathNode current = open.poll();
+
+            if(closed.contains(current.pos))
                 continue;
 
-            closedNodes.add(currentNode.tilePosition);
-
-
-            if (currentNode.tilePosition.equals(goalTile)) {
-                return buildPathFromParents(parentByNode, goalTile);
+            if (current.pos.equals(goalTile)) {
+                return reconstructPath(cameFrom, goalTile);
             }
 
-            for (int[] direction : cardinalDirections) {
-                Point neighborTile = new Point(
-                        currentNode.tilePosition.x + direction[0],
-                        currentNode.tilePosition.y + direction[1]
-                );
+            closed.add(current.pos);
 
-                if (closedNodes.contains(neighborTile))
+            int baseCost = gCost.get(current.pos);
+
+            for (int[] d : CARDINAL_DIRS) {
+                int nx = current.pos.x + d[0];
+                int ny = current.pos.y + d[1];
+
+                if (!maze.inBounds(nx, ny))
                     continue;
 
-
-                if (neighborTile.x < 0 || neighborTile.x >= maze.getWidth() || neighborTile.y < 0 || neighborTile.y >= maze.getHeight() || !maze.getTile(neighborTile.x, neighborTile.y).isWalkable()) {
+                if (!isTileWalkableForEnemy(maze, nx, ny))
                     continue;
-                }
 
-                int newCostFromStart = costFromStart.getOrDefault(currentNode.tilePosition, Integer.MAX_VALUE) + 1;
+                Point neighbor = new Point(nx, ny);
+                if (closed.contains(neighbor))
+                    continue;
 
-                if (newCostFromStart < costFromStart.getOrDefault(neighborTile, Integer.MAX_VALUE)) {
-                    parentByNode.put(neighborTile, currentNode.tilePosition);
-                    costFromStart.put(neighborTile, newCostFromStart);
+                int newCost = baseCost + 1;
+                int oldCost = gCost.getOrDefault(neighbor, Integer.MAX_VALUE);
 
-                    int estimatedTotalCost = newCostFromStart + estimateCostToGoal(neighborTile, goalTile);
-                    openNodes.add(new PathNode(neighborTile, estimatedTotalCost));
+                if (newCost < oldCost) {
+                    cameFrom.put(neighbor, current.pos);
+                    gCost.put(neighbor, newCost);
+                    open.add(new PathNode(
+                            neighbor,
+                            newCost + heuristic(neighbor, goalTile)
+                    ));
                 }
             }
+
         }
 
-        return null;
+        return Collections.emptyList();
     }
 
-
-    // Estimate remaining distance
-    private static int estimateCostToGoal(Point from, Point to) {
-        return Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
+    // Manhattan distance
+    private static int heuristic(Point a, Point b) {
+        return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
     }
 
-
-    // Reconstruct path
-    private static List<Point> buildPathFromParents(
-            Map<Point, Point> parentByNode, Point goal) {
-
+    private static List<Point> reconstructPath(
+            Map<Point, Point> parents,
+            Point goal
+    ) {
         List<Point> path = new ArrayList<>();
-        Point curr = goal;
+        Point current = goal;
 
-        while (parentByNode.containsKey(curr)) {
-            path.add(0, curr);
-            curr = parentByNode.get(curr);
+        while (parents.containsKey(current)) {
+            path.add(0, current);
+            current = parents.get(current);
         }
-
         return path;
     }
 
+    // Internal node
+    private static final class PathNode {
+        final Point pos;
+        final int fCost;
 
-    // Internal A* node storing
-    private static class PathNode {
-        final Point tilePosition;
-        final int estimatedTotalCost;
-
-        PathNode(Point tilePosition, int estimatedTotalCost) {
-            this.tilePosition = tilePosition;
-            this.estimatedTotalCost = estimatedTotalCost;
+        PathNode(Point pos, int fCost) {
+            this.pos = pos;
+            this.fCost = fCost;
         }
     }
+
+    private static boolean isTileWalkableForEnemy(Maze maze, int x, int y) {
+        if (!maze.getTile(x, y).isWalkable())
+            return false;
+
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                int nx = x + dx;
+                int ny = y + dy;
+
+                if (!maze.inBounds(nx, ny))
+                    return false;
+
+                if (maze.getTile(nx, ny).isWall())
+                    return false;
+            }
+        }
+        return true;
+    }
+
 }

@@ -5,6 +5,7 @@ import com.badlogic.gdx.math.Vector2;
 
 public abstract class Obstacle {
 
+
     // Attributes
     protected Vector2 worldPosition;
     protected Rectangle collisionBounds;
@@ -27,13 +28,13 @@ public abstract class Obstacle {
     }
 
 
-    // Check collision with player bounds
+    // Intersect Player bounds
     public boolean intersectsPlayer(Rectangle playerBounds) {
         return collisionBounds.overlaps(playerBounds);
     }
 
 
-    // Determine whether obstacle triggers this frame
+    // Try activating trap
     public boolean tryActivate(Rectangle playerBounds) {
         boolean isPlayerInside = intersectsPlayer(playerBounds);
 
@@ -47,34 +48,28 @@ public abstract class Obstacle {
     }
 
 
-    // Return damage dealt on activation
+    public void onActivate() {}
+
     public int getDamageToPlayer() {
         return damageToPlayer;
     }
 
-
-    // Start cooldown timer
     public void startCooldown() {
         cooldownTimer = activationCooldown;
     }
 
-
-    // Update cooldown timer each frame
     public void updateCooldown(float deltaTime) {
         if (cooldownTimer > 0f) {
             cooldownTimer -= deltaTime;
         }
     }
 
-
-    // Return collision bounds
     public Rectangle getCollisionBox() {
         return collisionBounds;
     }
 
-
-    // Return whether obstacle is active
     public boolean isActive() {
         return isActive;
     }
 }
+

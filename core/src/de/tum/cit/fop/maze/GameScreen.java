@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -25,7 +26,7 @@ import de.tum.cit.fop.maze.enemies.FlyingDrone;
 import de.tum.cit.fop.maze.enemies.MutantWorker;
 import de.tum.cit.fop.maze.enemies.RobotGuard;
 import de.tum.cit.fop.maze.hud.Hud;
-import de.tum.cit.fop.maze.level.*;
+import de.tum.cit.fop.maze.map.*;
 import de.tum.cit.fop.maze.obstacles.Obstacle;
 import de.tum.cit.fop.maze.obstacles.SpikeTrap;
 import de.tum.cit.fop.maze.player.Player;
@@ -68,7 +69,7 @@ public class GameScreen implements Screen {
     private CombatSystem combatSystem;
 
     //Constants
-    private static final int TILE_SIZE = 16;
+    private static final int TILE_SIZE = 32;
     private static final float PLAYER_WIDTH = 32f;
     private static final float PLAYER_HEIGHT = 64f;
 
@@ -122,11 +123,11 @@ public class GameScreen implements Screen {
             }
 
             // Combat
-            combatSystem.update(delta, player, maze, enemies, obstacles);
+            combatSystem.update(delta, player, maze, enemies, obstacles, gameCamera);
 
             // HUD Data & Camera
             hud.update(player);
-            gameCamera.follow(player.getX() + PLAYER_WIDTH / 2f, player.getY() + PLAYER_HEIGHT / 2f, 0.1f);
+            gameCamera.follow(player.getX() + PLAYER_WIDTH / 2f, player.getY() + PLAYER_HEIGHT / 2f, delta);
         }
 
         // 3. RENDER WORLD
@@ -217,7 +218,7 @@ public class GameScreen implements Screen {
     private void initializeEnemiesAndObstacles(long seed) {
         obstacles = new ObstaclePlacer().placeObstacles(maze, 40, seed);
 
-        enemies = new EnemySpawner().spawnEnemies(maze, player, 20, seed);
+        enemies = new EnemySpawner().spawnEnemies(maze, player, 200, seed);
     }
     private void initializeEvents() {
         Rectangle trigger = new Rectangle(50 * TILE_SIZE, 50 * TILE_SIZE, 5 * TILE_SIZE, 5 * TILE_SIZE);
@@ -245,8 +246,20 @@ public class GameScreen implements Screen {
         game.getAudioManager().playBackgroundMusic(musicFile);
     }
     private void initializeMaze(long seed) {
-        // Using the constant TILE_SIZE we added earlier
-        maze = new MazeGenerator(3).generate(50, 50, TILE_SIZE, seed);
+        MazeLoader loader = new MazeLoader();
+
+        FileHandle template = Gdx.files.internal("maps/level-" + level + ".properties");
+        MazeLoader.LevelSpec spec = loader.loadFromProperties(template);
+
+        MazeGenerator gen = new MazeGenerator();
+        Maze generated = gen.generate(spec, TILE_SIZE, seed, level);
+
+        Gdx.files.local("maps").mkdirs();
+        FileHandle out = Gdx.files.local("maps/level-" + level + ".properties");
+        MazeExporter.saveToProperties(generated, out);
+
+        MazeLoader.LevelSpec spec2 = loader.loadFromProperties(out);
+        maze = loader.buildMaze(spec2, TILE_SIZE);
     }
     private void initializeGraphics() {
         gameCamera = new GameCamera(

@@ -6,7 +6,7 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import de.tum.cit.fop.maze.MazeRunnerGame;
-import de.tum.cit.fop.maze.level.Maze;
+import de.tum.cit.fop.maze.map.Maze;
 
 public class Player {
 
@@ -14,7 +14,7 @@ public class Player {
     private float x;
     private float y;
 
-    private int lives = 5;
+    private int lives = 100;
     private boolean hasKey = false;
 
     private boolean invulnerable = false;
@@ -25,6 +25,8 @@ public class Player {
 
     private static final float WALK_SPEED = 220f;
     private static final float RUN_MULTIPLIER = 1.7f;
+
+    private float speedMultiplier = 1f;
 
     private static final float WIDTH = 32f;
     private static final float HEIGHT = 64f;
@@ -54,29 +56,29 @@ public class Player {
     }
 
 
+
     // Timers & State
     private void updateTimers(float dt) {
         if (invulnerable) {
             invulnTimeLeft -= dt;
             if (invulnTimeLeft <= 0f)
                 invulnerable = false;
-
         }
 
         if (damageFlash) {
             flashTimeLeft -= dt;
             if (flashTimeLeft <= 0f)
                 damageFlash = false;
-
         }
     }
 
 
     // Keyboard input
     private MovementInput readMovementInput(float dt) {
-        boolean run = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
+        boolean run = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT)
+                || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
 
-        float speed = WALK_SPEED * (run ? RUN_MULTIPLIER : 1f);
+        float speed = WALK_SPEED * (run ? RUN_MULTIPLIER : 1f) * speedMultiplier;
         float move = speed * dt;
 
         float dx = 0f;
@@ -114,7 +116,6 @@ public class Player {
                 y = nextY;
             else
                 hitWallY = true;
-
         }
 
         if (hitWallX || hitWallY) {
@@ -158,6 +159,15 @@ public class Player {
 
     public void giveKey() {
         hasKey = true;
+    }
+
+
+    public void setSpeedMultiplier(float multiplier) {
+        speedMultiplier = multiplier;
+    }
+
+    public void resetSpeedMultiplier() {
+        speedMultiplier = 1f;
     }
 
 

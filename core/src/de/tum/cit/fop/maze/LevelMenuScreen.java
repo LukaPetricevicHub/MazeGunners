@@ -18,12 +18,10 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
  */
 public class LevelMenuScreen implements Screen {
 
-    private final MazeRunnerGame game;
     private final Stage stage;
     private final Skin skin;
 
     public LevelMenuScreen(MazeRunnerGame game) {
-        this.game = game;
         this.stage = new Stage(new ScreenViewport(), game.getSpriteBatch());
         this.skin = game.getSkin();
 

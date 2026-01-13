@@ -5,9 +5,10 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import de.tum.cit.fop.maze.behavior.BehaviorState;
 import de.tum.cit.fop.maze.behavior.EvadeBehavior;
 import de.tum.cit.fop.maze.behavior.PatrolBehavior;
-import de.tum.cit.fop.maze.level.Maze;
+import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
 public class RobotGuard extends Enemy {
@@ -24,35 +25,13 @@ public class RobotGuard extends Enemy {
 
 
     // Constructor
-    public RobotGuard(
-            Vector2 startWorldPosition,
-            float movementSpeed,
-            Array<Vector2> patrolWorldPositions,
-            Player targetPlayer
-    ) {
-        this(
-                startWorldPosition,
-                movementSpeed,
-                new PatrolBehavior(patrolWorldPositions),
-                targetPlayer
-        );
-    }
+    public RobotGuard(Vector2 startWorldPosition, float movementSpeed, Array<Vector2> patrolWorldPositions, Player targetPlayer) {
+        super(startWorldPosition, movementSpeed, new PatrolBehavior(patrolWorldPositions), targetPlayer);
 
-    // Private chaining constructor
-    private RobotGuard(
-            Vector2 startWorldPosition,
-            float movementSpeed,
-            PatrolBehavior patrolBehavior,
-            Player targetPlayer
-    ) {
-        super(
-                startWorldPosition,
-                movementSpeed,
-                patrolBehavior,
-                targetPlayer
-        );
+        this.patrolBehavior = (PatrolBehavior) activeBehavior;
 
-        this.patrolBehavior = patrolBehavior;
+        // Disable chase entirely
+        this.chaseRadius = 0f;
 
         loadWalkAnimation();
     }
@@ -84,7 +63,17 @@ public class RobotGuard extends Enemy {
     }
 
 
-    // Update animation and behavior
+    @Override
+    protected BehaviorState createChaseBehavior() {
+        return patrolBehavior;
+    }
+
+    @Override
+    protected BehaviorState createDefaultBehavior() {
+        return patrolBehavior;
+    }
+
+
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
         animationTime += deltaTime;
@@ -95,12 +84,10 @@ public class RobotGuard extends Enemy {
         );
 
         if (dist < EVADE_DISTANCE) {
-            activeBehavior = evadeBehavior;
+            evadeBehavior.execute(this, deltaTime, maze);
         } else {
-            activeBehavior = patrolBehavior;
+            patrolBehavior.execute(this, deltaTime, maze);
         }
-
-        activeBehavior.execute(this, deltaTime, maze);
     }
 
 
@@ -109,4 +96,5 @@ public class RobotGuard extends Enemy {
         return walkAnimation.getKeyFrame(animationTime, true);
     }
 }
+
 

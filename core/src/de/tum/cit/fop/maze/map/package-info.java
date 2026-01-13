@@ -13,4 +13,4 @@
  * Member: Level & Maze module (Antonio)
  */
 
-package de.tum.cit.fop.maze.level;
+package de.tum.cit.fop.maze.map;

@@ -1,14 +1,14 @@
 package de.tum.cit.fop.maze.collision;
 
-
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
-import de.tum.cit.fop.maze.level.Maze;
+import de.tum.cit.fop.maze.map.Maze;
 
 public class CollisionHandler {
 
     private final Rectangle bounds;
     private final float inset;
+
 
     public CollisionHandler(Rectangle bounds, float inset) {
         this.bounds = bounds;
@@ -17,31 +17,37 @@ public class CollisionHandler {
 
 
     public void move(Vector2 position, Vector2 velocity, float deltaTime, Maze maze) {
-        if (velocity.isZero()) return;
+
+        if (velocity.isZero())
+            return;
 
         Vector2 step = velocity.cpy().scl(deltaTime);
 
 
-        float dx = step.x;
-        float dy = step.y;
+        if(step.x != 0f) {
+            Vector2 nextX = new Vector2(position.x + step.x, position.y);
+            if (!hitsWall(nextX, maze))
+                position.x += step.x;
 
-        if (!hitsWall(position.x + dx, position.y, maze)) {
-            position.x += dx;
         }
 
 
-        if (!hitsWall(position.x, position.y + dy, maze)) {
-            position.y += dy;
+        if (step.y != 0f) {
+            Vector2 nextY = new Vector2(position.x, position.y + step.y);
+            if (!hitsWall(nextY, maze)) {
+                position.y += step.y;
+            }
         }
 
         bounds.setPosition(position.x, position.y);
     }
 
-    private boolean hitsWall(float x, float y, Maze maze) {
-        float left   = x + inset;
-        float right  = x + bounds.width - inset;
-        float bottom = y + inset;
-        float top    = y + bounds.height - inset;
+    private boolean hitsWall(Vector2 pos, Maze maze) {
+
+        float left   = pos.x + inset;
+        float right  = pos.x + bounds.width  - inset;
+        float bottom = pos.y + inset;
+        float top    = pos.y + bounds.height - inset;
 
         return maze.isWallWorld(left, bottom)
                 || maze.isWallWorld(right, bottom)
@@ -49,4 +55,5 @@ public class CollisionHandler {
                 || maze.isWallWorld(right, top);
     }
 }
+
 

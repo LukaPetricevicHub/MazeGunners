@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.level;
+package de.tum.cit.fop.maze.map;
 
 import com.badlogic.gdx.math.Rectangle;
 import de.tum.cit.fop.maze.util.GridUtils;
@@ -12,7 +12,6 @@ public class Maze {
     private final int width;
     private final int height;
     private final int tileSize;
-
     private final Tiles[][] grid;
 
     private Point entryCell;
@@ -25,19 +24,14 @@ public class Maze {
         this.tileSize = tileSize;
 
         grid = new Tiles[width][height];
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                grid[x][y] = Tiles.FLOOR;
-            }
-        }
+        for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++)
+                grid[x][y] = Tiles.WALL;
     }
 
     public int getWidth() { return width; }
     public int getHeight() { return height; }
     public int getTileSize() { return tileSize; }
-
-    public int worldWidth() { return width * tileSize; }
-    public int worldHeight() { return height * tileSize; }
 
     public boolean inBounds(int x, int y) {
         return GridUtils.inBounds(x, y, width, height);
@@ -49,11 +43,27 @@ public class Maze {
     }
 
     public void setTile(int x, int y, Tiles tile) {
-        if (!inBounds(x, y)) return;
+        if (!inBounds(x, y) || tile == null) return;
+
+        Tiles old = grid[x][y];
+
+        // Remove old special state
+        if (old == Tiles.SPAWN && entryCell != null &&
+                entryCell.x == x && entryCell.y == y) {
+            entryCell = null;
+        }
+
+        if (old == Tiles.EXIT) {
+            exitCells.removeIf(p -> p.x == x && p.y == y);
+            if (exitCell != null && exitCell.x == x && exitCell.y == y) {
+                exitCell = exitCells.isEmpty() ? null : new Point(exitCells.get(0));
+            }
+        }
 
         grid[x][y] = tile;
 
-        if (tile == Tiles.ENTRY) {
+        // Add new special state
+        if (tile == Tiles.SPAWN) {
             entryCell = new Point(x, y);
         } else if (tile == Tiles.EXIT) {
             exitCell = new Point(x, y);
@@ -94,5 +104,16 @@ public class Maze {
     public boolean isBlockedExit(int x, int y, boolean hasKey) {
         return getTile(x, y) == Tiles.EXIT && !hasKey;
     }
-}
 
+    // Explicit setters (useful when generator wants to clear tracked cells)
+    public void setEntryCell(Point p) {
+        entryCell = (p == null) ? null : new Point(p);
+    }
+
+    public void setExitCell(Point p) {
+        exitCell = (p == null) ? null : new Point(p);
+        if (p == null) {
+            exitCells.clear();
+        }
+    }
+}

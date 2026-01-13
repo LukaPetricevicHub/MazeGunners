@@ -1,8 +1,8 @@
 package de.tum.cit.fop.maze.world;
 
 import com.badlogic.gdx.math.Rectangle;
-import de.tum.cit.fop.maze.level.Maze;
-import de.tum.cit.fop.maze.level.Tiles;
+import de.tum.cit.fop.maze.map.Maze;
+import de.tum.cit.fop.maze.map.Tiles;
 
 import java.awt.Point;
 import java.util.List;

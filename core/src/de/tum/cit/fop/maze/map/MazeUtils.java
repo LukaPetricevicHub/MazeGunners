@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.level;
+package de.tum.cit.fop.maze.map;
 
 import java.awt.Point;
 import java.util.ArrayDeque;
