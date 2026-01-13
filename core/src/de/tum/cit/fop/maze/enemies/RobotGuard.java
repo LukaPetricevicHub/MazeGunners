@@ -8,7 +8,7 @@ import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.behavior.BehaviorState;
 import de.tum.cit.fop.maze.behavior.EvadeBehavior;
 import de.tum.cit.fop.maze.behavior.PatrolBehavior;
-import de.tum.cit.fop.maze.level.Maze;
+import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
 public class RobotGuard extends Enemy {

@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.level;
+package de.tum.cit.fop.maze.map;
 
 import com.badlogic.gdx.files.FileHandle;
 
@@ -31,9 +31,7 @@ public class MazeLoader {
             int height = Integer.parseInt(props.getProperty("Height", "0"));
 
             Map<Point, Integer> overrides = new HashMap<>();
-
-            int maxX = -1;
-            int maxY = -1;
+            int maxX = -1, maxY = -1;
 
             for (String key : props.stringPropertyNames()) {
                 if (key.equalsIgnoreCase("Width") || key.equalsIgnoreCase("Height")) continue;
@@ -53,37 +51,17 @@ public class MazeLoader {
             if (width <= 0) width = maxX + 1;
             if (height <= 0) height = maxY + 1;
 
-            if (width <= 0 || height <= 0) {
-                throw new IllegalArgumentException("Invalid maze size in " + file.path());
-            }
-
             return new LevelSpec(width, height, overrides);
-
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load " + file.path(), e);
+            throw new RuntimeException(e);
         }
     }
-
-
 
     public Maze buildMaze(LevelSpec spec, int tileSize) {
         Maze maze = new Maze(spec.width, spec.height, tileSize);
 
         for (var e : spec.overrides.entrySet()) {
-            Point p = e.getKey();
-            int v = e.getValue();
-
-            Tiles t = switch (v) {
-                case 0 -> Tiles.WALL;
-                case 1 -> Tiles.ENTRY;
-                case 2 -> Tiles.EXIT;
-                case 3 -> Tiles.TRAP;
-                case 4 -> Tiles.ENEMY;
-                case 5 -> Tiles.KEY;
-                default -> Tiles.FLOOR;
-            };
-
-            maze.setTile(p.x, p.y, t);
+            maze.setTile(e.getKey().x, e.getKey().y, fromFileId(e.getValue()));
         }
         return maze;
     }
@@ -91,10 +69,10 @@ public class MazeLoader {
     private Tiles fromFileId(int id) {
         return switch (id) {
             case 0 -> Tiles.WALL;
-            case 1 -> Tiles.ENTRY;
-            case 2 -> Tiles.EXIT;
-            case 3 -> Tiles.TRAP;
-            case 4 -> Tiles.ENEMY;
+            case 1 -> Tiles.FLOOR;
+            case 2 -> Tiles.FLOOR;
+            case 3 -> Tiles.SPAWN;
+            case 4 -> Tiles.EXIT;
             case 5 -> Tiles.KEY;
             default -> Tiles.FLOOR;
         };

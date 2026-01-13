@@ -2,7 +2,7 @@ package de.tum.cit.fop.maze.behavior;
 
 import com.badlogic.gdx.math.Vector2;
 import de.tum.cit.fop.maze.enemies.Enemy;
-import de.tum.cit.fop.maze.level.Maze;
+import de.tum.cit.fop.maze.map.Maze;
 
 public class ChaseBehavior implements BehaviorState {
 

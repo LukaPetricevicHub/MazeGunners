@@ -1,6 +1,6 @@
 package de.tum.cit.fop.maze.ai;
 
-import de.tum.cit.fop.maze.level.Maze;
+import de.tum.cit.fop.maze.map.Maze;
 
 import java.awt.Point;
 import java.util.*;

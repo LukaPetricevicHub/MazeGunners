@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.level;
+package de.tum.cit.fop.maze.map;
 
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -7,18 +7,18 @@ public class MazeRenderer {
 
     private final TextureRegion floor;
     private final TextureRegion wall;
-    private final TextureRegion entry;
+    private final TextureRegion spawn;
     private final TextureRegion exit;
-    private final TextureRegion key;   // NEW
+    private final TextureRegion key;
 
     public MazeRenderer(TextureRegion floor,
                         TextureRegion wall,
-                        TextureRegion entry,
+                        TextureRegion spawn,
                         TextureRegion exit,
-                        TextureRegion key) {   // NEW
+                        TextureRegion key) {
         this.floor = floor;
         this.wall = wall;
-        this.entry = entry;
+        this.spawn = spawn;
         this.exit = exit;
         this.key = key;
     }
@@ -26,15 +26,15 @@ public class MazeRenderer {
     public void render(Maze maze, SpriteBatch batch) {
         int ts = maze.getTileSize();
 
-        for (int x = 0; x < maze.getWidth(); x++) {
-            for (int y = 0; y < maze.getHeight(); y++) {
+        for (int y = 0; y < maze.getHeight(); y++) {
+            for (int x = 0; x < maze.getWidth(); x++) {
 
                 TextureRegion tex = switch (maze.getTile(x, y)) {
                     case WALL  -> wall;
-                    case ENTRY -> entry;
+                    case SPAWN -> spawn;
                     case EXIT  -> exit;
-                    case KEY   -> key;    // HERE
-                    default    -> floor;
+                    case KEY   -> key;
+                    default    -> floor; // FLOOR, TRAP, ENEMY, etc.
                 };
 
                 batch.draw(tex, x * ts, y * ts, ts, ts);

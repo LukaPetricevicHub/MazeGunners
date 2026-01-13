@@ -1,7 +1,7 @@
 package de.tum.cit.fop.maze.behavior;
 
 import de.tum.cit.fop.maze.enemies.Enemy;
-import de.tum.cit.fop.maze.level.Maze;
+import de.tum.cit.fop.maze.map.Maze;
 
 public interface BehaviorState {
 

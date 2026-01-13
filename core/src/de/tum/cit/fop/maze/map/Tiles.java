@@ -1,9 +1,9 @@
-package de.tum.cit.fop.maze.level;
+package de.tum.cit.fop.maze.map;
 
 public enum Tiles {
     WALL,
     FLOOR,
-    ENTRY,
+    SPAWN,
     EXIT,
     TRAP,
     ENEMY,
@@ -15,7 +15,7 @@ public enum Tiles {
 
     public boolean isWalkable() {
         return this == FLOOR
-                || this == ENTRY
+                || this == SPAWN
                 || this == EXIT
                 || this == KEY
                 || this == ENEMY;
