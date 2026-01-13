@@ -11,6 +11,8 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.Array;
 import games.spooky.gdx.nativefilechooser.NativeFileChooser;
+import de.tum.cit.fop.maze.util.AudioManager;
+import de.tum.cit.fop.maze.util.GamePreferences;
 
 /**
  * The MazeRunnerGame class represents the core of the Maze Runner game.
@@ -26,6 +28,9 @@ public class MazeRunnerGame extends Game {
 
     // UI Skin
     private Skin skin;
+
+    private AudioManager audioManager;
+    private GamePreferences preferences;
 
     // Character animation downwards
     private Animation<TextureRegion> characterDownAnimation;
@@ -52,6 +57,12 @@ public class MazeRunnerGame extends Game {
     public void create() {
         spriteBatch = new SpriteBatch(); // Create SpriteBatch
         skin = new Skin(Gdx.files.internal("craft/craftacular-ui.json")); // Load UI skin
+
+        preferences = new GamePreferences();
+        audioManager = new AudioManager();
+
+        audioManager.playBackgroundMusic("music/background.mp3");
+
         this.loadCharacterAnimation(); // Load character animation
 
         wallHitSound =Gdx.audio.newSound(Gdx.files.internal("bumpintowall_X5CNQPB.wav"));
@@ -77,6 +88,15 @@ public class MazeRunnerGame extends Game {
      * Switches to the menu screen.
      */
     public void goToMenu() {
+        if (audioManager != null) {
+            audioManager.playBackgroundMusic("music/background.mp3");
+        }
+        this.setScreen(new MenuScreen(this));
+        if (gameScreen != null) {
+            gameScreen.dispose();
+            gameScreen = null;
+        }
+
         this.setScreen(new MenuScreen(this)); // Set the current screen to MenuScreen
         if (gameScreen != null) {
             gameScreen.dispose(); // Dispose the game screen if it exists
@@ -138,6 +158,13 @@ public class MazeRunnerGame extends Game {
         if(wallHitSound != null){
             wallHitSound.dispose();
         }
+        if (audioManager != null) {
+            audioManager.dispose();
+        }
+
+        if(wallHitSound != null){
+            wallHitSound.dispose();
+        }
 
     }
 
@@ -156,6 +183,14 @@ public class MazeRunnerGame extends Game {
 
     public TextureRegion getTile(int row, int col){
         return tiles[row][col];
+    }
+
+    public AudioManager getAudioManager() {
+        return audioManager;
+    }
+
+    public GamePreferences getPreferences() {
+        return preferences;
     }
 
 }

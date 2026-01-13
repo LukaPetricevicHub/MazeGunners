@@ -41,12 +41,33 @@ public class MenuScreen implements Screen {
         table.add(new Label("Hello World from the Menu!", game.getSkin(), "title")).padBottom(80).row();
 
         // Create and add a button to go to the game screen
+        //Play button
         TextButton goToGameButton = new TextButton("Go To Game", game.getSkin());
         table.add(goToGameButton).width(300).row();
         goToGameButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 game.setScreen(new LevelMenuScreen(game)); // Open the level selection menu
+            }
+        });
+
+        //Settings Button
+        TextButton settingsButton = new TextButton("Settings", game.getSkin());
+        table.add(settingsButton).width(300).padBottom(20).row();
+        settingsButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.setScreen(new SettingsScreen(game));
+            }
+        });
+
+        //Exit Button
+        TextButton exitButton = new TextButton("Exit", game.getSkin());
+        table.add(exitButton).width(300).row();
+        exitButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                Gdx.app.exit();
             }
         });
 
