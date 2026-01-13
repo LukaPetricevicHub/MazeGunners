@@ -4,6 +4,7 @@
     <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
     <option name="MAIN_CLASS_NAME" value="de.tum.cit.fop.maze.DesktopLauncher" />
     <module name="fopws2526projectfop-mazegunners.desktop.main" />
+    <option name="VM_PARAMETERS" value="-XstartOnFirstThread" />
     <extension name="coverage">
       <pattern>
         <option name="PATTERN" value="de.tum.cit.ase.maze.*" />

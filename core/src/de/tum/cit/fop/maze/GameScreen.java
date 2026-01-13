@@ -122,13 +122,13 @@
                     }
                 }
             }
-    
+
             // Update the CombatSystem
             if (gameStateController.isRunning()) {
-                combatSystem.update(delta, player, maze, enemies, obstacles);
+                combatSystem.update(delta, player, maze, enemies, obstacles, gameCamera);
             }
-    
-    
+
+
             // Update HUD and camera
             hud.update(player);
             hud.act(delta);

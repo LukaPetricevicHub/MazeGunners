@@ -9,6 +9,9 @@ public class GameCamera {
 
     private float worldWidth;
     private float worldHeight;
+    private float baseZoom = 1f;
+    private float zoomMultiplier = 1f;
+
 
     private static final float FOLLOW_SMOOTHNESS = 8f;
 
@@ -24,6 +27,8 @@ public class GameCamera {
 
         this.worldWidth = worldWidth;
         this.worldHeight = worldHeight;
+        this.baseZoom = camera.zoom;
+
     }
 
     // Smoothly follow player ps
@@ -65,6 +70,19 @@ public class GameCamera {
         camera.zoom = zoom;
         camera.update();
     }
+
+    public void setZoomMultiplier(float multiplier) {
+        zoomMultiplier = multiplier;
+        camera.zoom = baseZoom / zoomMultiplier;
+        camera.update();
+    }
+
+    public void resetZoom() {
+        zoomMultiplier = 1f;
+        camera.zoom = baseZoom;
+        camera.update();
+    }
+
 
     public OrthographicCamera getCamera() {
         return camera;
