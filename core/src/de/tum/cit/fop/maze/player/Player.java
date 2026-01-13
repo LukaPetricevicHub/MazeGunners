@@ -26,6 +26,8 @@ public class Player {
     private static final float WALK_SPEED = 220f;
     private static final float RUN_MULTIPLIER = 1.7f;
 
+    private float speedMultiplier = 1f;
+
     private static final float WIDTH = 32f;
     private static final float HEIGHT = 64f;
 
@@ -61,23 +63,22 @@ public class Player {
             invulnTimeLeft -= dt;
             if (invulnTimeLeft <= 0f)
                 invulnerable = false;
-
         }
 
         if (damageFlash) {
             flashTimeLeft -= dt;
             if (flashTimeLeft <= 0f)
                 damageFlash = false;
-
         }
     }
 
 
     // Keyboard input
     private MovementInput readMovementInput(float dt) {
-        boolean run = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
+        boolean run = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT)
+                || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
 
-        float speed = WALK_SPEED * (run ? RUN_MULTIPLIER : 1f);
+        float speed = WALK_SPEED * (run ? RUN_MULTIPLIER : 1f) * speedMultiplier;
         float move = speed * dt;
 
         float dx = 0f;
@@ -115,7 +116,6 @@ public class Player {
                 y = nextY;
             else
                 hitWallY = true;
-
         }
 
         if (hitWallX || hitWallY) {
@@ -159,6 +159,15 @@ public class Player {
 
     public void giveKey() {
         hasKey = true;
+    }
+
+
+    public void setSpeedMultiplier(float multiplier) {
+        speedMultiplier = multiplier;
+    }
+
+    public void resetSpeedMultiplier() {
+        speedMultiplier = 1f;
     }
 
 
