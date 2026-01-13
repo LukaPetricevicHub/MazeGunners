@@ -5,7 +5,7 @@ import java.util.*;
 
 public class MazeGenerator {
 
-    private static final int MAX_ATTEMPTS = 60;
+    private static final int MAX_ATTEMPTS = 120;
 
     /** Level-tuned parameters */
     private static final class Params {
@@ -13,7 +13,7 @@ public class MazeGenerator {
         final int minRoom;
         final int roomMargin;
         final int hallWidth;   // recommended odd: 1,3,5...
-        final int extraLoops;  // set 0 if you want "tree-like" structure
+        final int extraLoops;  // keep 0 if you don't want loops
 
         Params(int minLeaf, int minRoom, int roomMargin, int hallWidth, int extraLoops) {
             this.minLeaf = minLeaf;
@@ -29,11 +29,11 @@ public class MazeGenerator {
     /** Hardcode settings per level (tune these freely) */
     private Params paramsForLevel(int level) {
         return switch (level) {
-            case 1 -> new Params(14, 6, 1, 3, 0);
+            case 1 -> new Params(22, 10, 1, 3, 0);
             case 2 -> new Params(16, 7, 1, 3, 0);
             case 3 -> new Params(18, 8, 1, 3, 0);
-            case 4 -> new Params(18, 9, 1, 5, 1);
-            case 5 -> new Params(20, 10, 1, 5, 2);
+            case 4 -> new Params(18, 9, 1, 3, 0);
+            case 5 -> new Params(20, 10, 1, 3, 0);
             default -> new Params(16, 7, 1, 3, 0);
         };
     }
@@ -66,21 +66,24 @@ public class MazeGenerator {
             List<Room> rooms = carveRooms(maze, leaves, rng, p.minRoom, p.roomMargin, p.hallRadius());
             if (rooms.size() < 3) continue; // need spawn+exit+key in distinct rooms
 
-            List<Hall> halls = new ArrayList<>();
-            connectTree(root, rng, halls); // BSP connectivity (tree)
+            // Ensure every subtree has a usable anchor (prevents null anchors => no corridors)
+            computeAnchors(root, rng);
 
-            if (p.extraLoops > 0) {
-                addLoops(rooms, rng, halls, p.extraLoops);
-            }
+            List<Hall> halls = new ArrayList<>();
+            connectTree(root, rng, halls); // BSP connectivity (tree, no loops)
+
+            // no loops on purpose (you said you don't want loops)
+            // addLoops(rooms, rng, halls, p.extraLoops);
 
             carveHalls(maze, halls, rng, p.hallRadius());
 
-            // clear any old special tiles (paranoia; also reset tracked cells)
+            // clear any old special tiles
             clearSpecialTiles(maze);
 
             PlaceResult placed = assignSpecialRoomsAndPlaceTiles(maze, rooms, rng);
             if (!placed.ok) continue;
 
+            // reachability test (spawn -> exit)
             if (MazeUtils.reachable(maze, placed.spawn, placed.exit)) {
                 return maze;
             }
@@ -96,7 +99,14 @@ public class MazeGenerator {
         Leaf left, right;
         Room room;
 
-        Leaf(int x, int y, int w, int h) { this.x = x; this.y = y; this.w = w; this.h = h; }
+        // split metadata + anchor point for corridor connections
+        boolean splitHorizontal;
+        int splitPos;     // absolute coordinate of split line (x or y)
+        Point anchor;     // connection point for this subtree
+
+        Leaf(int x, int y, int w, int h) {
+            this.x = x; this.y = y; this.w = w; this.h = h;
+        }
 
         boolean split(Random rng, int minLeaf) {
             boolean canH = h >= minLeaf * 2;
@@ -119,12 +129,16 @@ public class MazeGenerator {
 
             int cut = cutMin + rng.nextInt(cutMax - cutMin + 1);
 
+            splitHorizontal = horiz;
+
             if (horiz) {
                 left  = new Leaf(x, y, w, cut);
                 right = new Leaf(x, y + cut, w, h - cut);
+                splitPos = right.y; // absolute boundary y
             } else {
                 left  = new Leaf(x, y, cut, h);
                 right = new Leaf(x + cut, y, w - cut, h);
+                splitPos = right.x; // absolute boundary x
             }
             return true;
         }
@@ -164,8 +178,9 @@ public class MazeGenerator {
 
         List<Room> rooms = new ArrayList<>();
 
-        // Leave extra buffer so wide halls don't instantly merge rooms
-        int effectiveMargin = roomMargin + hallRadius;
+        // Leave buffer so wide halls don't instantly merge rooms.
+        // Slightly loosen vs +hallRadius to avoid starving room placement on small maps.
+        int effectiveMargin = roomMargin + Math.max(0, hallRadius - 1);
 
         for (Leaf l : leaves) {
             int maxRw = l.w - 2 * effectiveMargin;
@@ -180,6 +195,10 @@ public class MazeGenerator {
 
             Room room = new Room(rx, ry, rw, rh);
             l.room = room;
+
+            // IMPORTANT: room anchor = exactly one "doorway"/connection point inside the room
+            l.anchor = room.randomInterior(rng);
+
             rooms.add(room);
 
             for (int x = rx; x < rx + rw; x++) {
@@ -191,40 +210,82 @@ public class MazeGenerator {
         return rooms;
     }
 
-    // ---------------- halls ----------------
+    /**
+     * Ensures every subtree has an anchor even if some leaves couldn't place rooms.
+     * Without this, connectTree may see null anchors and create no corridors.
+     */
+    private void computeAnchors(Leaf node, Random rng) {
+        if (node == null) return;
 
+        // Leaf: if it has a room, ensure it has an anchor
+        if (node.left == null && node.right == null) {
+            if (node.anchor == null && node.room != null) {
+                node.anchor = node.room.randomInterior(rng);
+            }
+            return;
+        }
+
+        computeAnchors(node.left, rng);
+        computeAnchors(node.right, rng);
+
+        Point la = (node.left != null) ? node.left.anchor : null;
+        Point ra = (node.right != null) ? node.right.anchor : null;
+
+        // If one side has no anchor, borrow from the other side (keeps connectivity)
+        if (la == null && ra != null && node.left != null) node.left.anchor = ra;
+        if (ra == null && la != null && node.right != null) node.right.anchor = la;
+    }
+
+    // ---------------- halls (no loops) ----------------
+
+    /**
+     * Junction-based connection:
+     * - Leaves (rooms) have exactly ONE anchor inside the room.
+     * - Internal nodes connect child anchors to a junction on the split line.
+     * - Branching happens in corridors (junctions), not inside rooms.
+     * This prevents rooms from having multiple corridors.
+     */
     private void connectTree(Leaf node, Random rng, List<Hall> halls) {
-        if (node == null || node.left == null || node.right == null) return;
+        if (node == null) return;
+
+        // leaf: anchor is inside room and should be used once
+        if (node.left == null || node.right == null) return;
 
         connectTree(node.left, rng, halls);
         connectTree(node.right, rng, halls);
 
-        Room a = pickRoom(node.left, rng);
-        Room b = pickRoom(node.right, rng);
-        if (a == null || b == null || a == b) return;
+        Point a = node.left.anchor;
+        Point b = node.right.anchor;
+        if (a == null || b == null) return;
 
-        // Use interior points (less corner/edge weirdness)
-        halls.add(new Hall(a.randomInterior(rng), b.randomInterior(rng)));
+        Point j = pickJunctionOnSplit(node, rng);
+        if (j == null) return;
+
+        halls.add(new Hall(a, j));
+        halls.add(new Hall(j, b));
+
+        // parent will connect to this junction, not into a room
+        node.anchor = j;
     }
 
-    private Room pickRoom(Leaf l, Random rng) {
-        if (l == null) return null;
-        if (l.room != null) return l.room;
+    private Point pickJunctionOnSplit(Leaf node, Random rng) {
+        int x0 = node.x + 1;
+        int x1 = node.x + node.w - 2;
+        int y0 = node.y + 1;
+        int y1 = node.y + node.h - 2;
 
-        Room a = pickRoom(l.left, rng);
-        Room b = pickRoom(l.right, rng);
-        if (a == null) return b;
-        if (b == null) return a;
-        return rng.nextBoolean() ? a : b;
-    }
+        if (x1 < x0 || y1 < y0) return null;
 
-    private void addLoops(List<Room> rooms, Random rng, List<Hall> halls, int extraLoops) {
-        if (rooms.size() < 3) return;
-        for (int i = 0; i < extraLoops; i++) {
-            Room a = rooms.get(rng.nextInt(rooms.size()));
-            Room b = rooms.get(rng.nextInt(rooms.size()));
-            if (a == b) continue;
-            halls.add(new Hall(a.randomInterior(rng), b.randomInterior(rng)));
+        if (node.splitHorizontal) {
+            int y = node.splitPos;
+            y = Math.max(y0, Math.min(y1, y));
+            int x = x0 + rng.nextInt(x1 - x0 + 1);
+            return new Point(x, y);
+        } else {
+            int x = node.splitPos;
+            x = Math.max(x0, Math.min(x1, x));
+            int y = y0 + rng.nextInt(y1 - y0 + 1);
+            return new Point(x, y);
         }
     }
 
@@ -239,29 +300,61 @@ public class MazeGenerator {
             boolean xFirst = rng.nextBoolean();
 
             if (xFirst) {
-                while (x != p2.x) { setHallTileFat(maze, x, y, hallRadius); x += Integer.compare(p2.x, x); }
-                while (y != p2.y) { setHallTileFat(maze, x, y, hallRadius); y += Integer.compare(p2.y, y); }
+                while (x != p2.x) {
+                    carveHorizontalStep(maze, x, y, p2.x, hallRadius);
+                    x += Integer.compare(p2.x, x);
+                }
+                while (y != p2.y) {
+                    carveVerticalStep(maze, x, y, p2.y, hallRadius);
+                    y += Integer.compare(p2.y, y);
+                }
             } else {
-                while (y != p2.y) { setHallTileFat(maze, x, y, hallRadius); y += Integer.compare(p2.y, y); }
-                while (x != p2.x) { setHallTileFat(maze, x, y, hallRadius); x += Integer.compare(p2.x, x); }
+                while (y != p2.y) {
+                    carveVerticalStep(maze, x, y, p2.y, hallRadius);
+                    y += Integer.compare(p2.y, y);
+                }
+                while (x != p2.x) {
+                    carveHorizontalStep(maze, x, y, p2.x, hallRadius);
+                    x += Integer.compare(p2.x, x);
+                }
             }
-            setHallTileFat(maze, p2.x, p2.y, hallRadius);
+
+            // carve final cell with both orientations to avoid tiny gaps
+            carveHorizontalBand(maze, x, y, hallRadius);
+            carveVerticalBand(maze, x, y, hallRadius);
         }
     }
 
-    /** Carve a thick corridor centered at (x,y). Uses a square brush. */
-    private void setHallTileFat(Maze maze, int cx, int cy, int r) {
-        for (int dx = -r; dx <= r; dx++) {
-            for (int dy = -r; dy <= r; dy++) {
-                int nx = cx + dx;
-                int ny = cy + dy;
-                if (!maze.inBounds(nx, ny)) continue;
-                if (maze.getTile(nx, ny) == Tiles.WALL) {
-                    maze.setTile(nx, ny, Tiles.FLOOR);
-                }
+    private void carveHorizontalStep(Maze maze, int x, int y, int targetX, int r) {
+        carveHorizontalBand(maze, x, y, r);
+    }
+
+    private void carveVerticalStep(Maze maze, int x, int y, int targetY, int r) {
+        carveVerticalBand(maze, x, y, r);
+    }
+
+    /** Moving horizontally: widen vertically only */
+    private void carveHorizontalBand(Maze maze, int x, int y, int r) {
+        for (int dy = -r; dy <= r; dy++) {
+            int ny = y + dy;
+            if (!maze.inBounds(x, ny)) continue;
+            if (maze.getTile(x, ny) == Tiles.WALL) {
+                maze.setTile(x, ny, Tiles.FLOOR);
             }
         }
     }
+
+    /** Moving vertically: widen horizontally only */
+    private void carveVerticalBand(Maze maze, int x, int y, int r) {
+        for (int dx = -r; dx <= r; dx++) {
+            int nx = x + dx;
+            if (!maze.inBounds(nx, y)) continue;
+            if (maze.getTile(nx, y) == Tiles.WALL) {
+                maze.setTile(nx, y, Tiles.FLOOR);
+            }
+        }
+    }
+
 
     // ---------------- special placement ----------------
 
@@ -344,11 +437,11 @@ public class MazeGenerator {
         return dx * dx + dy * dy;
     }
 
+    /**
+     * Clears SPAWN/EXIT/KEY tiles back to FLOOR.
+     * (Doesn't rely on Maze.setEntryCell/setExitCell to keep compatibility with your Maze class.)
+     */
     private void clearSpecialTiles(Maze maze) {
-        // clear tracked spawn/exit (avoids stale references)
-        maze.setEntryCell(null);
-        maze.setExitCell(null);
-
         for (int x = 0; x < maze.getWidth(); x++) {
             for (int y = 0; y < maze.getHeight(); y++) {
                 Tiles t = maze.getTile(x, y);
