@@ -9,14 +9,16 @@ import java.awt.Point;
 
 public class InteractionLogic {
 
-    public void handleKeyPickup(Player player, Maze maze) {
-        if (player.hasKey()) return;
+    public boolean handleKeyPickup(Player player, Maze maze) {
+        if (player.hasKey()) return false;
 
         Point tile = getPlayerTile(player, maze);
         if (maze.getTile(tile.x, tile.y) == Tiles.KEY) {
             maze.setTile(tile.x, tile.y, Tiles.FLOOR);
             player.giveKey();
+            return true;
         }
+        return false;
     }
 
     public boolean isPlayerOnExit(Player player, Maze maze) {

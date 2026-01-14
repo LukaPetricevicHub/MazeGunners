@@ -50,6 +50,18 @@ public class LevelMenuScreen implements Screen {
 
             buttonTable.add(button).width(300).pad(10).row();
         }
+        buttonTable.row().padTop(40);
+
+        TextButton backButton = new TextButton("Back to Menu", skin);
+        backButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.goToMenu();
+            }
+        });
+
+        buttonTable.add(backButton).width(300).pad(10).row();
+
 
         ScrollPane scrollPane = new ScrollPane(buttonTable, skin);
         scrollPane.setFadeScrollBars(false);

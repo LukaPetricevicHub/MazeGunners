@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
@@ -76,6 +77,9 @@ public class GameScreen implements Screen {
     private Texture keyTexture;
     private final int level;
 
+    private Sound pickupSound;
+    private Sound hitSound;
+
     // Constructor
     public GameScreen(MazeRunnerGame game, int level) {
         this.game = game;
@@ -104,7 +108,19 @@ public class GameScreen implements Screen {
             if (gameStateController.getState() == GameStateController.State.LOST) hud.showCenterMessage("GAME OVER");
 
             if (gameStateController.shouldReturnToMenu()) game.goToMenu();
-            if (gameStateController.isRunning()) worldLogic.handleKeyPickup(player, maze);
+
+            if (gameStateController.isRunning()) {
+
+                // Check if key was JUST picked up
+                if (worldLogic.handleKeyPickup(player, maze)) {
+
+                    // Play the sound!
+                    if (pickupSound != null) {
+                        long id = pickupSound.play();
+                        pickupSound.setVolume(id, game.getPreferences().getSoundVolume());
+                    }
+                }
+            }
 
             // Navigation Arrow
             Point nearestExit = worldLogic.findNearestExit(player, maze);
@@ -279,6 +295,13 @@ public class GameScreen implements Screen {
                 game.getTile(2, 3),
                 new TextureRegion(keyTexture)
         );
+
+        if (Gdx.files.internal("audio/pickup.mp3").exists()) {
+            pickupSound = Gdx.audio.newSound(Gdx.files.internal("audio/pickup.mp3"));
+        }
+        if (Gdx.files.internal("audio/hit.mp3").exists()) {
+            hitSound = Gdx.audio.newSound(Gdx.files.internal("audio/hit.mp3"));
+        }
     }
 
     private void togglePause() {
@@ -396,5 +419,8 @@ public class GameScreen implements Screen {
         hud.dispose();
         keyTexture.dispose();
         pauseStage.dispose();
+
+        if (pickupSound != null) pickupSound.dispose();
+        if (hitSound != null) hitSound.dispose();
     }
 }

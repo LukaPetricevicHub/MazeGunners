@@ -45,6 +45,21 @@ public class SettingsScreen implements Screen {
             }
         });
 
+        //Sound Effects Volume Slider
+        table.add(new Label("Sound Effects Volume", game.getSkin())).padBottom(10).padTop(20).row();
+
+        final Slider sfxSlider = new Slider(0f, 1f, 0.05f, false, game.getSkin());
+        table.add(sfxSlider).width(300).padBottom(20).row();
+
+        sfxSlider.setValue(game.getPreferences().getSoundVolume());
+
+        sfxSlider.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.getPreferences().setSoundVolume(sfxSlider.getValue());
+            }
+        });
+
         //BackToMenu Button
         TextButton backButton = new TextButton("Back to Menu", game.getSkin());
         backButton.addListener(new ChangeListener() {
@@ -54,6 +69,7 @@ public class SettingsScreen implements Screen {
             }
         });
         table.add(backButton).width(300).padTop(20);
+
     }
 
     @Override
@@ -72,7 +88,7 @@ public class SettingsScreen implements Screen {
 
     @Override
     public void show() {
-        Gdx.input.setInputProcessor(stage); // Enable mouse clicks
+        Gdx.input.setInputProcessor(stage);
     }
 
     @Override
