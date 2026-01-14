@@ -5,8 +5,6 @@ public enum Tiles {
     FLOOR,
     SPAWN,
     EXIT,
-    TRAP,
-    ENEMY,
     KEY;
 
     public boolean isWall() {
@@ -17,8 +15,7 @@ public enum Tiles {
         return this == FLOOR
                 || this == SPAWN
                 || this == EXIT
-                || this == KEY
-                || this == ENEMY;
+                || this == KEY;
     }
 
 }
