@@ -8,13 +8,13 @@ import de.tum.cit.fop.maze.map.Maze;
 public class PatrolBehavior implements BehaviorState {
 
     // Attributes
-    private final Array<Vector2> patrolWorldPositions;
-    private int currentPatrolIndex = 0;
+    private final Array<Vector2> patrolPoints;
+    private int activeIndex = 0;
 
 
     // Creates patrol behavior
-    public PatrolBehavior(Array<Vector2> patrolWorldPositions) {
-        this.patrolWorldPositions = patrolWorldPositions;
+    public PatrolBehavior(Array<Vector2> patrolPoints) {
+        this.patrolPoints = patrolPoints;
     }
 
 
@@ -29,30 +29,28 @@ public class PatrolBehavior implements BehaviorState {
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
 
-        if (patrolWorldPositions.size == 0)
+        if (patrolPoints.size == 0)
             return;
 
-        Vector2 currentTarget = patrolWorldPositions.get(currentPatrolIndex);
-        Vector2 direction = currentTarget.cpy().sub(enemy.getPosition());
+        Vector2 currentTargetPos = patrolPoints.get(activeIndex);
+        Vector2 travelDir = currentTargetPos.cpy().sub(enemy.getPosition());
 
-        if (direction.len() < 2f) {
-            currentPatrolIndex++;
+        float targetThreshold = 2f;
+        if (travelDir.len() < targetThreshold) {
+            activeIndex++;
 
-            if (currentPatrolIndex >= patrolWorldPositions.size)
-                currentPatrolIndex = 0;
-
+            if(activeIndex >= patrolPoints.size)
+                activeIndex = 0;
             return;
         }
 
-        Vector2 velocity =
-                direction.nor().scl(enemy.getSpeed());
+        Vector2 walkVelocity = travelDir.nor().scl(enemy.getSpeed());
 
         enemy.getCollisionHandler().move(
                 enemy.getPosition(),
-                velocity,
+                walkVelocity,
                 deltaTime,
                 maze
         );
     }
 }
-

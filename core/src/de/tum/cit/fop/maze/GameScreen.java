@@ -167,8 +167,8 @@
                             slime.getSprite(),
                             slime.getCollisionBox().x,
                             slime.getCollisionBox().y,
-                            32,
-                            32
+                            64,
+                            64
                     );
                 }
 
@@ -206,7 +206,7 @@
                             enemy.getPosition().x,
                             enemy.getPosition().y,
                             32,
-                            64
+                            32
                     );
                 }
             }
@@ -284,7 +284,7 @@
     
             // Spawn obstacles and enemies
             obstacles = new ObstaclePlacer().placeObstacles(maze, 40, seed);
-            enemies = new EnemySpawner().spawnEnemies(maze, player, 100, seed);
+            enemies = new EnemySpawner().spawnEnemies(maze, player, 65, seed);
     
             // Setup room lock
             Rectangle trigger = new Rectangle(50 * TILE_SIZE, 50 * TILE_SIZE, 5 * TILE_SIZE, 5 * TILE_SIZE);

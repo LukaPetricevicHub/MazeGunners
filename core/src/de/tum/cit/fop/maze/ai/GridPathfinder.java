@@ -1,133 +1,166 @@
 package de.tum.cit.fop.maze.ai;
 
 import de.tum.cit.fop.maze.map.Maze;
-
 import java.awt.Point;
 import java.util.*;
 
-public class GridPathfinder {
+public final class GridPathfinder {
 
-    private static final int[][] CARDINAL_DIRS = {
-            {0, 1}, {0, -1}, {1, 0}, {-1, 0}
-    };
+    // Attributes
+    private static final int[][] cardDirections = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
 
-    public static List<Point> findTilePath(Maze maze, Point startTile, Point goalTile) {
-        if(startTile == null || goalTile == null)
-            return Collections.emptyList();
-
-        if (!maze.inBounds(startTile.x, startTile.y) || !maze.inBounds(goalTile.x, goalTile.y))
-            return Collections.emptyList();
-
-        if (!maze.getTile(startTile.x, startTile.y).isWalkable() || !maze.getTile(goalTile.x, goalTile.y).isWalkable())
-            return Collections.emptyList();
-
-        if (startTile.equals(goalTile))
-            return Collections.emptyList();
-
-        PriorityQueue<PathNode> open =
-                new PriorityQueue<>(Comparator.comparingInt(n -> n.fCost));
-
-        Map<Point, Point> cameFrom = new HashMap<>();
-        Map<Point, Integer> gCost = new HashMap<>();
-        Set<Point> closed = new HashSet<>();
-
-        gCost.put(startTile, 0);
-        open.add(new PathNode(startTile, heuristic(startTile, goalTile)));
-
-        while (!open.isEmpty()) {
-            PathNode current = open.poll();
-
-            if(closed.contains(current.pos))
-                continue;
-
-            if (current.pos.equals(goalTile)) {
-                return reconstructPath(cameFrom, goalTile);
-            }
-
-            closed.add(current.pos);
-
-            int baseCost = gCost.get(current.pos);
-
-            for (int[] d : CARDINAL_DIRS) {
-                int nx = current.pos.x + d[0];
-                int ny = current.pos.y + d[1];
-
-                if (!maze.inBounds(nx, ny))
-                    continue;
-
-                if (!isTileWalkableForEnemy(maze, nx, ny))
-                    continue;
-
-                Point neighbor = new Point(nx, ny);
-                if (closed.contains(neighbor))
-                    continue;
-
-                int newCost = baseCost + 1;
-                int oldCost = gCost.getOrDefault(neighbor, Integer.MAX_VALUE);
-
-                if (newCost < oldCost) {
-                    cameFrom.put(neighbor, current.pos);
-                    gCost.put(neighbor, newCost);
-                    open.add(new PathNode(
-                            neighbor,
-                            newCost + heuristic(neighbor, goalTile)
-                    ));
-                }
-            }
-
+    // Internal node for A* search
+    private static class Node { final Point coordinates;int costFromStart;int estimatedTotalCost;Node parentNode;
+        Node(Point coordinates, int costFromStart, int estimatedTotalCost, Node parent) {
+            this.coordinates = coordinates;
+            this.costFromStart = costFromStart;
+            this.estimatedTotalCost = estimatedTotalCost;
+            this.parentNode = parent;
         }
-
-        return Collections.emptyList();
     }
 
-    // Manhattan distance
-    private static int heuristic(Point a, Point b) {
+
+    // Constructor
+    private GridPathfinder() {}
+
+
+    // Find path using A* algorithm
+    public static List<Point> findPath(Maze maze, Point start, Point goal) {
+        if (!isValidPlacementForEnemy(start.x, start.y, maze)) {
+            return List.of();
+        }
+
+        if (!isValidPlacementForEnemy(goal.x, goal.y, maze)) {
+            return List.of();
+        }
+
+        if (start.equals(goal)) {
+            return List.of(start);
+        }
+
+        PriorityQueue<Node> nodesToVisit = new PriorityQueue<>(Comparator.comparingInt(node -> node.estimatedTotalCost));
+        Map<Point, Integer> cheapestPrice = new HashMap<>();
+
+        int initialHeuristic = calculateManhattanDistance(start, goal);
+
+        nodesToVisit.add(new Node(start, 0, initialHeuristic, null));
+        cheapestPrice.put(start, 0);
+
+        while (!nodesToVisit.isEmpty()) {
+            Node currentNode = nodesToVisit.poll();
+
+            if (currentNode.coordinates.equals(goal))
+                return reconstructPath(currentNode);
+
+
+            for(int[] directionOffset : cardDirections) {
+                int neighborX = currentNode.coordinates.x + directionOffset[0];
+                int neighborY = currentNode.coordinates.y + directionOffset[1];
+
+                if (!maze.inBounds(neighborX, neighborY))
+                    continue;
+
+
+                if(!isValidPlacementForEnemy(neighborX, neighborY, maze))
+                    continue;
+
+
+                Point neighborPoint = new Point(neighborX, neighborY);
+                int tentativeGScore = currentNode.costFromStart + 1;
+
+                Integer existingBestCost = cheapestPrice.get(neighborPoint);
+
+                if (existingBestCost != null && tentativeGScore >= existingBestCost)
+                    continue;
+
+
+                cheapestPrice.put(neighborPoint, tentativeGScore);
+
+                int totalEstimatedCost = tentativeGScore + calculateManhattanDistance(neighborPoint, goal);
+                nodesToVisit.add(new Node(neighborPoint, tentativeGScore, totalEstimatedCost, currentNode));
+            }
+        }
+
+        return List.of();
+    }
+
+
+    // Calculate Manhattan distance
+    private static int calculateManhattanDistance(Point a, Point b) {
         return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
     }
 
-    private static List<Point> reconstructPath(
-            Map<Point, Point> parents,
-            Point goal
-    ) {
-        List<Point> path = new ArrayList<>();
-        Point current = goal;
 
-        while (parents.containsKey(current)) {
-            path.add(0, current);
-            current = parents.get(current);
+    // Reconstruct path from goal node
+    private static List<Point> reconstructPath(Node goalNode) {
+        LinkedList<Point> path = new LinkedList<>();
+        Node traversalNode = goalNode;
+
+        while (traversalNode != null) {
+            path.addFirst(traversalNode.coordinates);
+            traversalNode = traversalNode.parentNode;
         }
+
         return path;
     }
 
-    // Internal node
-    private static final class PathNode {
-        final Point pos;
-        final int fCost;
 
-        PathNode(Point pos, int fCost) {
-            this.pos = pos;
-            this.fCost = fCost;
-        }
-    }
-
-    private static boolean isTileWalkableForEnemy(Maze maze, int x, int y) {
-        if (!maze.getTile(x, y).isWalkable())
+    // Check if space fits enemy
+    private static boolean isValidPlacementForEnemy(int x, int y, Maze maze) {
+        if (!maze.inBounds(x, y))
+            return false;
+        if (!maze.inBounds(x + 1, y))
+            return false;
+        if (!maze.inBounds(x, y + 1))
+            return false;
+        if (!maze.inBounds(x + 1, y + 1))
             return false;
 
-        for (int dy = -1; dy <= 1; dy++) {
-            for (int dx = -1; dx <= 1; dx++) {
-                int nx = x + dx;
-                int ny = y + dy;
-
-                if (!maze.inBounds(nx, ny))
-                    return false;
-
-                if (maze.getTile(nx, ny).isWall())
-                    return false;
-            }
-        }
-        return true;
+        return maze.getTile(x, y).isWalkable() && maze.getTile(x + 1, y).isWalkable() && maze.getTile(x, y + 1).isWalkable() && maze.getTile(x + 1, y + 1).isWalkable();
     }
 
+
+    // Find reachable goal near player
+    public static Point findReachableGoalNearPlayer(Maze maze, Point enemyTile, Point playerTile, int searchRadius) {
+        if (maze.getTile(playerTile.x, playerTile.y).isWalkable()) {
+            if(!GridPathfinder.findPath(maze, enemyTile, playerTile).isEmpty()) {
+                return playerTile;
+            }
+        }
+
+        Point bestCandidate = null;
+        int shortestDistanceToPlayer = Integer.MAX_VALUE;
+
+        for (int offsetY = -searchRadius; offsetY <= searchRadius; offsetY++) {
+            for (int offsetX = -searchRadius; offsetX <= searchRadius; offsetX++) {
+                int candidateX = playerTile.x + offsetX;
+                int candidateY = playerTile.y + offsetY;
+
+                if (!maze.inBounds(candidateX, candidateY)) {
+                    continue;
+                }
+
+                if (!maze.getTile(candidateX, candidateY).isWalkable())
+                    continue;
+
+
+                Point candidatePoint = new Point(candidateX, candidateY);
+                List<Point> path = GridPathfinder.findPath(maze, enemyTile, candidatePoint);
+
+                if (path.isEmpty()) {
+                    continue;
+                }
+
+                int distanceToPlayer = Math.abs(offsetX) + Math.abs(offsetY);
+
+                if(distanceToPlayer < shortestDistanceToPlayer) {
+                    shortestDistanceToPlayer = distanceToPlayer;
+                    bestCandidate = candidatePoint;
+                }
+            }
+        }
+
+        return bestCandidate;
+    }
 }

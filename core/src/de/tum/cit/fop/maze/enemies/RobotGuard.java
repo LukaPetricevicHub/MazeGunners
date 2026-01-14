@@ -14,87 +14,72 @@ import de.tum.cit.fop.maze.player.Player;
 public class RobotGuard extends Enemy {
 
     // Attributes
-    private final PatrolBehavior patrolBehavior;
-    private final EvadeBehavior evadeBehavior = new EvadeBehavior();
+    private final PatrolBehavior defaultPatrol;
+    private final EvadeBehavior fleeingLogic = new EvadeBehavior();
 
-    private static final float EVADE_DISTANCE = 80f;
+    private static final float ESCAPE_THRESHOLD = 80f;
 
     // Animation
-    private Animation<TextureRegion> walkAnimation;
-    private float animationTime = 0f;
+    private Animation<TextureRegion> walkingAnim;
+    private float animationTimer = 0f;
 
 
     // Constructor
     public RobotGuard(Vector2 startWorldPosition, float movementSpeed, Array<Vector2> patrolWorldPositions, Player targetPlayer) {
         super(startWorldPosition, movementSpeed, new PatrolBehavior(patrolWorldPositions), targetPlayer);
+        this.defaultPatrol = (PatrolBehavior) activeBehavior;
+        this.chaseRadius = 0f; // don't cheese me xD
 
-        this.patrolBehavior = (PatrolBehavior) activeBehavior;
-
-        // Disable chase entirely
-        this.chaseRadius = 0f;
-
-        loadWalkAnimation();
+        initWalkAnimation();
     }
 
 
     // Load guard walking animation frames
-    private void loadWalkAnimation() {
-        Texture spriteSheet = new Texture("mobs.png");
+    private void initWalkAnimation() {
+        Texture guardSheet = new Texture("mobs.png");
 
-        int startX = 98;
-        int startY = 64;
-        int frameWidth = 15;
-        int frameHeight = 16;
+        int initialX = 98;
+        int initialY = 64;
+        int frameW = 15;
+        int frameH = 16;
 
-        Array<TextureRegion> frames = new Array<>();
+        Array<TextureRegion> animFrames = new Array<>();
 
-        for (int col = 0; col < 3; col++) {
-            frames.add(new TextureRegion(
-                    spriteSheet,
-                    startX + col * (46 / 3),
-                    startY,
-                    frameWidth,
-                    frameHeight
-            ));
+        for (int i = 0; i < 3; i++) {
+            animFrames.add(new TextureRegion(guardSheet, initialX + i * (46 / 3), initialY, frameW, frameH));
         }
 
-        walkAnimation = new Animation<>(0.2f, frames);
-        walkAnimation.setPlayMode(Animation.PlayMode.LOOP);
+        walkingAnim = new Animation<>(0.2f, animFrames);
+        walkingAnim.setPlayMode(Animation.PlayMode.LOOP);
     }
 
 
     @Override
     protected BehaviorState createChaseBehavior() {
-        return patrolBehavior;
+        return defaultPatrol;
     }
 
     @Override
     protected BehaviorState createDefaultBehavior() {
-        return patrolBehavior;
+        return defaultPatrol;
     }
 
 
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
-        animationTime += deltaTime;
+        animationTimer += deltaTime;
+        float distToPlayer = worldPosition.dst(targetPlayer.getX(), targetPlayer.getY());
 
-        float dist = worldPosition.dst(
-                targetPlayer.getX(),
-                targetPlayer.getY()
-        );
+        if (distToPlayer < ESCAPE_THRESHOLD)
+            fleeingLogic.execute(this, deltaTime, maze);
+        else
+            defaultPatrol.execute(this, deltaTime, maze);
 
-        if (dist < EVADE_DISTANCE) {
-            evadeBehavior.execute(this, deltaTime, maze);
-        } else {
-            patrolBehavior.execute(this, deltaTime, maze);
-        }
     }
 
 
     // Return current animation frame
     public TextureRegion getCurrentFrame() {
-        return walkAnimation.getKeyFrame(animationTime, true);
+        return walkingAnim.getKeyFrame(animationTimer, true);
     }
 }
-
-

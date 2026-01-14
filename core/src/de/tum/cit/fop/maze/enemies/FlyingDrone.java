@@ -12,49 +12,40 @@ import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
 public class FlyingDrone extends Enemy {
-
     // Attributes
-    private final PatrolBehavior patrolBehavior;
+    private final PatrolBehavior defaultPatrol;
 
     // Animation
-    private Animation<TextureRegion> flyingAnimation;
-    private float animationTime = 0f;
+    private Animation<TextureRegion> flyAnim;
+    private float animationTimer = 0f;
 
 
     // Constructor
     public FlyingDrone(Vector2 startWorldPosition, float movementSpeed, Array<Vector2> patrolWorldPositions, Player targetPlayer) {
         super(startWorldPosition, movementSpeed, new PatrolBehavior(patrolWorldPositions), targetPlayer);
-
-        this.patrolBehavior = (PatrolBehavior) activeBehavior;
-
-        this.chaseRadius = 180f;
-        loadFlyingAnimation();
+        this.defaultPatrol = (PatrolBehavior) activeBehavior;
+        this.chaseRadius = 240f;
+        initAnimations();
     }
 
 
     // Load flying drone animation frames
-    private void loadFlyingAnimation() {
-        Texture droneSpriteSheet = new Texture("mobs.png");
+    private void initAnimations() {
+        Texture droneSheet = new Texture("mobs.png");
 
-        int startX = 51;
-        int startY = 64;
-        int frameWidth = 44 / 3;
-        int frameHeight = 64 / 4;
+        int initialX = 51;
+        int initialY = 64;
+        int frameW = 44 / 3;
+        int frameH = 64 / 4;
 
-        Array<TextureRegion> frames = new Array<>(TextureRegion.class);
+        Array<TextureRegion> animationFrames = new Array<>(TextureRegion.class);
 
-        for (int col = 0; col < 3; col++) {
-            frames.add(new TextureRegion(
-                    droneSpriteSheet,
-                    startX + col * frameWidth,
-                    startY,
-                    frameWidth,
-                    frameHeight
-            ));
+        for (int i = 0; i < 3; i++) {
+            animationFrames.add(new TextureRegion(droneSheet, initialX + i * frameW, initialY, frameW, frameH));
         }
 
-        flyingAnimation = new Animation<>(0.2f, frames);
-        flyingAnimation.setPlayMode(Animation.PlayMode.LOOP);
+        flyAnim = new Animation<>(0.2f, animationFrames);
+        flyAnim.setPlayMode(Animation.PlayMode.LOOP);
     }
 
 
@@ -65,21 +56,19 @@ public class FlyingDrone extends Enemy {
 
     @Override
     protected BehaviorState createDefaultBehavior() {
-        return patrolBehavior;
+        return defaultPatrol;
     }
 
 
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
-        animationTime += deltaTime;
+        animationTimer += deltaTime;
         super.updateBehavior(deltaTime, maze);
     }
 
 
     // Return current animation frame
     public TextureRegion getCurrentFrame() {
-        return flyingAnimation.getKeyFrame(animationTime, true);
+        return flyAnim.getKeyFrame(animationTimer, true);
     }
 }
-
-
