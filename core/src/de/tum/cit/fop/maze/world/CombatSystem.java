@@ -6,88 +6,73 @@ import de.tum.cit.fop.maze.enemies.Enemy;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.obstacles.*;
 import de.tum.cit.fop.maze.player.Player;
-
 import java.util.List;
 
 public class CombatSystem {
 
-    private static final float ENEMY_ACTIVE_RADIUS = 12 * 16f;
-
-    public void update(
-            float delta,
-            Player player,
-            Maze maze,
-            List<Enemy> enemies,
-            List<Obstacle> obstacles,
-            GameCamera gameCamera
-    ) {
-
-        Rectangle playerBounds = new Rectangle(
-                player.getX(),
-                player.getY(),
-                32f,
-                64f
-        );
+    // Attributes
+    private static final float ENEMY_WAKE_UP_DIST = 24 * 16f;
 
 
-        // Enemies
-        float px = player.getX() + 16f;
-        float py = player.getY() + 32f;
-        float activeRadius2 = ENEMY_ACTIVE_RADIUS * ENEMY_ACTIVE_RADIUS;
+    // Update combat and trap logic
+    public void update(float deltaTime, Player player, Maze maze, List<Enemy> enemies, List<Obstacle> obstacles, GameCamera gameCamera) {
+        Rectangle playerHitbox = new Rectangle(player.getX(), player.getY(), 32f, 64f);
 
-        for (Enemy e : enemies) {
-            float dx = e.getPosition().x - px;
-            float dy = e.getPosition().y - py;
+        float centerX = player.getX() + 16f;
+        float centerY = player.getY() + 32f;
+        float detectionRangeSquared = ENEMY_WAKE_UP_DIST * ENEMY_WAKE_UP_DIST;
 
-            boolean outside = dx * dx + dy * dy > activeRadius2;
-            if (outside && !e.isAggroLocked()) continue;
+        for (Enemy enemy : enemies) {
+            float diffX = enemy.getPosition().x - centerX;
+            float diffY = enemy.getPosition().y - centerY;
 
-            e.update(delta, maze);
+            float closenessSquared = diffX * diffX + diffY * diffY;
+            boolean isTooFar = closenessSquared > detectionRangeSquared;
 
-            if (playerBounds.overlaps(e.getCollisionBox())) {
+            if (isTooFar && !enemy.isAggroLocked())
+                continue;
+
+
+            enemy.update(deltaTime, maze);
+
+            if(playerHitbox.overlaps(enemy.getCollisionBox())) {
                 player.takeDamage(1);
             }
         }
 
-        // Obstacles
-        float speedMultiplier = 1f;
-        float visionMultiplier = 1f;
+        float speedModifier = 1f;
+        float visibilityFactor = 1f;
 
-        for (Obstacle o : obstacles) {
+        for (Obstacle obs : obstacles) {
+            obs.updateCooldown(deltaTime);
 
-            o.updateCooldown(delta);
-
-            if (o.tryActivate(playerBounds)) {
-                player.takeDamage(o.getDamageToPlayer());
-                o.onActivate();
+            if (obs.tryActivate(playerHitbox)) {
+                player.takeDamage(obs.getDamageToPlayer());
+                obs.onActivate();
             }
 
-            if (o instanceof SpikeTrap spike) {
-                spike.update(delta);
+            if (obs instanceof SpikeTrap spike) {
+                spike.update(deltaTime);
             }
 
-            if (o instanceof SlimeTrap slime) {
-                slime.updateEffect(delta);
+            if (obs instanceof SlimeTrap slime) {
+                slime.updateEffect(deltaTime);
 
                 if (slime.isEffectActive()) {
-                    speedMultiplier = slime.getSlowMultiplier();
-                    visionMultiplier = slime.getVisionMultiplier();
+                    speedModifier = slime.getSlowMultiplier();
+                    visibilityFactor = slime.getVisionMultiplier();
                 }
             }
 
-            if (o instanceof FloorHazard hazard) {
-                hazard.updateEffect(delta);
+            if (obs instanceof FloorHazard hazard) {
+                hazard.updateEffect(deltaTime);
 
-                if (hazard.isBoostActive()) {
-                    speedMultiplier = hazard.getSpeedBoost();
-                }
+                if(hazard.isBoostActive())
+                    speedModifier = hazard.getSpeedBoost();
             }
         }
 
-        // Apply effects ONCE
-        player.setSpeedMultiplier(speedMultiplier);
-        gameCamera.setZoomMultiplier(visionMultiplier);
+        player.setSpeedMultiplier(speedModifier);
+        gameCamera.setZoomMultiplier(visibilityFactor);
     }
 }
-
-

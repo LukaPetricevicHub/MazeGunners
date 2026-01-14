@@ -15,65 +15,72 @@ public class ObstaclePlacer {
 
 
     // Generate obstacles within the maze
-    public List<Obstacle> placeObstacles(Maze maze, int obstacleCount, long seed) {
-        List<Obstacle> result = new ArrayList<>();
-        Random rng = new Random(seed);
-        List<Point> floorCells = collectFloorCells(maze);
-        Collections.shuffle(floorCells, rng);
-        for (Point cell : floorCells) {
-            if (result.size() >= obstacleCount) break;
-            Obstacle obstacle = createRandomObstacle(cell, maze, rng);
-            if (obstacle == null) continue;
-            if (canPlaceObstacle(obstacle, maze)) {
-                result.add(obstacle);
+    public List<Obstacle> placeObstacles(Maze maze, int count, long seed) {
+        List<Obstacle> placementResult = new ArrayList<>();
+        Random randomGen = new Random(seed);
+
+        List<Point> validFloorCells = getFloorPoints(maze);
+        Collections.shuffle(validFloorCells, randomGen);
+
+        for (Point cell : validFloorCells) {
+            if (placementResult.size() >= count) break;
+
+            Obstacle trap = spawnRandomTrap(cell, maze, randomGen);
+            if (trap == null) continue;
+
+            if (isValidArea(trap, maze)) {
+                placementResult.add(trap);
             }
         }
-        return result;
+        return placementResult;
     }
 
 
     // Find all valid floor cells
-    private List<Point> collectFloorCells(Maze maze) {
-        List<Point> cells = new ArrayList<>();
+    private List<Point> getFloorPoints(Maze maze) {
+        List<Point> cellList = new ArrayList<>();
         for (int y = 1; y < maze.getHeight() - 1; y++) {
             for (int x = 1; x < maze.getWidth() - 1; x++) {
-                if (maze.getTile(x, y) == Tiles.FLOOR) {
-                    cells.add(new Point(x, y));
-                }
+                if (maze.getTile(x, y) == Tiles.FLOOR)
+                    cellList.add(new Point(x, y));
+
             }
         }
-        return cells;
+        return cellList;
     }
 
 
     // Instantiate a random obstacle type
-    private Obstacle createRandomObstacle(Point cell, Maze maze, Random rng) {
-        Vector2 worldPos = new Vector2(
-                cell.x * maze.getTileSize() + (maze.getTileSize() / 4f),
-                cell.y * maze.getTileSize() + (maze.getTileSize() / 4f)
+    private Obstacle spawnRandomTrap(Point cell, Maze maze, Random rng) {
+        float size = maze.getTileSize();
+        Vector2 spawnPos = new Vector2(
+                cell.x * size + (size / 4f),
+                cell.y * size + (size / 4f)
         );
+
         int roll = rng.nextInt(3);
         return switch (roll) {
-            case 0 -> new SpikeTrap(worldPos);
-            case 1 -> new SlimeTrap(worldPos);
-            case 2 -> new FloorHazard(worldPos);
+            case 0 -> new SpikeTrap(spawnPos);
+            case 1 -> new SlimeTrap(spawnPos);
+            case 2 -> new FloorHazard(spawnPos);
             default -> null;
         };
     }
 
 
     // Verify the obstacle placement area
-    private boolean canPlaceObstacle(Obstacle obstacle, Maze maze) {
-        Rectangle box = obstacle.getCollisionBox();
-        float tileSize = maze.getTileSize();
-        int centerX = (int) ((box.x + box.width / 2) / tileSize);
-        int centerY = (int) ((box.y + box.height / 2) / tileSize);
-        for (int y = centerY - 1; y <= centerY + 1; y++) {
-            for (int x = centerX - 1; x <= centerX + 1; x++) {
-                if (!maze.inBounds(x, y)) {
-                    return false;
-                }
-                if (maze.getTile(x, y) != Tiles.FLOOR) {
+    private boolean isValidArea(Obstacle obstacle, Maze maze) {
+        Rectangle hitBox = obstacle.getCollisionBox();
+        float ts = maze.getTileSize();
+
+        int gridX = (int) ((hitBox.x + hitBox.width / 2) / ts);
+        int gridY = (int) ((hitBox.y + hitBox.height / 2) / ts);
+
+        for (int dy = gridY - 1; dy <= gridY + 1; dy++) {
+            for (int dx = gridX - 1; dx <= gridX + 1; dx++) {
+                if (!maze.inBounds(dx, dy)) return false;
+
+                if (maze.getTile(dx, dy) != Tiles.FLOOR) {
                     return false;
                 }
             }

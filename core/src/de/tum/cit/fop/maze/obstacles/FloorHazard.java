@@ -7,48 +7,45 @@ import com.badlogic.gdx.math.Vector2;
 public class FloorHazard extends Obstacle {
 
     // Attributes
-    private static final float SPEED_BOOST = 1.6f;
-    private static final float DURATION = 2.5f;
-    private float boostTimer = 0f;
-    private static final Texture TEXTURE = new Texture("hazard.png");
-    private final TextureRegion sprite;
+    private static final float SPEED_UP_FACTOR = 1.6f;
+    private static final float MAX_BOOST_TIME = 2.5f;
+    private float activeBoostTimer = 0f;
+    private static final Texture HAZARD_TEX = new Texture("hazard.png");
+    private final TextureRegion hazardSprite;
 
 
     // Constructor
-    public FloorHazard(Vector2 position) {
-        super(position, 0, 2f, 16f, 16f);
-        sprite = new TextureRegion(TEXTURE); // ✅ FULL IMAGE
+    public FloorHazard(Vector2 spawnPos) {
+        super(spawnPos, 0, 2f, 16f, 16f);
+        hazardSprite = new TextureRegion(HAZARD_TEX); // ✅ FULL IMAGE
     }
 
 
     // If activated, boost Player
     @Override
     public void onActivate() {
-        boostTimer = DURATION;
+        activeBoostTimer = MAX_BOOST_TIME;
         startCooldown();
     }
 
 
     // Boost
-    public void updateEffect(float dt) {
-        if (boostTimer > 0f) {
-            boostTimer -= dt;
-        }
+    public void updateEffect(float deltaTime) {
+        if (activeBoostTimer > 0f)
+            activeBoostTimer -= deltaTime;
+
     }
 
 
     public boolean isBoostActive() {
-        return boostTimer > 0f;
+        return activeBoostTimer > 0f;
     }
 
     public float getSpeedBoost() {
-        return SPEED_BOOST;
+        return SPEED_UP_FACTOR;
     }
 
     public TextureRegion getSprite() {
-        return sprite;
+        return hazardSprite;
     }
 }
-
-
-
