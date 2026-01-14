@@ -1,11 +1,10 @@
 package de.tum.cit.fop.maze.world;
 
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.map.Tiles;
-import de.tum.cit.fop.maze.obstacles.Obstacle;
-import de.tum.cit.fop.maze.obstacles.SpikeTrap;
-
+import de.tum.cit.fop.maze.obstacles.*;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,31 +13,78 @@ import java.util.Random;
 
 public class ObstaclePlacer {
 
-    // Place obstacles randomly on floor tiles
-    public List<Obstacle> placeObstacles(Maze maze, int obstacleCount, long seed) {
-        List<Obstacle> placedObstacles = new ArrayList<>();
-        List<Point> availableFloorCells = new ArrayList<>();
-        Random random = new Random(seed);
 
+    // Generate obstacles within the maze
+    public List<Obstacle> placeObstacles(Maze maze, int count, long seed) {
+        List<Obstacle> placementResult = new ArrayList<>();
+        Random randomGen = new Random(seed);
+
+        List<Point> validFloorCells = getFloorPoints(maze);
+        Collections.shuffle(validFloorCells, randomGen);
+
+        for (Point cell : validFloorCells) {
+            if (placementResult.size() >= count) break;
+
+            Obstacle trap = spawnRandomTrap(cell, maze, randomGen);
+            if (trap == null) continue;
+
+            if (isValidArea(trap, maze)) {
+                placementResult.add(trap);
+            }
+        }
+        return placementResult;
+    }
+
+
+    // Find all valid floor cells
+    private List<Point> getFloorPoints(Maze maze) {
+        List<Point> cellList = new ArrayList<>();
         for (int y = 1; y < maze.getHeight() - 1; y++) {
             for (int x = 1; x < maze.getWidth() - 1; x++) {
-                if (maze.getTile(x, y) == Tiles.FLOOR) {
-                    availableFloorCells.add(new Point(x, y));
+                if (maze.getTile(x, y) == Tiles.FLOOR)
+                    cellList.add(new Point(x, y));
+
+            }
+        }
+        return cellList;
+    }
+
+
+    // Instantiate a random obstacle type
+    private Obstacle spawnRandomTrap(Point cell, Maze maze, Random rng) {
+        float size = maze.getTileSize();
+        Vector2 spawnPos = new Vector2(
+                cell.x * size + (size / 4f),
+                cell.y * size + (size / 4f)
+        );
+
+        int roll = rng.nextInt(3);
+        return switch (roll) {
+            case 0 -> new SpikeTrap(spawnPos);
+            case 1 -> new SlimeTrap(spawnPos);
+            case 2 -> new FloorHazard(spawnPos);
+            default -> null;
+        };
+    }
+
+
+    // Verify the obstacle placement area
+    private boolean isValidArea(Obstacle obstacle, Maze maze) {
+        Rectangle hitBox = obstacle.getCollisionBox();
+        float ts = maze.getTileSize();
+
+        int gridX = (int) ((hitBox.x + hitBox.width / 2) / ts);
+        int gridY = (int) ((hitBox.y + hitBox.height / 2) / ts);
+
+        for (int dy = gridY - 1; dy <= gridY + 1; dy++) {
+            for (int dx = gridX - 1; dx <= gridX + 1; dx++) {
+                if (!maze.inBounds(dx, dy)) return false;
+
+                if (maze.getTile(dx, dy) != Tiles.FLOOR) {
+                    return false;
                 }
             }
         }
-
-        Collections.shuffle(availableFloorCells, random);
-
-        int spawnCount = Math.min(obstacleCount, availableFloorCells.size());
-        for (int i = 0; i < spawnCount; i++) {
-            Point cell = availableFloorCells.get(i);
-            Vector2 worldPosition =
-                    new Vector2(cell.x * maze.getTileSize(), cell.y * maze.getTileSize());
-
-            placedObstacles.add(new SpikeTrap(worldPosition));
-        }
-
-        return placedObstacles;
+        return true;
     }
 }

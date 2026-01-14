@@ -9,14 +9,12 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
-import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.InputMultiplexer;
@@ -28,7 +26,9 @@ import de.tum.cit.fop.maze.enemies.MutantWorker;
 import de.tum.cit.fop.maze.enemies.RobotGuard;
 import de.tum.cit.fop.maze.hud.Hud;
 import de.tum.cit.fop.maze.map.*;
+import de.tum.cit.fop.maze.obstacles.FloorHazard;
 import de.tum.cit.fop.maze.obstacles.Obstacle;
+import de.tum.cit.fop.maze.obstacles.SlimeTrap;
 import de.tum.cit.fop.maze.obstacles.SpikeTrap;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.util.GridUtils;
@@ -49,6 +49,8 @@ public class GameScreen implements Screen {
 
     private boolean isPaused = false;
     private Stage pauseStage;
+    private Window pauseWindow;
+    private Window settingsWindow;
 
     private Viewport viewport;
     private GameCamera gameCamera;
@@ -77,6 +79,7 @@ public class GameScreen implements Screen {
     private Texture keyTexture;
     private final int level;
 
+    //Sound
     private Sound pickupSound;
     private Sound hitSound;
 
@@ -95,26 +98,25 @@ public class GameScreen implements Screen {
             togglePause();
         }
 
-        // 2. LOGIC (Only runs if NOT paused)
+        // 2. LOGIC
         if (!isPaused && gameStateController.isRunning()) {
             player.update(delta, maze, game);
 
             // Update GameState
             boolean onExit = worldLogic.isPlayerOnExit(player, maze);
+
             gameStateController.update(delta, onExit, player.hasKey(), player.getLives());
+            switch (gameStateController.getState()) {
+                case WON -> hud.showCenterMessage("VICTORY");
+                case LOST -> hud.showCenterMessage("GAME OVER");
+            }
 
-            // Check Win/Loss
-            if (gameStateController.getState() == GameStateController.State.WON) hud.showCenterMessage("VICTORY");
-            if (gameStateController.getState() == GameStateController.State.LOST) hud.showCenterMessage("GAME OVER");
+            if (gameStateController.shouldReturnToMenu())
+                game.goToMenu();
 
-            if (gameStateController.shouldReturnToMenu()) game.goToMenu();
-
+            // Key Pickup Logic
             if (gameStateController.isRunning()) {
-
-                // Check if key was JUST picked up
                 if (worldLogic.handleKeyPickup(player, maze)) {
-
-                    // Play the sound!
                     if (pickupSound != null) {
                         long id = pickupSound.play();
                         pickupSound.setVolume(id, game.getPreferences().getSoundVolume());
@@ -125,47 +127,68 @@ public class GameScreen implements Screen {
             // Navigation Arrow
             Point nearestExit = worldLogic.findNearestExit(player, maze);
             if (nearestExit != null) {
-                float exitX = nearestExit.x * TILE_SIZE + TILE_SIZE / 2f;
-                float exitY = nearestExit.y * TILE_SIZE + TILE_SIZE / 2f;
-                hud.setExitTarget(exitX, exitY);
+                float exitWorldX = nearestExit.x * maze.getTileSize() + maze.getTileSize() / 2f;
+                float exitWorldY = nearestExit.y * maze.getTileSize() + maze.getTileSize() / 2f;
+
+                hud.setExitTarget(exitWorldX, exitWorldY);
             }
 
-            // Ambush Room Logic
             Rectangle playerBounds = new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
-            ambushRoom.update(playerBounds, maze);
-            if (ambushRoom.isLocked()) {
-                ambushTimer += delta;
-                if (ambushTimer > 5f) ambushRoom.unlockRoom(maze);
+
+            // Update room lock
+            if (gameStateController.isRunning()) {
+                ambushRoom.update(playerBounds, maze);
+                if (ambushRoom.isLocked()) {
+                    ambushTimer += delta;
+                    if (ambushTimer > 5f) {
+                        ambushRoom.unlockRoom(maze);
+                    }
+                }
             }
 
-            // Combat
-            combatSystem.update(delta, player, maze, enemies, obstacles, gameCamera);
+            // Update the CombatSystem
+            if (gameStateController.isRunning()) {
+                combatSystem.update(delta, player, maze, enemies, obstacles, gameCamera);
+            }
 
-            // HUD Data & Camera
+
+            // Update HUD and camera
             hud.update(player);
-            gameCamera.follow(player.getX() + PLAYER_WIDTH / 2f, player.getY() + PLAYER_HEIGHT / 2f, delta);
+            hud.act(delta);
+
+            gameCamera.follow(
+                    player.getX() + PLAYER_WIDTH / 2f,
+                    player.getY() + PLAYER_HEIGHT / 2f,
+                    delta
+            );
         }
+            // Render world
+            ScreenUtils.clear(0, 0, 0, 1);
+            game.getSpriteBatch().setProjectionMatrix(gameCamera.getCamera().combined);
+            game.getSpriteBatch().begin();
 
-        // 3. RENDER WORLD
-        ScreenUtils.clear(0, 0, 0, 1);
-        game.getSpriteBatch().setProjectionMatrix(gameCamera.getCamera().combined);
-        game.getSpriteBatch().begin();
+            mazeRenderer.render(maze, game.getSpriteBatch());
 
-        mazeRenderer.render(maze, game.getSpriteBatch());
-
-        // Draw Obstacles
-        for (Obstacle obstacle : obstacles) {
-            if (obstacle instanceof SpikeTrap spikeTrap) {
-                game.getSpriteBatch().draw(spikeTrap.getCurrentFrame(), spikeTrap.getCollisionBox().x, spikeTrap.getCollisionBox().y, 16, 16);
+            // Draw obstacles
+            for (Obstacle obstacle : obstacles) {
+                if (obstacle instanceof SpikeTrap spike) {
+                    game.getSpriteBatch().draw(spike.getCurrentFrame(), spike.getCollisionBox().x, spike.getCollisionBox().y, 64, 64);
+                } else if (obstacle instanceof SlimeTrap slime) {
+                    game.getSpriteBatch().draw(slime.getSprite(), slime.getCollisionBox().x, slime.getCollisionBox().y, 64, 64);
+                } else if (obstacle instanceof FloorHazard hazard) {
+                    game.getSpriteBatch().draw(hazard.getSprite(), hazard.getCollisionBox().x, hazard.getCollisionBox().y, 64, 64);
+                }
             }
-        }
 
-        // Draw Player
-        if (player.isDamageFlashing()) game.getSpriteBatch().setColor(Color.RED);
-        player.draw(game.getSpriteBatch());
-        game.getSpriteBatch().setColor(Color.WHITE);
+            // Draw player
+            if(player.isDamageFlashing()) {
+                game.getSpriteBatch().setColor(Color.RED);
+            }
 
-        // Draw Enemies
+            player.draw(game.getSpriteBatch());
+            game.getSpriteBatch().setColor(Color.WHITE);
+
+        // Draw enemies
         for (Enemy enemy : enemies) {
             TextureRegion frame = null;
             if (enemy instanceof MutantWorker mw) frame = mw.getCurrentFrame();
@@ -173,12 +196,12 @@ public class GameScreen implements Screen {
             else if (enemy instanceof FlyingDrone fd) frame = fd.getCurrentFrame();
 
             if (frame != null) {
-                game.getSpriteBatch().draw(frame, enemy.getPosition().x, enemy.getPosition().y, 32, 64);
+                game.getSpriteBatch().draw(frame, enemy.getPosition().x, enemy.getPosition().y, 32, 32);
             }
         }
         game.getSpriteBatch().end();
 
-        // 4. RENDER UI
+        // RENDER UI
         if (isPaused) {
             pauseStage.getViewport().apply();
             pauseStage.act(delta);
@@ -193,6 +216,8 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
+        long seed = System.currentTimeMillis();
+
         //Core Logic Systems
         gameStateController = new GameStateController();
         worldLogic = new InteractionLogic();
@@ -205,11 +230,8 @@ public class GameScreen implements Screen {
         createPauseMenu();
         createHud();
 
-        //Generate the Maze
-        long seed = System.currentTimeMillis();
+        //Antonios Map
         initializeMaze(seed);
-
-        //Setup Graphics
         initializeGraphics();
 
         //Spawn Entities
@@ -222,27 +244,20 @@ public class GameScreen implements Screen {
     private void initializePlayer() {
         Point entry = maze.getEntryCell();
         if (entry == null) entry = new Point(1, 1);
-
         Point safeSpawn = findSafeSpawnPosition(entry, maze);
-
-        player = new Player(
-                safeSpawn.x * TILE_SIZE,
-                safeSpawn.y * TILE_SIZE,
-                game.getCharacterDownAnimation()
-        );
+        player = new Player(safeSpawn.x * TILE_SIZE, safeSpawn.y * TILE_SIZE, game.getCharacterDownAnimation());
     }
+
     private void initializeEnemiesAndObstacles(long seed) {
         obstacles = new ObstaclePlacer().placeObstacles(maze, 40, seed);
-
         enemies = new EnemySpawner().spawnEnemies(maze, player, 200, seed);
     }
+
     private void initializeEvents() {
         Rectangle trigger = new Rectangle(50 * TILE_SIZE, 50 * TILE_SIZE, 5 * TILE_SIZE, 5 * TILE_SIZE);
-
         List<Point> doors = new ArrayList<>();
         doors.add(new Point(50, 49));
         doors.add(new Point(55, 55));
-
         ambushRoom = new RoomLock(trigger, doors);
     }
 
@@ -261,23 +276,30 @@ public class GameScreen implements Screen {
         };
         game.getAudioManager().playBackgroundMusic(musicFile);
     }
+    MazeLoader loader = new MazeLoader();
     private void initializeMaze(long seed) {
         MazeLoader loader = new MazeLoader();
 
+        // 1) Read template
         FileHandle template = Gdx.files.internal("maps/level-" + level + ".properties");
         MazeLoader.LevelSpec spec = loader.loadFromProperties(template);
 
+        // 2) Generate
         MazeGenerator gen = new MazeGenerator();
         Maze generated = gen.generate(spec, TILE_SIZE, seed, level);
 
+        // 3) Write to local
         Gdx.files.local("maps").mkdirs();
         FileHandle out = Gdx.files.local("maps/level-" + level + ".properties");
         MazeExporter.saveToProperties(generated, out);
 
+        // 4) Build
         MazeLoader.LevelSpec spec2 = loader.loadFromProperties(out);
         maze = loader.buildMaze(spec2, TILE_SIZE);
     }
+
     private void initializeGraphics() {
+        // Setup camera
         gameCamera = new GameCamera(
                 viewport.getWorldWidth(),
                 viewport.getWorldHeight(),
@@ -288,14 +310,14 @@ public class GameScreen implements Screen {
 
         keyTexture = new Texture("key.png");
 
+        // Setup renderer
         mazeRenderer = new MazeRenderer(
-                game.getTile(1, 0),
-                game.getTile(0, 0),
-                game.getTile(3, 2),
-                game.getTile(2, 3),
+                game.getTile(1, 0), // floor
+                game.getTile(0, 0), // wall
+                game.getTile(3, 2), // entry
+                game.getTile(2, 3), // exit
                 new TextureRegion(keyTexture)
         );
-
         if (Gdx.files.internal("audio/pickup.mp3").exists()) {
             pickupSound = Gdx.audio.newSound(Gdx.files.internal("audio/pickup.mp3"));
         }
@@ -303,7 +325,6 @@ public class GameScreen implements Screen {
             hitSound = Gdx.audio.newSound(Gdx.files.internal("audio/hit.mp3"));
         }
     }
-
     private void togglePause() {
         isPaused = !isPaused;
 
@@ -315,11 +336,19 @@ public class GameScreen implements Screen {
             Gdx.input.setInputProcessor(hud.getStage());
         }
     }
-
     private void createPauseMenu() {
         pauseStage = new Stage(viewport, game.getSpriteBatch());
+        createPauseWindow();
+        createSettingsWindow();
 
-        Window pauseWindow = new Window("Paused", game.getSkin());
+        settingsWindow.setVisible(false);
+        pauseWindow.setVisible(true);
+
+        pauseStage.addActor(pauseWindow);
+        pauseStage.addActor(settingsWindow);
+    }
+    private void createPauseWindow() {
+        pauseWindow = new Window("Paused", game.getSkin());
         pauseWindow.getTitleLabel().setAlignment(1);
         pauseWindow.setMovable(false);
 
@@ -330,96 +359,110 @@ public class GameScreen implements Screen {
                 togglePause();
             }
         });
+        TextButton settingsBtn = new TextButton("Settings", game.getSkin());
+        settingsBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                pauseWindow.setVisible(false);
+                settingsWindow.setVisible(true);
+            }
+        });
 
-        TextButton menuBtn = new TextButton("Main Menu", game.getSkin());
+        TextButton menuBtn = new TextButton("Exit to Menu", game.getSkin());
         menuBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 game.goToMenu();
             }
         });
-
         pauseWindow.add(resumeBtn).width(200).pad(10).row();
+        pauseWindow.add(settingsBtn).width(200).pad(10).row();
         pauseWindow.add(menuBtn).width(200).pad(10).row();
-
         pauseWindow.pack();
-
-        pauseWindow.setPosition(
-                (viewport.getWorldWidth() - pauseWindow.getWidth()) / 2f,
-                (viewport.getWorldHeight() - pauseWindow.getHeight()) / 2f
-        );
-
-        pauseStage.addActor(pauseWindow);
+        pauseWindow.setPosition((viewport.getWorldWidth() - pauseWindow.getWidth()) / 2f, (viewport.getWorldHeight() - pauseWindow.getHeight()) / 2f);
     }
+    private void createSettingsWindow() {
+        settingsWindow = new Window("Settings", game.getSkin());
+        settingsWindow.getTitleLabel().setAlignment(1);
+        settingsWindow.setMovable(false);
 
-    // Resize
+        settingsWindow.add(new Label("Music Volume", game.getSkin())).padTop(10).row();
+        final Slider musicSlider = new Slider(0f, 1f, 0.05f, false, game.getSkin());
+        musicSlider.setValue(game.getPreferences().getMusicVolume());
+        settingsWindow.add(musicSlider).width(200).row();
+
+        musicSlider.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.getPreferences().setMusicVolume(musicSlider.getValue());
+                game.getAudioManager().updateMusicVolume(musicSlider.getValue());
+            }
+        });
+        settingsWindow.add(new Label("SFX Volume", game.getSkin())).padTop(10).row();
+        final Slider sfxSlider = new Slider(0f, 1f, 0.05f, false, game.getSkin());
+        sfxSlider.setValue(game.getPreferences().getSoundVolume());
+        settingsWindow.add(sfxSlider).width(200).padBottom(20).row();
+
+        sfxSlider.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.getPreferences().setSoundVolume(sfxSlider.getValue());
+            }
+        });
+
+        TextButton backBtn = new TextButton("Back", game.getSkin());
+        backBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                settingsWindow.setVisible(false);
+                pauseWindow.setVisible(true);
+            }
+        });
+
+        settingsWindow.add(backBtn).width(200).pad(10).row();
+        settingsWindow.pack();
+        settingsWindow.setPosition((viewport.getWorldWidth() - settingsWindow.getWidth()) / 2f, (viewport.getWorldHeight() - settingsWindow.getHeight()) / 2f);
+    }
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height, true);
         hud.resize(width, height, true);
-
         pauseStage.getViewport().update(width, height, true);
-
         gameCamera.resize(viewport.getWorldWidth(), viewport.getWorldHeight());
     }
-
-    // Find a spawn point, so fat player is not stuck
     private Point findSafeSpawnPosition(Point entryCell, Maze maze) {
         int maxRadius = 10;
-
         for (int r = 0; r <= maxRadius; r++) {
             for (int dy = -r; dy <= r; dy++) {
                 for (int dx = -r; dx <= r; dx++) {
-
                     int cx = entryCell.x + dx;
                     int cy = entryCell.y + dy;
-
-                    if (!GridUtils.inBounds(cx, cy, maze.getWidth(), maze.getHeight())) {
-                        continue;
-                    }
-
-                    if (!maze.getTile(cx, cy).isWalkable()) {
-                        continue;
-                    }
+                    if (!GridUtils.inBounds(cx, cy, maze.getWidth(), maze.getHeight())) continue;
+                    if (!maze.getTile(cx, cy).isWalkable()) continue;
 
                     float worldX = cx * maze.getTileSize();
                     float worldY = cy * maze.getTileSize();
-
-                    if (canPlayerOccupy(worldX, worldY, maze)) {
-                        return new Point(cx, cy);
-                    }
+                    if (canPlayerOccupy(worldX, worldY, maze)) return new Point(cx, cy);
                 }
             }
         }
-
         return entryCell;
     }
-
-    // Player collision check
     private boolean canPlayerOccupy(float worldX, float worldY, Maze maze) {
         float inset = 2f;
-
-        float left   = worldX + inset;
-        float right  = worldX + PLAYER_WIDTH - inset;
-        float bottom = worldY + inset;
-        float top    = worldY + PLAYER_HEIGHT - inset;
-
-        return !maze.isWallWorld(left, bottom)
-                && !maze.isWallWorld(right, bottom)
-                && !maze.isWallWorld(left, top)
-                && !maze.isWallWorld(right, top);
+        return !maze.isWallWorld(worldX + inset, worldY + inset)
+                && !maze.isWallWorld(worldX + PLAYER_WIDTH - inset, worldY + inset)
+                && !maze.isWallWorld(worldX + inset, worldY + PLAYER_HEIGHT - inset)
+                && !maze.isWallWorld(worldX + PLAYER_WIDTH - inset, worldY + PLAYER_HEIGHT - inset);
     }
-
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
-
     @Override
     public void dispose() {
-        hud.dispose();
-        keyTexture.dispose();
-        pauseStage.dispose();
-
+        if (hud != null) hud.dispose();
+        if (keyTexture != null) keyTexture.dispose();
+        if (pauseStage != null) pauseStage.dispose();
         if (pickupSound != null) pickupSound.dispose();
         if (hitSound != null) hitSound.dispose();
     }

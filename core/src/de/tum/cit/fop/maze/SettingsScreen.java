@@ -41,7 +41,7 @@ public class SettingsScreen implements Screen {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 game.getPreferences().setMusicVolume(volumeSlider.getValue());
-                game.getAudioManager().updateVolume(volumeSlider.getValue());
+                game.getAudioManager().updateMusicVolume(volumeSlider.getValue());
             }
         });
 

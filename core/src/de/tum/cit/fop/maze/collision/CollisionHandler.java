@@ -5,55 +5,62 @@ import com.badlogic.gdx.math.Vector2;
 import de.tum.cit.fop.maze.map.Maze;
 
 public class CollisionHandler {
+    // Attributes
+    private final Rectangle hitBox;
+    private final float collisionPadding;
+    private static final float MIN_MOVEMENT_THRESHOLD = 0.001f;
 
-    private final Rectangle bounds;
-    private final float inset;
 
-
+    // Constructor
     public CollisionHandler(Rectangle bounds, float inset) {
-        this.bounds = bounds;
-        this.inset = inset;
+        this.hitBox = bounds;
+        this.collisionPadding = inset;
     }
 
 
-    public void move(Vector2 position, Vector2 velocity, float deltaTime, Maze maze) {
-
-        if (velocity.isZero())
-            return;
-
-        Vector2 step = velocity.cpy().scl(deltaTime);
+    // Handle entity movement and collisions
+    public boolean move(Vector2 currentPos, Vector2 requestedVelocity, float deltaTime, Maze maze) {
+        if (requestedVelocity.isZero())
+            return false;
 
 
-        if(step.x != 0f) {
-            Vector2 nextX = new Vector2(position.x + step.x, position.y);
-            if (!hitsWall(nextX, maze))
-                position.x += step.x;
+        float startX = currentPos.x;
+        float startY = currentPos.y;
 
-        }
+        Vector2 movementStep = requestedVelocity.cpy().scl(deltaTime);
 
+        if (movementStep.x != 0f) {
+            Vector2 newXPos = new Vector2(currentPos.x + movementStep.x, currentPos.y);
 
-        if (step.y != 0f) {
-            Vector2 nextY = new Vector2(position.x, position.y + step.y);
-            if (!hitsWall(nextY, maze)) {
-                position.y += step.y;
+            if (!isHittingObstacle(newXPos, maze)) {
+                currentPos.x += movementStep.x;
             }
         }
 
-        bounds.setPosition(position.x, position.y);
+        if(movementStep.y != 0f) {
+            Vector2 newYPos = new Vector2(currentPos.x, currentPos.y + movementStep.y);
+
+            if(!isHittingObstacle(newYPos, maze))
+                currentPos.y += movementStep.y;
+        }
+
+        hitBox.setPosition(currentPos.x, currentPos.y);
+
+        float deltaX = currentPos.x - startX;
+        float deltaY = currentPos.y - startY;
+        boolean hasMoved = deltaX * deltaX + deltaY * deltaY > MIN_MOVEMENT_THRESHOLD;
+
+        return hasMoved;
     }
 
-    private boolean hitsWall(Vector2 pos, Maze maze) {
 
-        float left   = pos.x + inset;
-        float right  = pos.x + bounds.width  - inset;
-        float bottom = pos.y + inset;
-        float top    = pos.y + bounds.height - inset;
+    // Detect walls at current position
+    private boolean isHittingObstacle(Vector2 checkPos, Maze maze) {
+        float leftEdge = checkPos.x + collisionPadding;
+        float rightEdge = checkPos.x + hitBox.width - collisionPadding;
+        float bottomEdge = checkPos.y + collisionPadding;
+        float topEdge = checkPos.y + hitBox.height - collisionPadding;
 
-        return maze.isWallWorld(left, bottom)
-                || maze.isWallWorld(right, bottom)
-                || maze.isWallWorld(left, top)
-                || maze.isWallWorld(right, top);
+        return maze.isWallWorld(leftEdge, bottomEdge) || maze.isWallWorld(rightEdge, bottomEdge) || maze.isWallWorld(leftEdge, topEdge) || maze.isWallWorld(rightEdge, topEdge);
     }
 }
-
-

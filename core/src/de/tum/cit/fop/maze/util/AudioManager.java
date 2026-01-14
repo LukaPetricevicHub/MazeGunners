@@ -12,7 +12,7 @@ public class AudioManager {
     }
 
     public void playBackgroundMusic(String filePath) {
-        // 1. Stop and dispose of the old music
+        // 1. Stop remove old music
         if (backgroundMusic != null) {
             backgroundMusic.stop();
             backgroundMusic.dispose();
@@ -57,7 +57,7 @@ public class AudioManager {
         }
     }
 
-    public void updateVolume(float volume) {
+    public void updateMusicVolume(float volume) {
         if (backgroundMusic != null) {
             backgroundMusic.setVolume(volume);
         }

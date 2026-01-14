@@ -13,45 +13,35 @@ import de.tum.cit.fop.maze.player.Player;
 public class MutantWorker extends Enemy {
 
     // Animation
-    private Animation<TextureRegion> walkAnimation;
-    private float animationTime = 0f;
+    private Animation<TextureRegion> walkingAnim;
+    private float animationTimer = 0f;
 
 
     // Constructor
-    public MutantWorker(
-            Vector2 startWorldPosition,
-            float movementSpeed,
-            Player targetPlayer
-    ) {
+    public MutantWorker(Vector2 startWorldPosition, float movementSpeed, Player targetPlayer) {
         super(startWorldPosition, movementSpeed, new ChaseBehavior(), targetPlayer);
         this.chaseRadius = 250f;
-        loadWalkAnimation();
+        initWalkAnimation();
     }
 
 
     // Load walking animation frames
-    private void loadWalkAnimation() {
-        Texture spriteSheet = new Texture("mobs.png");
+    private void initWalkAnimation() {
+        Texture mutantSheet = new Texture("mobs.png");
 
-        int startX = 147;
-        int startY = 0;
-        int frameWidth = 44 / 3;
-        int frameHeight = 64 / 4;
+        int initialX = 147;
+        int initialY = 0;
+        int frameW = 44 / 3;
+        int frameH = 64 / 4;
 
-        Array<TextureRegion> frames = new Array<>(TextureRegion.class);
+        Array<TextureRegion> animationFrames = new Array<>(TextureRegion.class);
 
-        for (int col = 0; col < 3; col++) {
-            frames.add(new TextureRegion(
-                    spriteSheet,
-                    startX + col * frameWidth,
-                    startY,
-                    frameWidth,
-                    frameHeight
-            ));
+        for (int i = 0; i < 3; i++) {
+            animationFrames.add(new TextureRegion(mutantSheet, initialX + i * frameW, initialY, frameW, frameH));
         }
 
-        walkAnimation = new Animation<>(0.15f, frames);
-        walkAnimation.setPlayMode(Animation.PlayMode.LOOP);
+        walkingAnim = new Animation<>(0.15f, animationFrames);
+        walkingAnim.setPlayMode(Animation.PlayMode.LOOP);
     }
 
 
@@ -70,7 +60,7 @@ public class MutantWorker extends Enemy {
 
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
-        animationTime += deltaTime;
+        animationTimer += deltaTime;
         super.updateBehavior(deltaTime, maze);
     }
 
@@ -83,8 +73,6 @@ public class MutantWorker extends Enemy {
 
     // Return current animation frame
     public TextureRegion getCurrentFrame() {
-        return walkAnimation.getKeyFrame(animationTime, true);
+        return walkingAnim.getKeyFrame(animationTimer, true);
     }
 }
-
-
