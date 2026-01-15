@@ -36,8 +36,6 @@ public class MazeExporter {
             case SPAWN -> 3;
             case EXIT -> 4;
             case KEY -> 5;
-            case TRAP -> 6;
-            case ENEMY -> 7;
         };
     }
 }

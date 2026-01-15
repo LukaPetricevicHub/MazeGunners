@@ -14,7 +14,7 @@ public class Player {
     private float x;
     private float y;
 
-    private int lives = 100;
+    private int lives = 1000;
     private boolean hasKey = false;
 
     private boolean invulnerable = false;
@@ -23,7 +23,7 @@ public class Player {
     private boolean damageFlash = false;
     private float flashTimeLeft = 0f;
 
-    private static final float WALK_SPEED = 220f;
+    private static final float WALK_SPEED = 750f;
     private static final float RUN_MULTIPLIER = 1.7f;
 
     private float speedMultiplier = 1f;

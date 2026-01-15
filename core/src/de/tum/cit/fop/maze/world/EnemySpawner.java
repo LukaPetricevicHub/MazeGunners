@@ -6,116 +6,97 @@ import de.tum.cit.fop.maze.enemies.*;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.map.Tiles;
 import de.tum.cit.fop.maze.player.Player;
-
 import java.awt.Point;
 import java.util.*;
 
 public class EnemySpawner {
+    // Attributes
+    private static final float AVG_ENEMY_W = 32f;
+    private static final float AVG_ENEMY_H = 64f;
 
-    private static final float ENEMY_WIDTH = 32f;
-    private static final float ENEMY_HEIGHT = 64f;
 
-    public List<Enemy> spawnEnemies(
-            Maze maze,
-            Player targetPlayer,
-            int enemyCount,
-            long seed
-    ) {
-        List<Enemy> enemies = new ArrayList<>();
-        List<Point> candidates = new ArrayList<>();
-        Random rng = new Random(seed);
+    // Create and place maze enemies
+    public List<Enemy> spawnEnemies(Maze maze, Player targetPlayer, int enemyCount, long seed) {
+        List<Enemy> spawnedEnemies = new ArrayList<>();
+        List<Point> spawnCandidates = new ArrayList<>();
+        Random rngGen = new Random(seed);
 
-        // collect floor tiles
         for (int y = 1; y < maze.getHeight() - 1; y++) {
             for (int x = 1; x < maze.getWidth() - 1; x++) {
-                if (maze.getTile(x, y) == Tiles.FLOOR) {
-                    candidates.add(new Point(x, y));
+
+                if(maze.getTile(x, y) == Tiles.FLOOR) {
+                    spawnCandidates.add(new Point(x, y));
                 }
             }
         }
 
-        Collections.shuffle(candidates, rng);
+        Collections.shuffle(spawnCandidates, rngGen);
 
-        for (Point cell : candidates) {
-            if (enemies.size() >= enemyCount)
+        for (Point cell : spawnCandidates) {
+            if (spawnedEnemies.size() >= enemyCount)
                 break;
+
 
             float worldX = cell.x * maze.getTileSize();
             float worldY = cell.y * maze.getTileSize();
 
-            if (!canSpawnEnemyAt(worldX, worldY, maze))
+            if(!isSafeToSpawn(worldX, worldY, maze)) {
                 continue;
+            }
 
-            Vector2 spawnPos = new Vector2(worldX, worldY);
+            Vector2 spawnLocation = new Vector2(worldX, worldY);
+            int enemySelection = rngGen.nextInt(3);
 
-            int type = rng.nextInt(3);
-
-            switch (type) {
-                case 0 -> enemies.add(
-                        new MutantWorker(spawnPos, 150f, targetPlayer)
-                );
-                case 1 -> enemies.add(
-                        new RobotGuard(
-                                spawnPos,
-                                60f,
-                                generatePatrolPath(maze, cell),
-                                targetPlayer
-                        )
-                );
-                case 2 -> enemies.add(
-                        new FlyingDrone(
-                                spawnPos,
-                                110f,
-                                generatePatrolPath(maze, cell),
-                                targetPlayer
-                        )
-                );
+            switch (enemySelection) {
+                case 0 -> spawnedEnemies.add(new MutantWorker(spawnLocation, 175f, targetPlayer));
+                case 1 -> spawnedEnemies.add(new RobotGuard(spawnLocation, 60f, createPatrolRoute(maze, cell), targetPlayer));
+                case 2 -> spawnedEnemies.add(new FlyingDrone(spawnLocation, 110f, createPatrolRoute(maze, cell), targetPlayer));
             }
         }
 
-        return enemies;
+        return spawnedEnemies;
     }
 
 
-    // Ensure the full enemy body fits inside walkable tiles
-    private boolean canSpawnEnemyAt(float x, float y, Maze maze) {
-        float inset = 2f;
+    // Validate specific enemy spawn location
+    private boolean isSafeToSpawn(float x, float y, Maze maze) {
+        float padding = 2f;
 
-        float left   = x + inset;
-        float right  = x + ENEMY_WIDTH - inset;
-        float bottom = y + inset;
-        float top    = y + ENEMY_HEIGHT - inset;
+        float left   = x + padding;
+        float right  = x + AVG_ENEMY_W - padding;
+        float bottom = y + padding;
+        float top    = y + AVG_ENEMY_H - padding;
 
-        return !maze.isWallWorld(left, bottom)
-                && !maze.isWallWorld(right, bottom)
-                && !maze.isWallWorld(left, top)
-                && !maze.isWallWorld(right, top);
+        return !maze.isWallWorld(left, bottom) && !maze.isWallWorld(right, bottom)
+                && !maze.isWallWorld(left, top) && !maze.isWallWorld(right, top);
     }
 
 
-    private Array<Vector2> generatePatrolPath(Maze maze, Point startCell) {
-        Array<Vector2> patrolPoints = new Array<>();
-        float ts = maze.getTileSize();
+    // Create movement path for AI
+    private Array<Vector2> createPatrolRoute(Maze maze, Point startCell) {
+        Array<Vector2> patrolRoute = new Array<>();
+        float tileSize = maze.getTileSize();
 
-        Vector2 start =
-                new Vector2((startCell.x + 0.5f) * ts, (startCell.y + 0.5f) * ts);
-        patrolPoints.add(start);
+        Vector2 startPoint = new Vector2((startCell.x + 0.5f) * tileSize, (startCell.y + 0.5f) * tileSize);
+        patrolRoute.add(startPoint);
 
-        int[][] dirs = {{3,0},{-3,0},{0,3},{0,-3}};
+        int[][] offsets = {{3, 0}, {-3, 0}, {0, 3}, {0, -3}};
 
-        for (int[] d : dirs) {
-            int tx = startCell.x + d[0];
-            int ty = startCell.y + d[1];
+        for (int[] move : offsets) {
+            int targetX = startCell.x + move[0];
+            int targetY = startCell.y + move[1];
 
-            if (!maze.inBounds(tx, ty)) continue;
-            if (maze.getTile(tx, ty) != Tiles.FLOOR) continue;
+            if(!maze.inBounds(targetX, targetY))
+                continue;
 
-            patrolPoints.add(
-                    new Vector2((tx + 0.5f) * ts, (ty + 0.5f) * ts)
-            );
-            return patrolPoints;
+            if (maze.getTile(targetX, targetY) != Tiles.FLOOR) {
+                continue;
+            }
+
+            patrolRoute.add(new Vector2((targetX + 0.5f) * tileSize, (targetY + 0.5f) * tileSize));
+            return patrolRoute;
         }
 
-        return patrolPoints;
+        return patrolRoute;
     }
 }

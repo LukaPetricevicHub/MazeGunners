@@ -18,7 +18,7 @@ public abstract class Enemy {
     protected Player targetPlayer;
     protected final Vector2 homeWorldPosition;
     protected final CollisionHandler collisionHandler;
-    private static final float COLLISION_INSET = 2f;
+    private static final float COLLISION_INSET = 1f;
     protected float chaseRadius = 200f;
     private float chaseMemoryTimer = 0f;
     private static final float CHASE_MEMORY_DURATION = 2.0f;
@@ -37,12 +37,8 @@ public abstract class Enemy {
         this.movementSpeed = movementSpeed;
         this.activeBehavior = initialBehavior;
         this.targetPlayer = targetPlayer;
-
-        this.collisionBounds =
-                new Rectangle(startWorldPosition.x, startWorldPosition.y, 32f, 64f);
-
-        this.collisionHandler =
-                new CollisionHandler(collisionBounds, COLLISION_INSET);
+        this.collisionBounds = new Rectangle(startWorldPosition.x, startWorldPosition.y, 32f, 32f);
+        this.collisionHandler = new CollisionHandler(collisionBounds, COLLISION_INSET);
     }
 
 
@@ -107,6 +103,8 @@ public abstract class Enemy {
         return new Vector2(0f, 0f);
     }
 
+
+    // Getters
     public Vector2 getPosition() { return worldPosition; }
     public float getSpeed() { return movementSpeed; }
     public Rectangle getCollisionBox() { return collisionBounds; }
@@ -117,9 +115,11 @@ public abstract class Enemy {
         this.activeBehavior = behavior;
     }
 
+
     public boolean isAggroLocked() {
         return aggroLocked;
     }
+
 
     protected boolean supportsAggroLock() {
         return false;

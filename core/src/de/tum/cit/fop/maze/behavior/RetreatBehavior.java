@@ -5,73 +5,82 @@ import de.tum.cit.fop.maze.ai.GridPathfinder;
 import de.tum.cit.fop.maze.enemies.Enemy;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.util.GridUtils;
-
 import java.awt.Point;
 import java.util.List;
 
 public class RetreatBehavior implements BehaviorState {
-
     // Attributes
-    private List<Point> path;
-    private float timer = 0f;
-    private static final float RECALC_INTERVAL = 0.7f;
-    private static final float ARRIVAL_DISTANCE = 4f;
+    private static final float RECALC_COOLDOWN = 0.7f;
+    private static final float ARRIVAL_THRESHOLD = 4f;
+
+    private List<Point> currentPath = List.of();
+    private int currentWaypointIndex = 0;
+    private float timeSinceLastRepath = 0f;
+    private Point previousEnemyTile = null;
 
 
+    // Return the retreat state type
     @Override
     public BehaviorStateType getType() {
         return BehaviorStateType.RETREAT;
     }
 
 
+    // Execute movement back to home
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
-        timer += deltaTime;
+        timeSinceLastRepath += deltaTime;
 
-        if (path == null || path.isEmpty() || timer >= RECALC_INTERVAL) {
+        Point enemyTile = convertToTileCoords(enemy.getPosition(), maze);
+        Vector2 homePos = enemy.getHomePosition();
+        Point homeTile = convertToTileCoords(homePos, maze);
 
-            Point enemyTile = new Point(
-                    GridUtils.worldToTile(enemy.getPosition().x, maze.getTileSize()),
-                    GridUtils.worldToTile(enemy.getPosition().y, maze.getTileSize())
-            );
-
-            Vector2 home = enemy.getHomePosition();
-            Point homeTile = new Point(
-                    GridUtils.worldToTile(home.x, maze.getTileSize()),
-                    GridUtils.worldToTile(home.y, maze.getTileSize())
-            );
-
-            path = GridPathfinder.findTilePath(maze, enemyTile, homeTile);
-            timer = 0f;
-        }
-
-        if (path == null || path.isEmpty())
-            return;
-
-
-        Point next = path.get(0);
-
-        Vector2 target = new Vector2(
-                (next.x + 0.5f) * maze.getTileSize(),
-                (next.y + 0.5f) * maze.getTileSize()
-        );
-
-        Vector2 direction = target.sub(enemy.getPosition());
-
-        if (direction.len() < ARRIVAL_DISTANCE) {
-            path.remove(0);
+        if (enemyTile.equals(homeTile)) {
+            currentPath = List.of();
+            currentWaypointIndex = 0;
             return;
         }
 
-        Vector2 velocity =
-                direction.nor().scl(enemy.getSpeed());
+        boolean shouldRecalculate = currentPath.isEmpty() || currentWaypointIndex >= currentPath.size() || previousEnemyTile == null || !enemyTile.equals(previousEnemyTile) || timeSinceLastRepath >= RECALC_COOLDOWN;
 
-        enemy.getCollisionHandler().move(
-                enemy.getPosition(),
-                velocity,
-                deltaTime,
-                maze
-        );
+        if (shouldRecalculate) {
+            currentPath = GridPathfinder.findPath(maze, enemyTile, homeTile);
+            currentWaypointIndex = 0;
+            previousEnemyTile = enemyTile;
+            timeSinceLastRepath = 0f;
+        }
+
+        if(currentPath.isEmpty() || currentWaypointIndex >= currentPath.size()) {
+            return;
+        }
+
+        Point targetTile = currentPath.get(currentWaypointIndex);
+        Vector2 targetWorldPos = getTileCenter(targetTile, maze);
+
+        Vector2 enemyPos = enemy.getPosition();
+        Vector2 travelDir = targetWorldPos.cpy().sub(enemyPos);
+
+        if (travelDir.len2() < ARRIVAL_THRESHOLD * ARRIVAL_THRESHOLD) {
+            currentWaypointIndex++;
+            return;
+        }
+
+        Vector2 retreatVelocity = travelDir.nor().scl(enemy.getSpeed());
+
+        enemy.getCollisionHandler().move(enemyPos, retreatVelocity, deltaTime, maze);
+    }
+
+
+    // Convert world coordinates to tile
+    private static Point convertToTileCoords(Vector2 worldPos, Maze maze) {
+        return new Point(GridUtils.worldToTile(worldPos.x, maze.getTileSize()), GridUtils.worldToTile(worldPos.y, maze.getTileSize()));
+    }
+
+
+    // Get center position of tile
+    private static Vector2 getTileCenter(Point tileCoords, Maze maze) {
+        float size = maze.getTileSize();
+
+        return new Vector2(tileCoords.x * size + size * 0.5f, tileCoords.y * size + size * 0.5f);
     }
 }
-

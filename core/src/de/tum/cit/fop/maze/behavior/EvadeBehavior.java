@@ -5,110 +5,123 @@ import de.tum.cit.fop.maze.ai.GridPathfinder;
 import de.tum.cit.fop.maze.enemies.Enemy;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.util.GridUtils;
-
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 public class EvadeBehavior implements BehaviorState {
-
     // Attributes
-    private List<Point> currentPath;
-    private float pathTimer = 0f;
-    private static final float RECALC_INTERVAL = 0.6f;
+    private static final float RECALC_COOLDOWN = 0.6f;
+    private static final float ARRIVAL_RANGE = 4f;
+    private static final int SCAN_RANGE = 10;
 
-    private static final int SEARCH_RADIUS = 10;
+    private List<Point> escapeRoute = List.of();
+    private int currentWaypoint = 0;
+    private float timerSinceLastPath = 0f;
+    private Point previousEnemyTile = null;
+    private Point previousPlayerTile = null;
 
 
+    // Return the evade state type
     @Override
     public BehaviorStateType getType() {
         return BehaviorStateType.EVADE;
     }
 
 
+    // Execute movement away from player
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
-        pathTimer += deltaTime;
+        timerSinceLastPath += deltaTime;
 
-        if (currentPath == null || currentPath.isEmpty() || pathTimer >= RECALC_INTERVAL) {
+        Point enemyPosTile = worldToTileCoords(enemy.getPosition(), maze);
+        Point playerPosTile = worldToTileCoords(enemy.getPlayerPosition(), maze);
 
-            Point enemyTile = new Point(
-                    GridUtils.worldToTile(enemy.getPosition().x, maze.getTileSize()),
-                    GridUtils.worldToTile(enemy.getPosition().y, maze.getTileSize())
-            );
+        boolean pathBroken = escapeRoute.isEmpty() || currentWaypoint >= escapeRoute.size();
+        boolean needsNewEscape = pathBroken || previousEnemyTile == null || previousPlayerTile == null|| !playerPosTile.equals(previousPlayerTile) || timerSinceLastPath >= RECALC_COOLDOWN;
 
-            Point playerTile = new Point(
-                    GridUtils.worldToTile(enemy.getPlayerPosition().x, maze.getTileSize()),
-                    GridUtils.worldToTile(enemy.getPlayerPosition().y, maze.getTileSize())
-            );
+        if (needsNewEscape) {
+            Point fleeTarget = findSafeSpot(enemyPosTile, playerPosTile, maze);
 
-            Point escapeTarget = findEscapeTile(enemyTile, playerTile, maze);
+            if (fleeTarget != null && !fleeTarget.equals(enemyPosTile)) {
+                escapeRoute = GridPathfinder.findPath(maze, enemyPosTile, fleeTarget);
+                currentWaypoint = 0;
+            } else
+                escapeRoute = List.of();
 
-            if (escapeTarget != null) {
-                currentPath = GridPathfinder.findTilePath(maze, enemyTile, escapeTarget);
-            }
 
-            pathTimer = 0f;
+            previousEnemyTile = enemyPosTile;
+            previousPlayerTile = playerPosTile;
+            timerSinceLastPath = 0f;
         }
 
-        if (currentPath == null || currentPath.isEmpty())
-            return;
-
-
-        Point next = currentPath.get(0);
-
-        Vector2 targetWorld = new Vector2(
-                (next.x + 0.5f) * maze.getTileSize(),
-                (next.y + 0.5f) * maze.getTileSize()
-        );
-
-        Vector2 direction = targetWorld.sub(enemy.getPosition());
-
-        if (direction.len() < 2f) {
-            currentPath.remove(0);
+        if (escapeRoute.isEmpty() || currentWaypoint >= escapeRoute.size()) {
             return;
         }
 
-        Vector2 velocity =
-                direction.nor().scl(enemy.getSpeed());
+        Point targetPoint = escapeRoute.get(currentWaypoint);
+        Vector2 worldTarget = getTileCenter(targetPoint, maze);
 
-        enemy.getCollisionHandler().move(
-                enemy.getPosition(),
-                velocity,
-                deltaTime,
-                maze
+        Vector2 currentPos = enemy.getPosition();
+        Vector2 offset = worldTarget.cpy().sub(currentPos);
+
+        if(offset.len2() < ARRIVAL_RANGE * ARRIVAL_RANGE) {
+            currentWaypoint++;
+            return;
+        }
+
+        Vector2 runVelocity = offset.nor().scl(enemy.getSpeed());
+
+        enemy.getCollisionHandler().move(currentPos, runVelocity, deltaTime, maze);
+    }
+
+
+    // Convert world coordinates to tile
+    private static Point worldToTileCoords(Vector2 worldPos, Maze maze) {
+        return new Point(
+                GridUtils.worldToTile(worldPos.x, maze.getTileSize()),
+                GridUtils.worldToTile(worldPos.y, maze.getTileSize())
         );
     }
 
 
-    // Pick an escape tile
-    private Point findEscapeTile(Point enemy, Point player, Maze maze) {
-        List<Point> candidates = new ArrayList<>();
+    // Get center position of tile
+    private static Vector2 getTileCenter(Point p, Maze maze) {
+        float size = maze.getTileSize();
 
-        for (int dy = -SEARCH_RADIUS; dy <= SEARCH_RADIUS; dy++) {
-            for (int dx = -SEARCH_RADIUS; dx <= SEARCH_RADIUS; dx++) {
+        return new Vector2(p.x * size + size * 0.5f, p.y * size + size * 0.5f);
+    }
 
-                int cx = enemy.x + dx;
-                int cy = enemy.y + dy;
 
-                if (cx < 0 || cy < 0 || cx >= maze.getWidth() || cy >= maze.getHeight())
+    // Find suitable tile to escape
+    private Point findSafeSpot(Point enemyLoc, Point playerLoc, Maze maze) {
+        List<Point> potentialTiles = new ArrayList<>();
+        Random randomGen = new Random();
+
+        for (int dy = -SCAN_RANGE; dy <= SCAN_RANGE; dy++) {
+            for (int dx = -SCAN_RANGE; dx <= SCAN_RANGE; dx++) {
+                int testX = enemyLoc.x + dx;
+                int testY = enemyLoc.y + dy;
+
+                if(!maze.inBounds(testX, testY))
                     continue;
 
-                if (!maze.getTile(cx, cy).isWalkable())
-                    continue;
 
-                int distToPlayer = Math.abs(cx - player.x) + Math.abs(cy - player.y);
-                if (distToPlayer > SEARCH_RADIUS / 2) {
-                    candidates.add(new Point(cx, cy));
+                if (!maze.getTile(testX, testY).isWalkable()) {
+                    continue;
                 }
+
+                int distFromThreat = Math.abs(testX - playerLoc.x) + Math.abs(testY - playerLoc.y);
+
+                if (distFromThreat > SCAN_RANGE / 2)
+                    potentialTiles.add(new Point(testX, testY));
+
             }
         }
 
-        if (candidates.isEmpty())
-            return null;
+        if(potentialTiles.isEmpty()) return null;
 
-        return candidates.get(new Random().nextInt(candidates.size()));
+        return potentialTiles.get(randomGen.nextInt(potentialTiles.size()));
     }
 }
-
