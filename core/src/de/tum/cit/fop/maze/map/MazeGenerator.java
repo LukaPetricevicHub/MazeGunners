@@ -38,7 +38,7 @@ public class MazeGenerator {
     private static final int GRID_SNAP = 1;               // tiles. 1 = no snap. (2 or 4 makes blockier)
 
     // IMPORTANT: even widths supported; 2 means exactly 2 tiles.
-    private static final int HALL_WIDTH = 2;
+    private static final int HALL_WIDTH = 3;
     // -------------------------------
 
     public Maze generate(MazeLoader.LevelSpec spec, int tileSize, long seed, int level) {

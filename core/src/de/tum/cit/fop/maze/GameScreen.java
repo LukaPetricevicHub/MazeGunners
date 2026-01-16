@@ -47,6 +47,7 @@ public class GameScreen implements Screen {
     // Attributes
     private final MazeRunnerGame game;
 
+    private boolean isGameOverShown = false;
     private boolean isPaused = false;
     private Stage pauseStage;
     private Window pauseWindow;
@@ -106,9 +107,15 @@ public class GameScreen implements Screen {
             boolean onExit = worldLogic.isPlayerOnExit(player, maze);
 
             gameStateController.update(delta, onExit, player.hasKey(), player.getLives());
-            switch (gameStateController.getState()) {
-                case WON -> hud.showCenterMessage("VICTORY");
-                case LOST -> hud.showCenterMessage("GAME OVER");
+            // Trigger Game Over Menu (Once)
+            if (!isGameOverShown) {
+                if (gameStateController.getState() == GameStateController.State.WON) {
+                    showGameOverMenu(true);
+                    isGameOverShown = true;
+                } else if (gameStateController.getState() == GameStateController.State.LOST) {
+                    showGameOverMenu(false);
+                    isGameOverShown = true;
+                }
             }
 
             if (gameStateController.shouldReturnToMenu())
@@ -276,6 +283,9 @@ public class GameScreen implements Screen {
         };
         game.getAudioManager().playBackgroundMusic(musicFile);
     }
+
+
+
     MazeLoader loader = new MazeLoader();
     private void initializeMaze(long seed) {
         MazeLoader loader = new MazeLoader();
@@ -347,6 +357,61 @@ public class GameScreen implements Screen {
         pauseStage.addActor(pauseWindow);
         pauseStage.addActor(settingsWindow);
     }
+    private void showGameOverMenu(boolean won) {
+        //Creates Window
+        String title = won ? "VICTORY!" : "GAME OVER";
+        Window gameOverWindow = new Window(title, game.getSkin());
+        gameOverWindow.getTitleLabel().setAlignment(1);
+        gameOverWindow.setMovable(false);
+
+        String message = won ? "Level Complete!" : "Better luck next time...";
+        gameOverWindow.add(new Label(message, game.getSkin())).padBottom(20).row();
+
+        // Next Level Button
+        if (won && level < 5) {
+            TextButton nextBtn = new TextButton("Next Level", game.getSkin());
+            nextBtn.addListener(new ChangeListener() {
+                @Override
+                public void changed(ChangeEvent event, Actor actor) {
+                    game.setScreen(new GameScreen(game, level + 1));
+                }
+            });
+            gameOverWindow.add(nextBtn).width(200).padBottom(10).row();
+        }
+
+        // Restart Button
+        TextButton restartBtn = new TextButton("Restart Level", game.getSkin());
+        restartBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.setScreen(new GameScreen(game, level));
+            }
+        });
+        gameOverWindow.add(restartBtn).width(200).padBottom(10).row();
+
+        // Main Menu Button
+        TextButton menuBtn = new TextButton("Main Menu", game.getSkin());
+        menuBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.goToMenu();
+            }
+        });
+        gameOverWindow.add(menuBtn).width(200).row();
+
+        //Show
+        gameOverWindow.pack();
+        gameOverWindow.setPosition(
+                (viewport.getWorldWidth() - gameOverWindow.getWidth()) / 2f,
+                (viewport.getWorldHeight() - gameOverWindow.getHeight()) / 2f
+        );
+
+        pauseStage.addActor(gameOverWindow);
+
+        isPaused = true;
+        Gdx.input.setInputProcessor(pauseStage);
+    }
+
     private void createPauseWindow() {
         pauseWindow = new Window("Paused", game.getSkin());
         pauseWindow.getTitleLabel().setAlignment(1);
