@@ -13,29 +13,17 @@ public class MazeExporter {
         props.setProperty("Width", String.valueOf(maze.getWidth()));
         props.setProperty("Height", String.valueOf(maze.getHeight()));
 
-        for (int x = 0; x < maze.getWidth(); x++) {
-            for (int y = 0; y < maze.getHeight(); y++) {
-                int id = toFileId(maze.getTile(x, y));
-                if (id != 0) {
-                    props.setProperty(x + "," + y, String.valueOf(id));
-                }
+        for (int y = 0; y < maze.getHeight(); y++) {
+            for (int x = 0; x < maze.getWidth(); x++) {
+                Tiles t = maze.getTile(x, y);
+                props.setProperty(x + "," + y, String.valueOf(t.id()));
             }
         }
 
         try {
-            props.store(file.writer(false), "Generated maze");
+            props.store(file.writer(false), "Generated Maze");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private static int toFileId(Tiles t) {
-        return switch (t) {
-            case WALL -> 0;
-            case FLOOR -> 1;
-            case SPAWN -> 3;
-            case EXIT -> 4;
-            case KEY -> 5;
-        };
     }
 }

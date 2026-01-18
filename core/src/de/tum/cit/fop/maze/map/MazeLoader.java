@@ -61,20 +61,11 @@ public class MazeLoader {
         Maze maze = new Maze(spec.width, spec.height, tileSize);
 
         for (var e : spec.overrides.entrySet()) {
-            maze.setTile(e.getKey().x, e.getKey().y, fromFileId(e.getValue()));
+            int x = e.getKey().x;
+            int y = e.getKey().y;
+            maze.setTile(x, y, Tiles.fromId(e.getValue()));
         }
-        return maze;
-    }
 
-    private Tiles fromFileId(int id) {
-        return switch (id) {
-            case 0 -> Tiles.WALL;
-            case 1 -> Tiles.FLOOR;
-            case 2 -> Tiles.FLOOR;
-            case 3 -> Tiles.SPAWN;
-            case 4 -> Tiles.EXIT;
-            case 5 -> Tiles.KEY;
-            default -> Tiles.FLOOR;
-        };
+        return maze;
     }
 }

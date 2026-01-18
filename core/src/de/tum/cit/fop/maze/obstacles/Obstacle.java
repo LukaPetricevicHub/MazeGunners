@@ -13,9 +13,10 @@ public abstract class Obstacle {
     protected float activationCooldown;
     protected float cooldownTimer;
     protected boolean wasPlayerInside;
+    protected boolean blocksMovement = false;
 
 
-    // Constructor
+    // Constructor For Traps
     public Obstacle(Vector2 startWorldPosition, int damageToPlayer, float activationCooldown, float width, float height) {
         this.worldPosition = new Vector2(startWorldPosition);
         this.collisionBounds = new Rectangle(startWorldPosition.x, startWorldPosition.y, width, height);
@@ -26,6 +27,20 @@ public abstract class Obstacle {
         this.wasPlayerInside = false;
     }
 
+
+    // Constructor For Props
+    public Obstacle(Vector2 startWorldPosition, float width, float height, boolean blocksMovement) {
+        this.worldPosition = new Vector2(startWorldPosition);
+        this.collisionBounds = new Rectangle(startWorldPosition.x, startWorldPosition.y, width, height);
+
+        this.damageToPlayer = 0;
+        this.isActive = true;
+        this.activationCooldown = 0f;
+        this.cooldownTimer = 0f;
+        this.wasPlayerInside = false;
+
+        this.blocksMovement = blocksMovement;
+    }
 
     // Check collision with player bounds
     public boolean intersectsPlayer(Rectangle playerBounds) {
@@ -42,6 +57,10 @@ public abstract class Obstacle {
         }
         wasPlayerInside = isPlayerInside;
         return false;
+    }
+
+    public boolean blocksMovement() {
+        return blocksMovement;
     }
 
 

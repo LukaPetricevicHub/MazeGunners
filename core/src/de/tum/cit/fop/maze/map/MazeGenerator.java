@@ -4,7 +4,7 @@ import java.awt.Point;
 import java.util.*;
 
 /**
- * BSP-based dungeon generator for YOUR codebase.
+ * BSP-based dungeon generator.
  *
  * Order:
  * 1) Partition (BSP)
@@ -14,13 +14,13 @@ import java.util.*;
  * 5) Grid snapping (optional)
  * 6) Carve rooms + halls
  *
- * Guarantees:
- * - NO corridor bends (always straight)
- * - Doorways widened to corridor width (no 1-tile entrances)
- * - All rooms connected using randomized Prim (MST over neighbor candidates)
- * - EXIT is ON THE MAZE BORDER and its width matches the hallway width
- * - Even hall widths supported correctly (e.g., 2 really means 2 tiles)
- * - Exit corridor will NOT cut through any other room (prevents key/exit "same room" visually)
+ * Extras in this version:
+ * - Level size scales with level 1..5
+ * - Target number of rooms scales with level 1..5
+ * - Straight hallways only, exact width (even/odd supported)
+ * - Doors placed at BOTH ends of each hall (aligned with wall opening)
+ * - EXIT is carved on the MAZE BORDER and its width matches hall width
+ * - Exit corridor is prevented from cutting through other rooms
  */
 public class MazeGenerator {
 
@@ -30,19 +30,31 @@ public class MazeGenerator {
     private static final int MIN_LEAF = 18;
     private static final int MIN_ROOM = 8;
     private static final int ROOM_MARGIN = 2;
-
-    private static final float SHRINK_MIN = 0.80f;
-    private static final float SHRINK_MAX = 0.95f;
-
+    private static final float SHRINK_MIN = 0.50f;
+    private static final float SHRINK_MAX = 0.58f;
     private static final float OVERLAP_THRESHOLD = 0.45f; // lower -> more likely to connect neighbors
     private static final int GRID_SNAP = 1;               // tiles. 1 = no snap. (2 or 4 makes blockier)
-
-    // IMPORTANT: even widths supported; 2 means exactly 2 tiles.
     private static final int HALL_WIDTH = 2;
     // -------------------------------
 
+    // Level sizes for level=1..5 (index 0 unused)
+    private static final int[] LEVEL_W = {0, 60, 75, 90, 105, 120};
+    private static final int[] LEVEL_H = {0, 60, 75, 90, 105, 120};
+
+    // Target number of rooms per level (min, max)
+    private static final int[][] LEVEL_ROOMS = {
+            {},            // unused (index 0)
+            {10, 14},        // level 1
+            {16, 22},       // level 2
+            {22, 30},      // level 3
+            {30, 42},      // level 4
+            {40, 56}       // level 5
+    };
+
     public Maze generate(MazeLoader.LevelSpec spec, int tileSize, long seed, int level) {
         Objects.requireNonNull(spec, "LevelSpec must not be null");
+        spec = applyLevelSize(spec, level);
+
         Random rng = new Random(seed);
 
         if (spec.width < MIN_LEAF * 2 + 4 || spec.height < MIN_LEAF * 2 + 4) {
@@ -56,7 +68,8 @@ public class MazeGenerator {
 
             // 1) BSP partition
             Leaf root = new Leaf(1, 1, spec.width - 2, spec.height - 2);
-            List<Leaf> leaves = splitLeaves(root, rng);
+            List<Leaf> leaves = splitLeaves(root, rng, level, spec.width, spec.height);
+
 
             // 2) neighbor discovery on leaves
             discoverNeighbors(leaves);
@@ -70,6 +83,24 @@ public class MazeGenerator {
                 rooms.add(r);
             }
             if (rooms.size() < 3) continue;
+
+            int lv = clampLevel(level);
+            int minRooms = LEVEL_ROOMS[lv][0];
+            int maxRooms = LEVEL_ROOMS[lv][1];
+
+            if (rooms.size() < minRooms) continue;
+
+            if (rooms.size() > maxRooms) {
+                Collections.shuffle(rooms, rng);
+                rooms = new ArrayList<>(rooms.subList(0, maxRooms));
+
+                // remove trimmed rooms from leaf graph so halls/candidates ignore them
+                Set<Room> keep = new HashSet<>(rooms);
+                for (Leaf l : leaves) {
+                    if (l.room != null && !keep.contains(l.room)) l.room = null;
+                }
+            }
+
 
             // 4) hall candidates from neighbors
             List<CandidateEdge> candidates = buildHallCandidates(leaves);
@@ -88,22 +119,39 @@ public class MazeGenerator {
             // carve rooms first
             carveRooms(maze, rooms);
 
-            // carve halls (straight only) + widen doorways
+            // carve halls + doors
             carveStraightHallsWide(maze, hallPlans, HALL_WIDTH);
 
             // cleanup spikes
             cleanupThinArtifacts(maze, rooms);
 
+            // clear previous special tiles (if any)
             clearSpecialTiles(maze);
 
+            // place spawn/key and border exit
             PlaceResult placed = assignSpecialRoomsAndPlaceTiles_BORDER_EXIT(maze, rooms, rng, HALL_WIDTH);
             if (!placed.ok) continue;
+
+            // Optional cap (only if you also rebuild halls afterwards)
+            if (rooms.size() > maxRooms) {
+                Collections.shuffle(rooms, rng);
+                rooms = new ArrayList<>(rooms.subList(0, maxRooms));
+
+                Set<Room> keep = new HashSet<>(rooms);
+                for (Leaf l : leaves) {
+                    if (l.room != null && !keep.contains(l.room)) l.room = null;
+                }
+
+                // IMPORTANT: rebuild candidates + MST using the filtered leaves/rooms
+                candidates = buildHallCandidates(leaves);
+                hallPlans = buildMSTPlans(rooms, candidates, rng);
+                if (hallPlans.size() < rooms.size() - 1) continue;
+            }
 
             if (MazeUtils.reachable(maze, placed.spawn, placed.exit)) {
                 return maze;
             }
         }
-
         throw new RuntimeException("Failed to generate BSP dungeon after " + MAX_ATTEMPTS + " attempts");
     }
 
@@ -118,12 +166,15 @@ public class MazeGenerator {
         final List<Leaf> neighbors = new ArrayList<>();
 
         Leaf(int x, int y, int w, int h) {
-            this.x = x; this.y = y; this.w = w; this.h = h;
+            this.x = x;
+            this.y = y;
+            this.w = w;
+            this.h = h;
         }
 
-        boolean split(Random rng) {
-            boolean canH = h >= MIN_LEAF * 2;
-            boolean canV = w >= MIN_LEAF * 2;
+        boolean split(Random rng, int minLeaf) {
+            boolean canH = h >= minLeaf * 2;
+            boolean canV = w >= minLeaf * 2;
             if (!canH && !canV) return false;
 
             boolean horiz;
@@ -136,8 +187,8 @@ public class MazeGenerator {
             }
 
             int maxSpan = horiz ? h : w;
-            int cutMin = MIN_LEAF;
-            int cutMax = maxSpan - MIN_LEAF;
+            int cutMin = minLeaf;
+            int cutMax = maxSpan - minLeaf;
             if (cutMax <= cutMin) return false;
 
             int cut = cutMin + rng.nextInt(cutMax - cutMin + 1);
@@ -153,16 +204,46 @@ public class MazeGenerator {
         }
     }
 
-    private List<Leaf> splitLeaves(Leaf root, Random rng) {
+    private List<Leaf> splitLeaves(Leaf root, Random rng, int level, int mapW, int mapH) {
+        int lv = clampLevel(level);
+
+        int minRooms = LEVEL_ROOMS[lv][0];
+        int maxRooms = LEVEL_ROOMS[lv][1];
+        int targetRooms = rndBetween(rng, minRooms, maxRooms);
+
+        // Overshoot leaves so enough survive shrink+MIN_ROOM filtering
+        int targetLeaves = targetRooms * 2;        // 2x is usually enough
+        int hardCapLeaves = targetRooms * 3;       // safety cap (avoid tiny slivers)
+
+        // Dynamic minLeaf based on map area and desired leaves
+        // (prevents too-small leaves when you ask for many rooms)
+        int innerW = mapW - 2;
+        int innerH = mapH - 2;
+        double avgLeafArea = (innerW * (double) innerH) / Math.max(1, targetLeaves);
+        int dynamicMinLeaf = (int) (Math.sqrt(avgLeafArea) * 0.9);
+        int minLeafFloor = MIN_ROOM + 2 * ROOM_MARGIN; // keep your MIN_LEAF as a floor
+        int minLeaf = clamp(dynamicMinLeaf, minLeafFloor, 22);
+
         List<Leaf> leaves = new ArrayList<>();
         leaves.add(root);
 
         boolean didSplit;
         do {
             didSplit = false;
+
+            if (leaves.size() >= targetLeaves) break;
+            if (leaves.size() >= hardCapLeaves) break;
+
             List<Leaf> next = new ArrayList<>();
             for (Leaf l : leaves) {
-                if (l.split(rng)) {
+
+                // If we’re already close, don’t force more splitting
+                if (next.size() >= hardCapLeaves) {
+                    next.add(l);
+                    continue;
+                }
+
+                if (l.split(rng, minLeaf)) {
                     next.add(l.left);
                     next.add(l.right);
                     didSplit = true;
@@ -170,11 +251,13 @@ public class MazeGenerator {
                     next.add(l);
                 }
             }
+
             leaves = next;
         } while (didSplit);
 
         return leaves;
     }
+
 
     // ============================================================
     // Neighbor discovery on leaf rectangles
@@ -246,7 +329,7 @@ public class MazeGenerator {
     // Candidate halls (neighbor overlap on SHRUNK rooms)
     // ============================================================
 
-    private enum Orientation { LR, UD }
+    private enum Orientation {LR, UD}
 
     private static class CandidateEdge {
         final Room a, b;
@@ -339,6 +422,7 @@ public class MazeGenerator {
         final Orientation orient;
         final Room a, b;
         final int lineCoord; // if LR => y ; if UD => x
+
         HallPlan(Orientation orient, Room a, Room b, int lineCoord) {
             this.orient = orient;
             this.a = a;
@@ -391,10 +475,6 @@ public class MazeGenerator {
         return plans;
     }
 
-    /**
-     * Padding needed so a corridor of width=hallWidth fits in overlap.
-     * (Even widths supported with asymmetric band offsets.)
-     */
     private int hallPad(int hallWidth) {
         int lo = -(hallWidth / 2);
         int hi = (hallWidth - 1) / 2;
@@ -409,7 +489,7 @@ public class MazeGenerator {
     }
 
     // ============================================================
-    // Carving (rooms + STRAIGHT halls) - EXACT WIDTH (even/odd)
+    // Carving (rooms + STRAIGHT halls) - EXACT WIDTH (even/odd) + doors
     // ============================================================
 
     private void carveRooms(Maze maze, List<Room> rooms) {
@@ -433,8 +513,8 @@ public class MazeGenerator {
 
                 int y = clamp(p.lineCoord, 1, maze.getHeight() - 2);
 
-                int xStart = (left.x() + left.w());
-                int xEnd   = (right.x() - 1);
+                int xStart = left.x() + left.w();
+                int xEnd = right.x() - 1;
 
                 for (int x = Math.min(xStart, xEnd); x <= Math.max(xStart, xEnd); x++) {
                     carveVerticalBandExact(maze, x, y, hallWidth);
@@ -443,14 +523,18 @@ public class MazeGenerator {
                 carveDoorMouthLR(maze, left, y, hallWidth, true);
                 carveDoorMouthLR(maze, right, y, hallWidth, false);
 
+                // doors aligned with wall opening (outside edge)
+                placeDoorBandLRAligned(maze, left, y, hallWidth, true);
+                placeDoorBandLRAligned(maze, right, y, hallWidth, false);
+
             } else {
                 Room top = (a.centerY() <= b.centerY()) ? a : b;
                 Room bottom = (top == a) ? b : a;
 
                 int x = clamp(p.lineCoord, 1, maze.getWidth() - 2);
 
-                int yStart = (top.y() + top.h());
-                int yEnd   = (bottom.y() - 1);
+                int yStart = top.y() + top.h();
+                int yEnd = bottom.y() - 1;
 
                 for (int y = Math.min(yStart, yEnd); y <= Math.max(yStart, yEnd); y++) {
                     carveHorizontalBandExact(maze, x, y, hallWidth);
@@ -458,16 +542,13 @@ public class MazeGenerator {
 
                 carveDoorMouthUD(maze, top, x, hallWidth, true);
                 carveDoorMouthUD(maze, bottom, x, hallWidth, false);
+
+                placeDoorBandUDAligned(maze, top, x, hallWidth, true);
+                placeDoorBandUDAligned(maze, bottom, x, hallWidth, false);
             }
         }
     }
 
-    /**
-     * EXACT width band (works for even/odd):
-     * hallWidth=2 => offsets -1..0
-     * hallWidth=3 => offsets -1..1
-     * hallWidth=4 => offsets -2..1
-     */
     private void carveVerticalBandExact(Maze maze, int x, int y, int hallWidth) {
         int lo = -(hallWidth / 2);
         int hi = (hallWidth - 1) / 2;
@@ -500,7 +581,7 @@ public class MazeGenerator {
         for (int dy = lo; dy <= hi; dy++) {
             int ny = y + dy;
             if (maze.inBounds(doorXOutside, ny)) maze.setTile(doorXOutside, ny, Tiles.FLOOR);
-            if (maze.inBounds(doorXInside, ny))  maze.setTile(doorXInside, ny, Tiles.FLOOR);
+            if (maze.inBounds(doorXInside, ny)) maze.setTile(doorXInside, ny, Tiles.FLOOR);
         }
     }
 
@@ -514,8 +595,37 @@ public class MazeGenerator {
         for (int dx = lo; dx <= hi; dx++) {
             int nx = x + dx;
             if (maze.inBounds(nx, doorYOutside)) maze.setTile(nx, doorYOutside, Tiles.FLOOR);
-            if (maze.inBounds(nx, doorYInside))  maze.setTile(nx, doorYInside, Tiles.FLOOR);
+            if (maze.inBounds(nx, doorYInside)) maze.setTile(nx, doorYInside, Tiles.FLOOR);
         }
+    }
+
+    private void placeDoorBandLRAligned(Maze maze, Room room, int y, int hallWidth, boolean isLeftRoom) {
+        int lo = -(hallWidth / 2);
+        int hi = (hallWidth - 1) / 2;
+
+        int doorX = isLeftRoom ? (room.x() + room.w()) : (room.x() - 1);
+
+        for (int dy = lo; dy <= hi; dy++) {
+            setDoorIfPossible(maze, doorX, y + dy);
+        }
+    }
+
+    private void placeDoorBandUDAligned(Maze maze, Room room, int x, int hallWidth, boolean isTopRoom) {
+        int lo = -(hallWidth / 2);
+        int hi = (hallWidth - 1) / 2;
+
+        int doorY = isTopRoom ? (room.y() + room.h()) : (room.y() - 1);
+
+        for (int dx = lo; dx <= hi; dx++) {
+            setDoorIfPossible(maze, x + dx, doorY);
+        }
+    }
+
+    private void setDoorIfPossible(Maze maze, int x, int y) {
+        if (!maze.inBounds(x, y)) return;
+        Tiles t = maze.getTile(x, y);
+        if (t == Tiles.SPAWN || t == Tiles.KEY || t == Tiles.EXIT) return;
+        if (t == Tiles.FLOOR) maze.setTile(x, y, Tiles.DOOR);
     }
 
     // ============================================================
@@ -552,10 +662,6 @@ public class MazeGenerator {
 
     private int snapDown(int v, int snap) {
         return (v / snap) * snap;
-    }
-
-    private int clamp(int v, int lo, int hi) {
-        return Math.max(lo, Math.min(hi, v));
     }
 
     // ============================================================
@@ -598,7 +704,7 @@ public class MazeGenerator {
 
     // ============================================================
     // Special placement: BORDER EXIT (width matches hallWidth)
-    // + "exit corridor cannot intersect other rooms"
+    // + exit corridor cannot intersect other rooms
     // ============================================================
 
     private static class PlaceResult {
@@ -613,12 +719,126 @@ public class MazeGenerator {
         }
     }
 
-    private enum BorderSide { LEFT, RIGHT, TOP, BOTTOM }
+    private enum BorderSide {LEFT, RIGHT, TOP, BOTTOM}
+
+    private static class BorderEntryPlan {
+        final BorderSide side;
+        final int coord; // LEFT/RIGHT => y centerline, TOP/BOTTOM => x centerline
+        BorderEntryPlan(BorderSide side, int coord) { this.side = side; this.coord = coord; }
+    }
+
+    private BorderEntryPlan pickBorderEntryPlan(Room spawnRoom, Maze maze, Random rng, int hallWidth, List<Room> rooms) {
+        int pad = hallPad(hallWidth);
+        int W = maze.getWidth();
+        int H = maze.getHeight();
+
+        int dLeft   = spawnRoom.x();
+        int dRight  = (W - 1) - (spawnRoom.x() + spawnRoom.w() - 1);
+        int dTop    = spawnRoom.y();
+        int dBottom = (H - 1) - (spawnRoom.y() + spawnRoom.h() - 1);
+
+        int wLeft   = 1 + Math.max(0, 80 - dLeft);
+        int wRight  = 1 + Math.max(0, 80 - dRight);
+        int wTop    = 1 + Math.max(0, 80 - dTop);
+        int wBottom = 1 + Math.max(0, 80 - dBottom);
+
+        for (int attempt = 0; attempt < 120; attempt++) {
+            BorderSide side = weightedPick(rng,
+                    new BorderSide[]{BorderSide.LEFT, BorderSide.RIGHT, BorderSide.TOP, BorderSide.BOTTOM},
+                    new int[]{wLeft, wRight, wTop, wBottom});
+
+            BorderEntryPlan be;
+
+            if (side == BorderSide.LEFT || side == BorderSide.RIGHT) {
+                int minY = spawnRoom.y() + 1 + pad;
+                int maxY = spawnRoom.y() + spawnRoom.h() - 2 - pad;
+
+                if (maxY < minY) {
+                    minY = spawnRoom.y() + pad;
+                    maxY = spawnRoom.y() + spawnRoom.h() - 1 - pad;
+                }
+
+                minY = clamp(minY, 1 + pad, H - 2 - pad);
+                maxY = clamp(maxY, 1 + pad, H - 2 - pad);
+                if (maxY < minY) continue;
+
+                int y = minY + rng.nextInt(maxY - minY + 1);
+                be = new BorderEntryPlan(side, y);
+            } else {
+                int minX = spawnRoom.x() + 1 + pad;
+                int maxX = spawnRoom.x() + spawnRoom.w() - 2 - pad;
+
+                if (maxX < minX) {
+                    minX = spawnRoom.x() + pad;
+                    maxX = spawnRoom.x() + spawnRoom.w() - 1 - pad;
+                }
+
+                minX = clamp(minX, 1 + pad, W - 2 - pad);
+                maxX = clamp(maxX, 1 + pad, W - 2 - pad);
+                if (maxX < minX) continue;
+
+                int x = minX + rng.nextInt(maxX - minX + 1);
+                be = new BorderEntryPlan(side, x);
+            }
+
+            // reuse the same intersection test you already use for exit
+            BorderExitPlan asExit = new BorderExitPlan(be.side, be.coord);
+            if (!corridorIntersectsOtherRoom(asExit, spawnRoom, rooms, maze, hallWidth)) {
+                return be;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Carve a straight wide corridor from spawnRoom to border and place SPAWN tiles on the border.
+     * Width matches hallWidth. Returns representative border point for reachability.
+     */
+    private Point carveStraightToBorderAndPlaceSpawn(Maze maze, Room spawnRoom, BorderEntryPlan be, int hallWidth) {
+        int W = maze.getWidth();
+        int H = maze.getHeight();
+
+        int lo = -(hallWidth / 2);
+        int hi = (hallWidth - 1) / 2;
+
+        if (be.side == BorderSide.LEFT) {
+            int y = clamp(be.coord, 1 + hallPad(hallWidth), H - 2 - hallPad(hallWidth));
+            for (int x = spawnRoom.x(); x >= 0; x--) carveVerticalBandExact(maze, x, y, hallWidth);
+            for (int dy = lo; dy <= hi; dy++) maze.setTile(0, y + dy, Tiles.SPAWN);
+            return new Point(0, y);
+        }
+
+        if (be.side == BorderSide.RIGHT) {
+            int y = clamp(be.coord, 1 + hallPad(hallWidth), H - 2 - hallPad(hallWidth));
+            for (int x = spawnRoom.x() + spawnRoom.w() - 1; x <= W - 1; x++) carveVerticalBandExact(maze, x, y, hallWidth);
+            for (int dy = lo; dy <= hi; dy++) maze.setTile(W - 1, y + dy, Tiles.SPAWN);
+            return new Point(W - 1, y);
+        }
+
+        if (be.side == BorderSide.TOP) {
+            int x = clamp(be.coord, 1 + hallPad(hallWidth), W - 2 - hallPad(hallWidth));
+            for (int y = spawnRoom.y(); y >= 0; y--) carveHorizontalBandExact(maze, x, y, hallWidth);
+            for (int dx = lo; dx <= hi; dx++) maze.setTile(x + dx, 0, Tiles.SPAWN);
+            return new Point(x, 0);
+        }
+
+        // BOTTOM
+        int x = clamp(be.coord, 1 + hallPad(hallWidth), W - 2 - hallPad(hallWidth));
+        for (int y = spawnRoom.y() + spawnRoom.h() - 1; y <= H - 1; y++) carveHorizontalBandExact(maze, x, y, hallWidth);
+        for (int dx = lo; dx <= hi; dx++) maze.setTile(x + dx, H - 1, Tiles.SPAWN);
+        return new Point(x, H - 1);
+    }
+
 
     private static class BorderExitPlan {
         final BorderSide side;
         final int coord; // LEFT/RIGHT => y centerline, TOP/BOTTOM => x centerline
-        BorderExitPlan(BorderSide side, int coord) { this.side = side; this.coord = coord; }
+
+        BorderExitPlan(BorderSide side, int coord) {
+            this.side = side;
+            this.coord = coord;
+        }
     }
 
     private PlaceResult assignSpecialRoomsAndPlaceTiles_BORDER_EXIT(Maze maze, List<Room> rooms, Random rng, int hallWidth) {
@@ -628,7 +848,6 @@ public class MazeGenerator {
         Room exitRoom = farthestRoom(rooms, spawnRoom);
         if (exitRoom == spawnRoom) return new PlaceResult(false, null, null);
 
-        // IMPORTANT: key room must be a different room object than exit room/spawn room
         Room keyRoom = pickKeyRoom(rooms, spawnRoom, exitRoom, rng);
         if (keyRoom == null) return new PlaceResult(false, null, null);
 
@@ -636,14 +855,18 @@ public class MazeGenerator {
         exitRoom.setType(RoomType.EXIT);
         keyRoom.setType(RoomType.KEY);
 
-        Point spawn = spawnRoom.randomInterior(rng);
-        Point key   = keyRoom.randomInterior(rng);
+        BorderEntryPlan entryPlan = pickBorderEntryPlan(spawnRoom, maze, rng, hallWidth, rooms);
+        if (entryPlan == null) return new PlaceResult(false, null, null);
 
-        if (maze.getTile(spawn.x, spawn.y) != Tiles.FLOOR) return new PlaceResult(false, null, null);
-        if (maze.getTile(key.x, key.y)   != Tiles.FLOOR) return new PlaceResult(false, null, null);
+        Point spawn = carveStraightToBorderAndPlaceSpawn(maze, spawnRoom, entryPlan, hallWidth);
+        if (spawn == null) return new PlaceResult(false, null, null);
+
+
+        Point key = keyRoom.randomInterior(rng);
+        if (maze.getTile(key.x, key.y) != Tiles.FLOOR) return new PlaceResult(false, null, null);
 
         maze.setTile(spawn.x, spawn.y, Tiles.SPAWN);
-        maze.setTile(key.x,   key.y,   Tiles.KEY);
+        maze.setTile(key.x, key.y, Tiles.KEY);
 
         BorderExitPlan be = pickBorderExitPlan(exitRoom, maze, rng, hallWidth, rooms);
         if (be == null) return new PlaceResult(false, null, null);
@@ -681,8 +904,15 @@ public class MazeGenerator {
         }
         if (candidates.isEmpty()) return null;
 
-        candidates.sort((a, b) -> Integer.compare(dist2(b, spawn), dist2(a, spawn)));
-        int top = Math.min(Math.max(1, candidates.size() / 3), candidates.size());
+        // Score by "far from both": maximize min(distToSpawn, distToExit)
+        candidates.sort((a, b) -> {
+            int sa = Math.min(dist2(a, spawn), dist2(a, exit));
+            int sb = Math.min(dist2(b, spawn), dist2(b, exit));
+            return Integer.compare(sb, sa); // descending
+        });
+
+        // pick from top slice for variety
+        int top = Math.min(Math.max(1, candidates.size() / 4), candidates.size());
         return candidates.get(rng.nextInt(top));
     }
 
@@ -700,21 +930,19 @@ public class MazeGenerator {
         }
     }
 
-    // ---------------- exit-plan selection that avoids cutting through rooms ----------------
-
     private BorderExitPlan pickBorderExitPlan(Room exitRoom, Maze maze, Random rng, int hallWidth, List<Room> rooms) {
         int pad = hallPad(hallWidth);
         int W = maze.getWidth();
         int H = maze.getHeight();
 
-        int dLeft   = exitRoom.x();
-        int dRight  = (W - 1) - (exitRoom.x() + exitRoom.w() - 1);
-        int dTop    = exitRoom.y();
+        int dLeft = exitRoom.x();
+        int dRight = (W - 1) - (exitRoom.x() + exitRoom.w() - 1);
+        int dTop = exitRoom.y();
         int dBottom = (H - 1) - (exitRoom.y() + exitRoom.h() - 1);
 
-        int wLeft   = 1 + Math.max(0, 80 - dLeft);
-        int wRight  = 1 + Math.max(0, 80 - dRight);
-        int wTop    = 1 + Math.max(0, 80 - dTop);
+        int wLeft = 1 + Math.max(0, 80 - dLeft);
+        int wRight = 1 + Math.max(0, 80 - dRight);
+        int wTop = 1 + Math.max(0, 80 - dTop);
         int wBottom = 1 + Math.max(0, 80 - dBottom);
 
         for (int attempt = 0; attempt < 120; attempt++) {
@@ -840,10 +1068,6 @@ public class MazeGenerator {
         return false;
     }
 
-    /**
-     * Carve a straight wide corridor from exitRoom to border and place EXIT tiles on the border.
-     * Exit band width matches hallWidth.
-     */
     private Point carveStraightToBorderAndPlaceExit(Maze maze, Room exitRoom, BorderExitPlan be, int hallWidth) {
         int W = maze.getWidth();
         int H = maze.getHeight();
@@ -883,6 +1107,15 @@ public class MazeGenerator {
     // Helpers
     // ============================================================
 
+    private MazeLoader.LevelSpec applyLevelSize(MazeLoader.LevelSpec spec, int level) {
+        int lv = clamp(level, 1, 5);
+        int targetW = LEVEL_W[lv];
+        int targetH = LEVEL_H[lv];
+
+        // Force the level sizes (as you did in your latest snippet)
+        return new MazeLoader.LevelSpec(targetW, targetH, spec.overrides);
+    }
+
     private void fill(Maze maze, Tiles tile) {
         for (int y = 0; y < maze.getHeight(); y++) {
             for (int x = 0; x < maze.getWidth(); x++) {
@@ -890,4 +1123,18 @@ public class MazeGenerator {
             }
         }
     }
+
+    private int clamp(int v, int lo, int hi) {
+        return Math.max(lo, Math.min(hi, v));
+    }
+
+    private static int clampLevel(int level) {
+        return Math.max(1, Math.min(5, level));
+    }
+
+    private static int rndBetween(Random rng, int a, int b) {
+        if (b < a) return a;
+        return a + rng.nextInt(b - a + 1);
+    }
+
 }

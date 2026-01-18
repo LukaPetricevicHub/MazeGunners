@@ -5,6 +5,7 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Rectangle;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.map.Maze;
 
@@ -37,6 +38,12 @@ public class Player {
     private float animTime = 0f;
 
 
+    @FunctionalInterface
+    public interface BlockChecker {
+        boolean isBlocked(Rectangle playerRect);
+    }
+
+
     // Constructor
     public Player(float startX, float startY, Animation<TextureRegion> walkDownAnimation) {
         this.x = startX;
@@ -46,13 +53,15 @@ public class Player {
 
 
     // Main Update
-    public void update(float dt, Maze maze, MazeRunnerGame game) {
+    public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker) {
+
         animTime += dt;
 
         updateTimers(dt);
 
         MovementInput input = readMovementInput(dt);
-        attemptMove(input.dx, input.dy, maze, game);
+     attemptMove(input.dx, input.dy, maze, game, blockChecker);
+
     }
 
 
@@ -94,34 +103,52 @@ public class Player {
 
 
     // Collision & Movement
-    private void attemptMove(float dx, float dy, Maze maze, MazeRunnerGame game) {
+    private void attemptMove(float dx, float dy, Maze maze, MazeRunnerGame game, BlockChecker blockChecker) {
 
         boolean hitWallX = false;
         boolean hitWallY = false;
 
+        // --- move X ---
         if (dx != 0f) {
             float nextX = x + dx;
 
+            // first check tiles (walls/exit)
             if (canOccupy(nextX, y, maze)) {
-                x = nextX;
+
+                // then check blocking obstacles (props)
+                if (blockChecker == null || !blockChecker.isBlocked(makeRect(nextX, y))) {
+                    x = nextX;
+                } else {
+                    hitWallX = true;
+                }
+
             } else {
                 hitWallX = true;
             }
         }
 
+        // --- move Y ---
         if (dy != 0f) {
             float nextY = y + dy;
 
-            if (canOccupy(x, nextY, maze))
-                y = nextY;
-            else
+            if (canOccupy(x, nextY, maze)) {
+
+                if (blockChecker == null || !blockChecker.isBlocked(makeRect(x, nextY))) {
+                    y = nextY;
+                } else {
+                    hitWallY = true;
+                }
+
+            } else {
                 hitWallY = true;
+            }
         }
 
         if (hitWallX || hitWallY) {
             game.playWallHitSound();
         }
     }
+
 
     private boolean canOccupy(float testX, float testY, Maze maze) {
         float left   = testX + COLLISION_INSET;
@@ -191,4 +218,11 @@ public class Player {
 
         return false;
     }
+
+    private Rectangle makeRect(float px, float py) {
+        // Use SAME collision "top" you used in canOccupy (40px tall)
+        // so the rectangle matches your actual collision height.
+        return new Rectangle(px, py, WIDTH, 40.0f);
+    }
+
 }
