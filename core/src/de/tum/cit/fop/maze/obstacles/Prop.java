@@ -8,8 +8,8 @@ public class Prop extends Obstacle {
     private final TextureRegion sprite;
     private final PropType type;
 
-    public Prop(Vector2 pos, PropType type, TextureRegion sprite) {
-        super(pos, type.wPx, type.hPx, true); // blocks movement
+    public Prop(Vector2 pos, PropType type, TextureRegion sprite, int tileSize) {
+        super(pos, type.tilesW * tileSize, type.tilesH * tileSize, true); // blocks
         this.type = type;
         this.sprite = sprite;
     }

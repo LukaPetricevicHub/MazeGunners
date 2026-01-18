@@ -24,13 +24,17 @@ public class PropPlacer {
                 if (maze.getTile(x, y) != Tiles.FLOOR) continue;
 
                 // avoid corridor-ish tiles (narrow)
-                if (walkableNeighbors4(maze, x, y) <= 2) continue;
+                if (!isRoomLike(maze, x, y)) continue;
 
                 // avoid doors/special tiles
                 if (nearTile(maze, x, y, Tiles.DOOR, 2)) continue;
                 if (nearTile(maze, x, y, Tiles.SPAWN, 4)) continue;
                 if (nearTile(maze, x, y, Tiles.EXIT, 4)) continue;
                 if (nearTile(maze, x, y, Tiles.KEY, 4)) continue;
+
+                if (!hasRoomSpaceForFootprint(maze, new Point(x, y), PropType.TABLE)) {
+                    // This line is optional; see note below.
+                }
 
                 candidates.add(new Point(x, y));
             }
@@ -47,22 +51,24 @@ public class PropPlacer {
 
         while (placed < count && tries++ < maxTries && !candidates.isEmpty()) {
             Point cell = candidates.get(rng.nextInt(candidates.size()));
+            PropType type = randomType(rng);
+
             if (occupied.contains(cell)) continue;
 
-            PropType type = randomType(rng);
+            if (!hasRoomSpaceForFootprint(maze, cell, type)) continue;
 
             if (!reserveFootprint(cell, maze, type, occupied)) continue;
 
             TextureRegion sprite = propSprites.get(type);
             if (sprite == null) {
-                freeFootprint(cell, maze, type, occupied);
+                freeFootprint(cell, type, occupied);
                 continue;
             }
 
             float wx = cell.x * maze.getTileSize();
             float wy = cell.y * maze.getTileSize();
 
-            out.add(new Prop(new Vector2(wx, wy), type, sprite));
+            out.add(new Prop(new Vector2(wx, wy), type, sprite, maze.getTileSize()));
             placed++;
         }
 
@@ -95,10 +101,11 @@ public class PropPlacer {
     }
 
     private boolean reserveFootprint(Point cell, Maze maze, PropType type, Set<Point> occupied) {
-        int ts = maze.getTileSize();
-        int wTiles = Math.max(1, (int) Math.ceil(type.wPx / (double) ts));
-        int hTiles = Math.max(1, (int) Math.ceil(type.hPx / (double) ts));
 
+        int wTiles = Math.max(1, type.tilesW);
+        int hTiles = Math.max(1, type.tilesH);
+
+        // validate footprint area
         for (int dy = 0; dy < hTiles; dy++) {
             for (int dx = 0; dx < wTiles; dx++) {
                 int x = cell.x + dx;
@@ -112,6 +119,7 @@ public class PropPlacer {
             }
         }
 
+        // reserve
         for (int dy = 0; dy < hTiles; dy++) {
             for (int dx = 0; dx < wTiles; dx++) {
                 occupied.add(new Point(cell.x + dx, cell.y + dy));
@@ -120,10 +128,10 @@ public class PropPlacer {
         return true;
     }
 
-    private void freeFootprint(Point cell, Maze maze, PropType type, Set<Point> occupied) {
-        int ts = maze.getTileSize();
-        int wTiles = Math.max(1, (int) Math.ceil(type.wPx / (double) ts));
-        int hTiles = Math.max(1, (int) Math.ceil(type.hPx / (double) ts));
+    private void freeFootprint(Point cell, PropType type, Set<Point> occupied) {
+
+        int wTiles = Math.max(1, type.tilesW);
+        int hTiles = Math.max(1, type.tilesH);
 
         for (int dy = 0; dy < hTiles; dy++) {
             for (int dx = 0; dx < wTiles; dx++) {
@@ -131,4 +139,29 @@ public class PropPlacer {
             }
         }
     }
+
+    private boolean isRoomLike(Maze maze, int x, int y) {
+        // A room tile should be "open": typically 3-4 walkable neighbors
+        return walkableNeighbors4(maze, x, y) >= 3;
+    }
+
+    private boolean hasRoomSpaceForFootprint(Maze maze, Point cell, PropType type) {
+        // Every tile under the prop footprint should also be room-like
+        int wTiles = Math.max(1, type.tilesW);
+        int hTiles = Math.max(1, type.tilesH);
+
+        for (int dy = 0; dy < hTiles; dy++) {
+            for (int dx = 0; dx < wTiles; dx++) {
+                int x = cell.x + dx;
+                int y = cell.y + dy;
+
+                if (!maze.inBounds(x, y)) return false;
+                if (maze.getTile(x, y) != Tiles.FLOOR) return false;
+
+                if (!isRoomLike(maze, x, y)) return false;
+            }
+        }
+        return true;
+    }
+
 }

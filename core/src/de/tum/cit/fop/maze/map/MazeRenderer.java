@@ -9,7 +9,7 @@ public class MazeRenderer {
     private final TextureRegion floorRoom;
     private final TextureRegion floorHall;
 
-    private final TextureRegion wallFill;     // single tile PNG
+    private final TextureRegion wallFill;     // single tile PNG (fill/outside)
     private final TextureRegion wallSetSheet; // spritesheet PNG (edges + corners)
 
     private TextureRegion wallLeft, wallRight, wallTop, wallBottom;
@@ -42,6 +42,7 @@ public class MazeRenderer {
         this.door = door;
     }
 
+
     public void render(Maze maze, SpriteBatch batch) {
         int ts = maze.getTileSize();
 
@@ -64,17 +65,12 @@ public class MazeRenderer {
                     default    -> (isHallTile(maze, x, y) ? floorHall : floorRoom);
                 };
 
-                if (t == Tiles.WALL && tex == floorHall && tex == floorRoom) {
-                    System.out.println("Renderer mismatch at " + x + "," + y);
-                }
-
                 batch.draw(tex, x * ts, y * ts, ts, ts);
             }
         }
     }
 
     // -------- floor context (room vs hall) --------
-
     private boolean isHallTile(Maze maze, int x, int y) {
         if (!maze.getTile(x, y).isWalkable()) return false;
 
@@ -83,53 +79,54 @@ public class MazeRenderer {
         boolean wallU = maze.getTile(x, y + 1).isWall();
         boolean wallD = maze.getTile(x, y - 1).isWall();
 
+        // corridor-like: enclosed on opposite sides
         return (wallL && wallR && !wallU && !wallD)
                 || (wallU && wallD && !wallL && !wallR);
     }
 
     // -------- wall slicing --------
-
     private void sliceWallSet(int ts) {
-        // wallSet.png layout (2 rows x 4 cols):
-        // row0: LEFT, RIGHT, TOP, BOTTOM
-        // row1: TL, TR, BL, BR
-
+        Texture tex = wallSetSheet.getTexture();
         int baseX = wallSetSheet.getRegionX();
         int baseY = wallSetSheet.getRegionY();
-        Texture tex = wallSetSheet.getTexture();
 
-        wallLeft   = new TextureRegion(tex, baseX + 0 * ts, baseY + 1 * ts, ts, ts);
-        wallRight  = new TextureRegion(tex, baseX + 2 * ts, baseY + 1 * ts, ts, ts);
-        wallTop    = new TextureRegion(tex, baseX + 1 * ts, baseY + 0 * ts, ts, ts);
-        wallBottom = new TextureRegion(tex, baseX + 1 * ts, baseY + 2 * ts, ts, ts);
+        // Row 0
+        wallLeft   = new TextureRegion(tex, baseX + 0 * ts, baseY + 0 * ts, ts, ts);
+        wallRight  = new TextureRegion(tex, baseX + 1 * ts, baseY + 0 * ts, ts, ts);
+        wallTop    = new TextureRegion(tex, baseX + 2 * ts, baseY + 0 * ts, ts, ts);
+        wallBottom = new TextureRegion(tex, baseX + 3 * ts, baseY + 0 * ts, ts, ts);
 
-        wallCornerTL = new TextureRegion(tex, baseX + 0 * ts, baseY + 0 * ts, ts, ts);
+        // Row 1
+        wallCornerTL = new TextureRegion(tex, baseX + 0 * ts, baseY + 1 * ts, ts, ts);
         wallCornerTR = new TextureRegion(tex, baseX + 1 * ts, baseY + 1 * ts, ts, ts);
-        wallCornerBL = new TextureRegion(tex, baseX + 0 * ts, baseY + 2 * ts, ts, ts);
-        wallCornerBR = new TextureRegion(tex, baseX + 2 * ts, baseY + 2 * ts, ts, ts);
+        wallCornerBL = new TextureRegion(tex, baseX + 2 * ts, baseY + 1 * ts, ts, ts);
+        wallCornerBR = new TextureRegion(tex, baseX + 3 * ts, baseY + 1 * ts, ts, ts);
     }
 
     // -------- wall picking (edges/corners/fill) --------
-
     private TextureRegion pickWallTexture(Maze maze, int x, int y) {
+        // Decide based on which neighbors are walkable (open space)
         boolean openL = maze.getTile(x - 1, y).isWalkable();
         boolean openR = maze.getTile(x + 1, y).isWalkable();
         boolean openU = maze.getTile(x, y + 1).isWalkable();
         boolean openD = maze.getTile(x, y - 1).isWalkable();
 
-        // Corner rules: two adjacent open sides
-        if (openL && openU && !openR && !openD) return wallCornerTL;
-        if (openR && openU && !openL && !openD) return wallCornerTR;
-        if (openL && openD && !openR && !openU) return wallCornerBL;
-        if (openR && openD && !openL && !openU) return wallCornerBR;
+        // If no walkable around it -> it's just a fill wall (outside / solid block)
+        if (!openL && !openR && !openU && !openD) return wallFill;
 
-        // Edge rules (prefer showing the face that borders walkable space)
+        // Corners: two adjacent open sides
+        if (openL && openU) return wallCornerTL;
+        if (openR && openU) return wallCornerTR;
+        if (openL && openD) return wallCornerBL;
+        if (openR && openD) return wallCornerBR;
+
+        // Edges: show face towards open space
         if (openL) return wallLeft;
         if (openR) return wallRight;
         if (openU) return wallTop;
         if (openD) return wallBottom;
 
-        // Solid block wall
+        // fallback
         return wallFill;
     }
 }

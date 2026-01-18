@@ -66,7 +66,9 @@ public class GameScreen implements Screen {
     private List<Enemy> enemies;
     private List<Obstacle> obstacles;
     private final Map<PropType, TextureRegion> propSprites = new HashMap<>();
-    private final List<Texture> propTexturesToDispose = new ArrayList<>();
+    private Texture propTilesetTexture;
+    private static final int PROP_TILE_PX = 32;
+    private Texture texFloorRoom, texFloorHall, texWallFill, texWallSet, texSpawn, texExit, texDoor, texKey;
 
 
     private RoomLock ambushRoom;
@@ -80,7 +82,7 @@ public class GameScreen implements Screen {
 
     private static final int TILE_SIZE = 32;
     private static final float PLAYER_WIDTH = 32f;
-    private static final float PLAYER_HEIGHT = 64f;
+    private static final float PLAYER_HEIGHT = 32f;
 
     private Texture keyTexture;
     private final int level;
@@ -344,23 +346,28 @@ public class GameScreen implements Screen {
         );
 
         gameCamera.setZoom(0.25f);
-
         cameraInput = new CameraInputController(gameCamera);
 
-        keyTexture = new Texture("key.png");
+        texFloorRoom = new Texture("FLOOR.png");
+        texFloorHall = new Texture("DOORSTART.png");
+        texWallFill  = new Texture("WALL_FILL.png");
+        texSpawn = new Texture("SPAWN.png");
+        texExit  = new Texture("EXIT.png");
+        texKey   = new Texture("key.png");
+        texDoor  = new Texture("DOORSTART.png");
 
-        Texture texFloorRoom = new Texture("FLOOR.png");
-        Texture texFloorHall = new Texture("DOORSTART.png");
-        Texture texWalls = new Texture("WALL_SET.png");
+        // 4x2 sheet texture
+        texWallSet = new Texture("TILESET.png");
+
         mazeRenderer = new MazeRenderer(
                 new TextureRegion(texFloorRoom),
                 new TextureRegion(texFloorHall),
-                new TextureRegion(texWalls),
-                new TextureRegion(new Texture("WALL_FILL.png")),
-                new TextureRegion(new Texture("SPAWN.png")),
-                new TextureRegion(new Texture("EXIT.png")),
-                new TextureRegion(keyTexture),
-                new TextureRegion(new Texture("DOORSTART.png"))
+                new TextureRegion(texWallFill),
+                new TextureRegion(texWallSet),
+                new TextureRegion(texSpawn),
+                new TextureRegion(texExit),
+                new TextureRegion(texKey),
+                new TextureRegion(texDoor)
         );
 
         if (Gdx.files.internal("audio/pickup.mp3").exists()) {
@@ -375,13 +382,15 @@ public class GameScreen implements Screen {
     }
 
     private void loadPropTexturesForLevel() {
-        // If you want SAME props for all levels, keep paths constant.
-        // If you want per-level props, change the folder based on `level`.
-        // Example: "props/level1/box.png"
+        propTilesetTexture = new Texture("PROPS.png");
+        int textureH = propTilesetTexture.getHeight();
+
         for (PropType type : PropType.values()) {
-            Texture tex = new Texture(type.texturePath);
-            propTexturesToDispose.add(tex);
-            propSprites.put(type, new TextureRegion(tex));
+            int srcX = type.col * PROP_TILE_PX;
+            int srcY = textureH - (type.row + type.tilesH) * PROP_TILE_PX;
+            int srcW = type.tilesW * PROP_TILE_PX;
+            int srcH = type.tilesH * PROP_TILE_PX;
+            propSprites.put(type, new TextureRegion(propTilesetTexture, srcX, srcY, srcW, srcH));
         }
     }
 
@@ -635,8 +644,16 @@ public class GameScreen implements Screen {
         if (pickupSound != null) pickupSound.dispose();
         if (hitSound != null) hitSound.dispose();
         if (fog != null) fog.dispose();
-        for (Texture t : propTexturesToDispose) t.dispose();
-        propTexturesToDispose.clear();
+        if (propTilesetTexture != null) propTilesetTexture.dispose();
         propSprites.clear();
+        if (texFloorRoom != null) texFloorRoom.dispose();
+        if (texFloorHall != null) texFloorHall.dispose();
+        if (texWallFill != null) texWallFill.dispose();
+        if (texWallSet != null) texWallSet.dispose();
+        if (texSpawn != null) texSpawn.dispose();
+        if (texExit != null) texExit.dispose();
+        if (texKey != null) texKey.dispose();
+        if (texDoor != null) texDoor.dispose();
+
     }
 }

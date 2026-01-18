@@ -1,20 +1,25 @@
 package de.tum.cit.fop.maze.obstacles;
 
 public enum PropType {
-    BOX(true, 32, 32, "props/box.png"),
-    BARREL(true, 32, 32, "props/barrel.png"),
-    CHAIR(true, 32, 32, "props/chair.png"),
-    SHELF(true, 64, 32, "props/shelf.png");
 
+    CRATE (0, 1, 1, 1, true),
+    BARREL(2, 1, 1, 1, true),
+    CHAIR (2, 2, 1, 1, true),
+    SHELF (0
+            , 2, 2, 1, true),
+    TABLE (2, 2, 2, 1, true);
+
+    public final int col;
+    public final int row;
+    public final int tilesW;
+    public final int tilesH;
     public final boolean blocks;
-    public final int wPx;
-    public final int hPx;
-    public final String texturePath;
 
-    PropType(boolean blocks, int wPx, int hPx, String texturePath) {
+    PropType(int col, int row, int tilesW, int tilesH, boolean blocks) {
+        this.col = col;
+        this.row = row;
+        this.tilesW = tilesW;
+        this.tilesH = tilesH;
         this.blocks = blocks;
-        this.wPx = wPx;
-        this.hPx = hPx;
-        this.texturePath = texturePath;
     }
 }
