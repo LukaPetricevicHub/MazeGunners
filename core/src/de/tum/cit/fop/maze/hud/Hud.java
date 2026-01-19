@@ -1,5 +1,6 @@
 package de.tum.cit.fop.maze.hud;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -9,7 +10,9 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.player.Player;
+import de.tum.cit.fop.maze.ui.DevConsole;
 
 public class Hud {
 
@@ -30,6 +33,8 @@ public class Hud {
     private boolean hasExitTarget = false;
 
     private final Label centerMessage;
+
+    private DevConsole devConsole;
 
 
     public Hud(Viewport viewport, com.badlogic.gdx.graphics.g2d.SpriteBatch batch, Skin skin) {
@@ -85,6 +90,9 @@ public class Hud {
         );
 
         stage.addActor(arrow);
+
+        devConsole = new DevConsole(skin, (MazeRunnerGame) Gdx.app.getApplicationListener());
+        stage.addActor(devConsole);
     }
 
 
@@ -135,6 +143,9 @@ public class Hud {
     public void showCenterMessage(String text) {
         centerMessage.setText(text);
         centerMessage.setVisible(true);
+    }
+    public DevConsole getDevConsole() {
+        return devConsole;
     }
 
     public void dispose() {
