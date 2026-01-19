@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -20,12 +21,14 @@ public class LevelMenuScreen implements Screen {
 
     private final Stage stage;
     private final Skin skin;
+    private final MazeRunnerGame game;
+    private com.badlogic.gdx.audio.Sound clickSound;
 
     public LevelMenuScreen(MazeRunnerGame game) {
+
         this.stage = new Stage(new ScreenViewport(), game.getSpriteBatch());
         this.skin = game.getSkin();
-
-        Gdx.input.setInputProcessor(stage);
+        this.game = game;
 
         Table mainTable = new Table();
         mainTable.setFillParent(true);
@@ -36,26 +39,35 @@ public class LevelMenuScreen implements Screen {
 
         Table buttonTable = new Table();
 
-        // Fixed levels 1..5 (each click regenerates that level)
+        int maxUnlocked = game.getPreferences().getMaxLevel();
+
         for (int level = 1; level <= 5; level++) {
             final int lvl = level;
+            TextButton button;
 
-            TextButton button = new TextButton("Level " + lvl, skin);
-            button.addListener(new ChangeListener() {
-                @Override
-                public void changed(ChangeEvent event, Actor actor) {
-                    game.setScreen(new GameScreen(game, lvl));
-                }
-            });
+            if (lvl <= maxUnlocked) {
+                button = new TextButton("Level " + lvl, skin);
+                button.addListener(new ChangeListener() {
+                    @Override
+                    public void changed(ChangeEvent event, Actor actor) {
+                        playClickSound();
+                        game.setScreen(new GameScreen(game, lvl));
+                    }
+                });
+            } else {
+                button = new TextButton("Locked", skin);
+                button.setDisabled(true);
+                button.setColor(1, 1, 1, 0.5f); // 50% opacity
+            }
 
             buttonTable.add(button).width(300).pad(10).row();
         }
         buttonTable.row().padTop(40);
-
         TextButton backButton = new TextButton("Back to Menu", skin);
         backButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playClickSound();
                 game.goToMenu();
             }
         });
@@ -68,13 +80,33 @@ public class LevelMenuScreen implements Screen {
         mainTable.add(scrollPane).fill().expand();
     }
 
+    private void playClickSound() {
+        if (clickSound != null) {
+            long id = clickSound.play();
+            clickSound.setVolume(id, game.getPreferences().getSoundVolume());
+        }
+    }
+
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
+
+        if (Gdx.files.internal("audio/click.mp3").exists()) {
+            clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/click.mp3"));
+        } else if (Gdx.files.internal("audio/pickup.mp3").exists()) {
+            clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/pickup.mp3"));
+        }
     }
 
     @Override
     public void render(float delta) {
+        Gdx.input.setInputProcessor(stage);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            playClickSound();
+            game.goToMenu();
+            return;
+        }
+
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
@@ -90,6 +122,7 @@ public class LevelMenuScreen implements Screen {
     @Override
     public void dispose() {
         stage.dispose();
+        if (clickSound != null) clickSound.dispose();
     }
 
     @Override public void hide() {}

@@ -35,12 +35,15 @@ import de.tum.cit.fop.maze.FogOfWarRenderer;
 import de.tum.cit.fop.maze.obstacles.PropType;
 import de.tum.cit.fop.maze.obstacles.Prop;
 
+import de.tum.cit.fop.maze.ui.GameOverWindow;
+import de.tum.cit.fop.maze.ui.PauseMenuWindow;
 
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 
 public class GameScreen implements Screen {
 
@@ -89,6 +92,8 @@ public class GameScreen implements Screen {
 
     private Sound pickupSound;
     private Sound hitSound;
+    private Sound clickSound;
+    private java.util.List<de.tum.cit.fop.maze.items.AbstractCollectable> items;
 
     private FogOfWarRenderer fog;
 
@@ -101,7 +106,6 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        // 1) Pause toggle
         if (gameStateController.isRunning() && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             togglePause();
         }
@@ -140,6 +144,29 @@ public class GameScreen implements Screen {
                 }
             }
 
+            // Item Pickups
+            java.util.Iterator<de.tum.cit.fop.maze.items.AbstractCollectable> iter = items.iterator();
+            while (iter.hasNext()) {
+                de.tum.cit.fop.maze.items.AbstractCollectable item = iter.next();
+
+
+                Rectangle playerBounds = new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
+
+
+                if (item.isActive() && playerBounds.overlaps(item.getBounds())) {
+                    item.applyEffect(player);
+
+
+                    if (pickupSound != null) {
+                        long id = pickupSound.play();
+                        pickupSound.setVolume(id, game.getPreferences().getSoundVolume());
+                    }
+
+                    item.collect();
+                    iter.remove();
+                }
+            }
+
             Rectangle playerBounds = new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
 
             if (gameStateController.isRunning()) {
@@ -153,7 +180,16 @@ public class GameScreen implements Screen {
             }
 
             if (gameStateController.isRunning()) {
+                int previousLives = player.getLives();
+
                 combatSystem.update(delta, player, maze, enemies, obstacles, gameCamera);
+
+                if (player.getLives() < previousLives) {
+                    if (hitSound != null) {
+                        long id = hitSound.play();
+                        hitSound.setVolume(id, game.getPreferences().getSoundVolume());
+                    }
+                }
             }
 
             hud.update(player);
@@ -207,6 +243,12 @@ public class GameScreen implements Screen {
         player.draw(game.getSpriteBatch());
         game.getSpriteBatch().setColor(Color.WHITE);
 
+        // Draw Items
+        for (de.tum.cit.fop.maze.items.AbstractCollectable item : items) {
+            item.render(game.getSpriteBatch());
+        }
+
+        // Draw enemies
         for (Enemy enemy : enemies) {
             TextureRegion frame = null;
             if (enemy instanceof MutantWorker mw) frame = mw.getCurrentFrame();
@@ -293,6 +335,8 @@ public class GameScreen implements Screen {
         obstacles.addAll(new PropPlacer().placeProps(maze, propCount, seed, level, propSprites));
 
         enemies = new EnemySpawner().spawnEnemies(maze, player, 200, seed);
+
+        items = new de.tum.cit.fop.maze.items.ItemSpawner().spawnItems(maze, 10);
     }
 
     private void initializeEvents() {
@@ -376,6 +420,12 @@ public class GameScreen implements Screen {
         if (Gdx.files.internal("audio/hit.mp3").exists()) {
             hitSound = Gdx.audio.newSound(Gdx.files.internal("audio/hit.mp3"));
         }
+        if (Gdx.files.internal("audio/click.mp3").exists()) {
+            clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/click.mp3"));
+        }
+        else if (Gdx.files.internal("audio/pickup.mp3").exists()) {
+            clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/pickup.mp3"));
+        }
 
         loadPropTexturesForLevel();
 
@@ -417,108 +467,66 @@ public class GameScreen implements Screen {
 
     private void createPauseMenu() {
         pauseStage = new Stage(viewport, game.getSpriteBatch());
-        createPauseWindow();
-        createSettingsWindow();
 
-        settingsWindow.setVisible(false);
-        pauseWindow.setVisible(true);
+        pauseWindow = new PauseMenuWindow(
+                game.getSkin(),
+                () -> {
+                    playClickSound();
+                    togglePause();
+                },
+                () -> {
+                    playClickSound();
+                    pauseWindow.setVisible(false);
+                    if (settingsWindow != null) settingsWindow.setVisible(true);
+                },
+                () -> {
+                    playClickSound();
+                    game.goToMenu();
+                }
+        );
+
+        pauseWindow.setPosition(
+                (viewport.getWorldWidth() - pauseWindow.getWidth()) / 2f,
+                (viewport.getWorldHeight() - pauseWindow.getHeight()) / 2f
+        );
+
+        createSettingsWindow();
 
         pauseStage.addActor(pauseWindow);
         pauseStage.addActor(settingsWindow);
+
+        settingsWindow.setVisible(false);
+        pauseWindow.setVisible(true);
     }
+
     private void showGameOverMenu(boolean won) {
-        //Creates Window
-        String title = won ? "VICTORY!" : "GAME OVER";
-        Window gameOverWindow = new Window(title, game.getSkin());
-        gameOverWindow.getTitleLabel().setAlignment(1);
-        gameOverWindow.setMovable(false);
+        if (won) {
+            int nextLevel = level + 1;
 
-        String message = won ? "Level Complete!" : "Better luck next time...";
-        gameOverWindow.add(new Label(message, game.getSkin())).padBottom(20).row();
-
-        // Next Level Button
-        if (won && level < 5) {
-            TextButton nextBtn = new TextButton("Next Level", game.getSkin());
-            nextBtn.addListener(new ChangeListener() {
-                @Override
-                public void changed(ChangeEvent event, Actor actor) {
-                    game.setScreen(new GameScreen(game, level + 1));
-                }
-            });
-            gameOverWindow.add(nextBtn).width(200).padBottom(10).row();
+            game.getPreferences().setMaxLevel(nextLevel);
         }
 
-        // Restart Button
-        TextButton restartBtn = new TextButton("Restart Level", game.getSkin());
-        restartBtn.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                game.setScreen(new GameScreen(game, level));
-            }
-        });
-        gameOverWindow.add(restartBtn).width(200).padBottom(10).row();
+        if (pauseWindow != null) pauseWindow.setVisible(false);
+        if (settingsWindow != null) settingsWindow.setVisible(false);
 
-        // Main Menu Button
-        TextButton menuBtn = new TextButton("Main Menu", game.getSkin());
-        menuBtn.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                game.goToMenu();
-            }
-        });
-        gameOverWindow.add(menuBtn).width(200).row();
+        de.tum.cit.fop.maze.ui.GameOverWindow window = new de.tum.cit.fop.maze.ui.GameOverWindow(game.getSkin(), game, level, won);
 
-        //Show
-        gameOverWindow.pack();
-        gameOverWindow.setPosition(
-                (viewport.getWorldWidth() - gameOverWindow.getWidth()) / 2f,
-                (viewport.getWorldHeight() - gameOverWindow.getHeight()) / 2f
+        window.setPosition(
+                (viewport.getWorldWidth() - window.getWidth()) / 2f,
+                (viewport.getWorldHeight() - window.getHeight()) / 2f
         );
 
-        pauseStage.addActor(gameOverWindow);
+        pauseStage.addActor(window);
 
         isPaused = true;
         Gdx.input.setInputProcessor(pauseStage);
     }
 
-    private void createPauseWindow() {
-        pauseWindow = new Window("Paused", game.getSkin());
-        pauseWindow.getTitleLabel().setAlignment(1);
-        pauseWindow.setMovable(false);
-
-        TextButton resumeBtn = new TextButton("Resume", game.getSkin());
-        resumeBtn.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                togglePause();
-            }
-        });
-
-        TextButton settingsBtn = new TextButton("Settings", game.getSkin());
-        settingsBtn.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                pauseWindow.setVisible(false);
-                settingsWindow.setVisible(true);
-            }
-        });
-
-        TextButton menuBtn = new TextButton("Exit to Menu", game.getSkin());
-        menuBtn.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                game.goToMenu();
-            }
-        });
-
-        pauseWindow.add(resumeBtn).width(200).pad(10).row();
-        pauseWindow.add(settingsBtn).width(200).pad(10).row();
-        pauseWindow.add(menuBtn).width(200).pad(10).row();
-        pauseWindow.pack();
-        pauseWindow.setPosition(
-                (viewport.getWorldWidth() - pauseWindow.getWidth()) / 2f,
-                (viewport.getWorldHeight() - pauseWindow.getHeight()) / 2f
-        );
+    private void playClickSound() {
+        if (clickSound != null) {
+            long id = clickSound.play();
+            clickSound.setVolume(id, game.getPreferences().getSoundVolume());
+        }
     }
 
     private void createSettingsWindow() {
@@ -534,6 +542,7 @@ public class GameScreen implements Screen {
         musicSlider.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playClickSound();
                 game.getPreferences().setMusicVolume(musicSlider.getValue());
                 game.getAudioManager().updateMusicVolume(musicSlider.getValue());
             }
@@ -547,6 +556,7 @@ public class GameScreen implements Screen {
         sfxSlider.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playClickSound();
                 game.getPreferences().setSoundVolume(sfxSlider.getValue());
             }
         });
@@ -555,6 +565,7 @@ public class GameScreen implements Screen {
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playClickSound();
                 settingsWindow.setVisible(false);
                 pauseWindow.setVisible(true);
             }
@@ -643,6 +654,12 @@ public class GameScreen implements Screen {
         if (pauseStage != null) pauseStage.dispose();
         if (pickupSound != null) pickupSound.dispose();
         if (hitSound != null) hitSound.dispose();
+        if (clickSound != null) clickSound.dispose();
+        if (items != null) {
+            for (de.tum.cit.fop.maze.items.AbstractCollectable item : items) {
+                item.dispose();
+            }
+        }
         if (fog != null) fog.dispose();
         if (propTilesetTexture != null) propTilesetTexture.dispose();
         propSprites.clear();

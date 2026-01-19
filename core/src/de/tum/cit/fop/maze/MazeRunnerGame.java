@@ -97,11 +97,7 @@ public class MazeRunnerGame extends Game {
             gameScreen = null;
         }
 
-        this.setScreen(new MenuScreen(this)); // Set the current screen to MenuScreen
-        if (gameScreen != null) {
-            gameScreen.dispose(); // Dispose the game screen if it exists
-            gameScreen = null;
-        }
+        this.setScreen(new MenuScreen(this));
     }
 
     /**
@@ -161,11 +157,6 @@ public class MazeRunnerGame extends Game {
         if (audioManager != null) {
             audioManager.dispose();
         }
-
-        if(wallHitSound != null){
-            wallHitSound.dispose();
-        }
-
     }
 
     // Getter methods

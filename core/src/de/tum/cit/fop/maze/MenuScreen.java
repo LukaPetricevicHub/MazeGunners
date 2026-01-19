@@ -23,6 +23,7 @@ public class MenuScreen implements Screen {
     private final Stage stage;
     private final MazeRunnerGame game;
     private Texture background;
+    private com.badlogic.gdx.audio.Sound clickSound;
 
     /**
      * Constructor for MenuScreen. Sets up the camera, viewport, stage, and UI elements.
@@ -33,7 +34,7 @@ public class MenuScreen implements Screen {
         this.game = game;
 
         var camera = new OrthographicCamera();
-        camera.zoom = 1.5f; // Set camera zoom for a closer view
+        camera.zoom = 1.0f; // Set camera zoom for a closer view
 
         Viewport viewport = new ScreenViewport(camera); // Create a viewport with the camera
         stage = new Stage(viewport, game.getSpriteBatch()); // Create a stage for UI elements
@@ -57,6 +58,7 @@ public class MenuScreen implements Screen {
         goToGameButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playClickSound();
                 game.setScreen(new LevelMenuScreen(game)); // Open the level selection menu
             }
         });
@@ -67,6 +69,7 @@ public class MenuScreen implements Screen {
         settingsButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playClickSound();
                 game.setScreen(new SettingsScreen(game));
             }
         });
@@ -77,10 +80,18 @@ public class MenuScreen implements Screen {
         exitButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                playClickSound();
                 Gdx.app.exit();
             }
         });
 
+    }
+
+    private void playClickSound() {
+        if (clickSound != null) {
+            long id = clickSound.play();
+            clickSound.setVolume(id, game.getPreferences().getSoundVolume());
+        }
     }
 
     @Override
@@ -96,8 +107,8 @@ public class MenuScreen implements Screen {
             game.getSpriteBatch().end();
         }
 
-        stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f)); // Update the stage
-        stage.draw(); // Draw the stage
+        stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
+        stage.draw();
     }
 
     @Override
@@ -115,6 +126,11 @@ public class MenuScreen implements Screen {
     public void show() {
         // Set the input processor so the stage can receive input events
         Gdx.input.setInputProcessor(stage);
+        if (Gdx.files.internal("audio/click.mp3").exists()) {
+            clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/click.mp3"));
+        } else if (Gdx.files.internal("audio/pickup.mp3").exists()) {
+            clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/pickup.mp3"));
+        }
     }
 
     // The following methods are part of the Screen interface but are not used in this screen.

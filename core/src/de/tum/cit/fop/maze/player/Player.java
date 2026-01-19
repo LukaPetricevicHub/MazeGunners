@@ -28,6 +28,7 @@ public class Player {
     private static final float RUN_MULTIPLIER = 1.7f;
 
     private float speedMultiplier = 1f;
+    private float speedTimer = 0f;
 
     private static final float WIDTH = 32f;
     private static final float HEIGHT = 64f;
@@ -36,6 +37,10 @@ public class Player {
 
     private final Animation<TextureRegion> walkDownAnimation;
     private float animTime = 0f;
+
+    private boolean isShielded = false;
+    private float shieldTimer = 0f;
+
 
 
     @FunctionalInterface
@@ -54,17 +59,30 @@ public class Player {
 
     // Main Update
     public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker) {
+        // 1. Handle Power-up Timers
+        if (speedTimer > 0) {
+            speedTimer -= dt;
+            if (speedTimer <= 0) {
+                speedMultiplier = 1.0f;
+                System.out.println("Speed Boost Ended");
+            }
+        }
+        if (shieldTimer > 0) {
+            shieldTimer -= dt;
+            if (shieldTimer <= 0) {
+                isShielded = false;
+                System.out.println("Shield Depleted");
+            }
+        }
 
+        // 2. Handle Animation & State
         animTime += dt;
-
         updateTimers(dt);
 
+        // 3. Handle Movement
         MovementInput input = readMovementInput(dt);
-     attemptMove(input.dx, input.dy, maze, game, blockChecker);
-
+        attemptMove(input.dx, input.dy, maze, game, blockChecker);
     }
-
-
 
     // Timers & State
     private void updateTimers(float dt) {
@@ -84,19 +102,23 @@ public class Player {
 
     // Keyboard input
     private MovementInput readMovementInput(float dt) {
+        int keyUp = Gdx.app.getPreferences("maze_runner_prefs").getInteger("key_up", Input.Keys.UP);
+        int keyDown = Gdx.app.getPreferences("maze_runner_prefs").getInteger("key_down", Input.Keys.DOWN);
+        int keyLeft = Gdx.app.getPreferences("maze_runner_prefs").getInteger("key_left", Input.Keys.LEFT);
+        int keyRight = Gdx.app.getPreferences("maze_runner_prefs").getInteger("key_right", Input.Keys.RIGHT);
+
         boolean run = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT)
                 || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
-
         float speed = WALK_SPEED * (run ? RUN_MULTIPLIER : 1f) * speedMultiplier;
         float move = speed * dt;
 
         float dx = 0f;
         float dy = 0f;
 
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT))  dx -= move;
-        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) dx += move;
-        if (Gdx.input.isKeyPressed(Input.Keys.UP))    dy += move;
-        if (Gdx.input.isKeyPressed(Input.Keys.DOWN))  dy -= move;
+        if (Gdx.input.isKeyPressed(keyLeft))  dx -= move;
+        if (Gdx.input.isKeyPressed(keyRight)) dx += move;
+        if (Gdx.input.isKeyPressed(keyUp))    dy += move;
+        if (Gdx.input.isKeyPressed(keyDown))  dy -= move;
 
         return new MovementInput(dx, dy);
     }
@@ -162,18 +184,56 @@ public class Player {
                 && !isBlocked(right, top, maze);
     }
 
+    public void addLife() {
+        if (lives < 5) {
+            lives++;
+            System.out.println("Life Added! Current lives: " + lives);
+        }
+    }
+
+    public void activateSpeedBoost(float duration, float multiplier) {
+        this.speedTimer = duration;
+        this.speedMultiplier = multiplier;
+        System.out.println("Speed Boost Activated!");
+    }
+
+    public void activateShield(float duration) {
+        this.shieldTimer = duration;
+        this.isShielded = true;
+        System.out.println("Shield Activated!");
+    }
+
+    public boolean isShielded() {
+        return isShielded;
+    }
 
 
     // Rendering
     public void draw(SpriteBatch batch) {
         TextureRegion frame = walkDownAnimation.getKeyFrame(animTime, true);
+        com.badlogic.gdx.graphics.Color oldColor = batch.getColor();
+
+        if (isShielded) {
+            batch.setColor(0.5f, 0.5f, 1f, 1f);
+        } else if (damageFlash) {
+            batch.setColor(1f, 0f, 0f, 1f);
+        }
+
         batch.draw(frame, x, y, 52f, 52f);
+
+        batch.setColor(oldColor);
     }
 
 
     // Player takes damage
     public void takeDamage(int amount) {
+        if (isShielded) {
+            System.out.println("Damage blocked by Shield!");
+            return;
+        }
+
         if (invulnerable) return;
+
 
         lives = Math.max(0, lives - amount);
 
