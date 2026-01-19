@@ -41,6 +41,9 @@ public class Player {
     private boolean isShielded = false;
     private float shieldTimer = 0f;
 
+    private boolean godMode = false;
+    private boolean noClip = false;
+
 
 
     @FunctionalInterface
@@ -136,8 +139,6 @@ public class Player {
 
             // first check tiles (walls/exit)
             if (canOccupy(nextX, y, maze)) {
-
-                // then check blocking obstacles (props)
                 if (blockChecker == null || !blockChecker.isBlocked(makeRect(nextX, y))) {
                     x = nextX;
                 } else {
@@ -173,6 +174,8 @@ public class Player {
 
 
     private boolean canOccupy(float testX, float testY, Maze maze) {
+        if (noClip) return true;
+
         float left   = testX + COLLISION_INSET;
         float right  = testX + WIDTH - COLLISION_INSET;
         float bottom = testY + COLLISION_INSET;
@@ -227,8 +230,13 @@ public class Player {
 
     // Player takes damage
     public void takeDamage(int amount) {
+        if (godMode) {
+            System.out.println("God Mode: Damage ignored."); //test, remove for end product
+            return;
+        }
+
         if (isShielded) {
-            System.out.println("Damage blocked by Shield!");
+            System.out.println("Damage blocked by Shield!"); //test, remove for end product
             return;
         }
 
@@ -265,6 +273,16 @@ public class Player {
 
     public float getX() { return x; }
     public float getY() { return y; }
+
+    public void setGodMode(boolean enabled) {
+        this.godMode = enabled;
+        System.out.println("God Mode set to: " + enabled);
+    }
+
+    public void setNoClip(boolean enabled) {
+        this.noClip = enabled;
+        System.out.println("No Clip set to: " + enabled);
+    }
 
 
     // Internal helper

@@ -106,6 +106,10 @@ public class GameScreen implements Screen {
             togglePause();
         }
 
+        if (Gdx.input.isKeyJustPressed(Input.Keys.GRAVE)) {
+            hud.getDevConsole().toggle();
+        }
+
         // 2) Camera input
         cameraInput.update(delta);
 
@@ -290,6 +294,8 @@ public class GameScreen implements Screen {
         initializeEnemiesAndObstacles(seed);
         initializeEvents();
 
+        hud.getDevConsole().setPlayer(player);
+
         multiplexer = new InputMultiplexer();
         multiplexer.addProcessor(cameraInput);     // camera FIRST
         multiplexer.addProcessor(hud.getStage());  // UI SECOND
@@ -408,6 +414,7 @@ public class GameScreen implements Screen {
     private void loadPropTexturesForLevel() {
         propTilesetTexture = new Texture("PROPS.png");
 
+        propTilesetTexture = new Texture("arrow.png");
         int textureH = propTilesetTexture.getHeight();
 
         for (PropType type : PropType.values()) {
@@ -419,7 +426,6 @@ public class GameScreen implements Screen {
             propSprites.put(type, new TextureRegion(propTilesetTexture, srcX, srcY, srcW, srcH));
         }
     }
-
 
 
     private void togglePause() {
