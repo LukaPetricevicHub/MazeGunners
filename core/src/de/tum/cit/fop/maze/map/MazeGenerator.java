@@ -38,17 +38,17 @@ public class MazeGenerator {
     // -------------------------------
 
     // Level sizes for level=1..5 (index 0 unused)
-    private static final int[] LEVEL_W = {0, 60, 75, 90, 105, 120};
-    private static final int[] LEVEL_H = {0, 60, 75, 90, 105, 120};
+    private static final int[] LEVEL_W = {0, 80, 80, 90, 90, 100};
+    private static final int[] LEVEL_H = {0, 80, 80, 90, 90, 100};
 
     // Target number of rooms per level (min, max)
     private static final int[][] LEVEL_ROOMS = {
             {},            // unused (index 0)
             {10, 14},        // level 1
             {16, 22},       // level 2
-            {22, 30},      // level 3
-            {30, 42},      // level 4
-            {40, 56}       // level 5
+            {20, 24},      // level 3
+            {22, 25},      // level 4
+            {30, 32}       // level 5
     };
 
     public Maze generate(MazeLoader.LevelSpec spec, int tileSize, long seed, int level) {
@@ -493,10 +493,14 @@ public class MazeGenerator {
     // ============================================================
 
     private void carveRooms(Maze maze, List<Room> rooms) {
+        maze.clearRoomMask();
+
         for (Room r : rooms) {
             for (int x = r.x(); x < r.x() + r.w(); x++) {
                 for (int y = r.y(); y < r.y() + r.h(); y++) {
-                    if (maze.inBounds(x, y)) maze.setTile(x, y, Tiles.FLOOR);
+                    if (!maze.inBounds(x, y)) continue;
+                    maze.setTile(x, y, Tiles.FLOOR);
+                    maze.setRoomCell(x, y, true); // room
                 }
             }
         }
@@ -557,7 +561,10 @@ public class MazeGenerator {
             int ny = y + dy;
             if (!maze.inBounds(x, ny)) continue;
             if (maze.getTile(x, ny) == Tiles.WALL) maze.setTile(x, ny, Tiles.FLOOR);
+            maze.setRoomCell(x, ny, false);
+
         }
+
     }
 
     private void carveHorizontalBandExact(Maze maze, int x, int y, int hallWidth) {
@@ -568,6 +575,7 @@ public class MazeGenerator {
             int nx = x + dx;
             if (!maze.inBounds(nx, y)) continue;
             if (maze.getTile(nx, y) == Tiles.WALL) maze.setTile(nx, y, Tiles.FLOOR);
+            maze.setRoomCell(nx, y, false);
         }
     }
 

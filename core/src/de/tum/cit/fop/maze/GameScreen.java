@@ -74,8 +74,8 @@ public class GameScreen implements Screen {
     private Texture texFloorRoom, texFloorHall, texWallFill, texWallSet, texSpawn, texExit, texDoor, texKey;
 
 
-    private RoomLock ambushRoom;
-    private float ambushTimer = 0f;
+//    private RoomLock ambushRoom;
+//    private float ambushTimer = 0f;
 
     private Hud hud;
 
@@ -169,15 +169,15 @@ public class GameScreen implements Screen {
 
             Rectangle playerBounds = new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
 
-            if (gameStateController.isRunning()) {
-                ambushRoom.update(playerBounds, maze);
-                if (ambushRoom.isLocked()) {
-                    ambushTimer += delta;
-                    if (ambushTimer > 5f) {
-                        ambushRoom.unlockRoom(maze);
-                    }
-                }
-            }
+//            if (gameStateController.isRunning()) {
+//                ambushRoom.update(playerBounds, maze);
+//                if (ambushRoom.isLocked()) {
+//                    ambushTimer += delta;
+//                    if (ambushTimer > 5f) {
+//                        ambushRoom.unlockRoom(maze);
+//                    }
+//                }
+//            }
 
             if (gameStateController.isRunning()) {
                 int previousLives = player.getLives();
@@ -344,7 +344,7 @@ public class GameScreen implements Screen {
         List<Point> doors = new ArrayList<>();
         doors.add(new Point(50, 49));
         doors.add(new Point(55, 55));
-        ambushRoom = new RoomLock(trigger, doors);
+//        ambushRoom = new RoomLock(trigger, doors);
     }
 
     private void createHud() {
@@ -371,14 +371,12 @@ public class GameScreen implements Screen {
         MazeLoader.LevelSpec spec = loader.loadFromProperties(template);
 
         MazeGenerator gen = new MazeGenerator();
-        Maze generated = gen.generate(spec, TILE_SIZE, seed, level);
+        maze = gen.generate(spec, TILE_SIZE, seed, level);   //keep generated maze (roomMask included)
 
+        // Optional: export for inspection/debugging (but DON'T reload)
         Gdx.files.local("maps").mkdirs();
         FileHandle out = Gdx.files.local("maps/level-" + level + ".properties");
-        MazeExporter.saveToProperties(generated, out);
-
-        MazeLoader.LevelSpec spec2 = loader.loadFromProperties(out);
-        maze = loader.buildMaze(spec2, TILE_SIZE);
+        MazeExporter.saveToProperties(maze, out);
     }
 
     private void initializeGraphics() {
@@ -392,27 +390,8 @@ public class GameScreen implements Screen {
         gameCamera.setZoom(0.25f);
         cameraInput = new CameraInputController(gameCamera);
 
-        texFloorRoom = new Texture("FLOOR.png");
-        texFloorHall = new Texture("DOORSTART.png");
-        texWallFill  = new Texture("WALL_FILL.png");
-        texSpawn = new Texture("SPAWN.png");
-        texExit  = new Texture("EXIT.png");
-        texKey   = new Texture("key.png");
-        texDoor  = new Texture("DOORSTART.png");
-
-        // 4x2 sheet texture
-        texWallSet = new Texture("TILESET.png");
-
-        mazeRenderer = new MazeRenderer(
-                new TextureRegion(texFloorRoom),
-                new TextureRegion(texFloorHall),
-                new TextureRegion(texWallFill),
-                new TextureRegion(texWallSet),
-                new TextureRegion(texSpawn),
-                new TextureRegion(texExit),
-                new TextureRegion(texKey),
-                new TextureRegion(texDoor)
-        );
+        Texture tileset = new Texture("TILESET2.png");
+        mazeRenderer = new MazeRenderer(tileset);
 
         if (Gdx.files.internal("audio/pickup.mp3").exists()) {
             pickupSound = Gdx.audio.newSound(Gdx.files.internal("audio/pickup.mp3"));
@@ -663,14 +642,7 @@ public class GameScreen implements Screen {
         if (fog != null) fog.dispose();
         if (propTilesetTexture != null) propTilesetTexture.dispose();
         propSprites.clear();
-        if (texFloorRoom != null) texFloorRoom.dispose();
-        if (texFloorHall != null) texFloorHall.dispose();
-        if (texWallFill != null) texWallFill.dispose();
-        if (texWallSet != null) texWallSet.dispose();
-        if (texSpawn != null) texSpawn.dispose();
-        if (texExit != null) texExit.dispose();
-        if (texKey != null) texKey.dispose();
-        if (texDoor != null) texDoor.dispose();
+        if (mazeRenderer != null) mazeRenderer.dispose();
 
     }
 }

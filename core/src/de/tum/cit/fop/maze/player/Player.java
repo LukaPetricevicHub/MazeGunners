@@ -24,14 +24,14 @@ public class Player {
     private boolean damageFlash = false;
     private float flashTimeLeft = 0f;
 
-    private static final float WALK_SPEED = 750f;
+    private static final float WALK_SPEED = 450f;
     private static final float RUN_MULTIPLIER = 1.7f;
 
     private float speedMultiplier = 1f;
     private float speedTimer = 0f;
 
     private static final float WIDTH = 32f;
-    private static final float HEIGHT = 64f;
+    private static final float HEIGHT = 32f;
 
     private static final float COLLISION_INSET = 2f;
 
@@ -282,7 +282,7 @@ public class Player {
     private Rectangle makeRect(float px, float py) {
         // Use SAME collision "top" you used in canOccupy (40px tall)
         // so the rectangle matches your actual collision height.
-        return new Rectangle(px, py, WIDTH, 40.0f);
+        return new Rectangle(px, py, WIDTH, HEIGHT);
     }
 
 }

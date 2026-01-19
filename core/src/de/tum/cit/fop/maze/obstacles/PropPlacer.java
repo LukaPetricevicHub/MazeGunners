@@ -10,31 +10,37 @@ import java.util.*;
 
 public class PropPlacer {
 
-    public List<Obstacle> placeProps(Maze maze,
-                                     int count,
-                                     long seed,
-                                     int level,
-                                     Map<PropType, TextureRegion> propSprites) {
+    public List<Obstacle> placeProps(
+            Maze maze,
+            int count,
+            long seed,
+            int level,
+            Map<PropType, TextureRegion> propSprites
+    ) {
 
         Random rng = new Random(seed * 31L + level * 997L);
 
         List<Point> candidates = new ArrayList<>();
+
+        // --------------------------------------------------
+        // Collect ROOM-ONLY candidate tiles
+        // --------------------------------------------------
         for (int y = 1; y < maze.getHeight() - 1; y++) {
             for (int x = 1; x < maze.getWidth() - 1; x++) {
+
                 if (maze.getTile(x, y) != Tiles.FLOOR) continue;
 
-                // avoid corridor-ish tiles (narrow)
-                if (!isRoomLike(maze, x, y)) continue;
+                // MUST be deep inside a room
+                if (!isRoomInterior(maze, x, y)) continue;
 
-                // avoid doors/special tiles
+                // must have open area around it (avoids hall mouths)
+                if (!openArea(maze, x, y, 1)) continue;
+
+                // avoid special tiles
                 if (nearTile(maze, x, y, Tiles.DOOR, 2)) continue;
                 if (nearTile(maze, x, y, Tiles.SPAWN, 4)) continue;
                 if (nearTile(maze, x, y, Tiles.EXIT, 4)) continue;
                 if (nearTile(maze, x, y, Tiles.KEY, 4)) continue;
-
-                if (!hasRoomSpaceForFootprint(maze, new Point(x, y), PropType.TABLE)) {
-                    // This line is optional; see note below.
-                }
 
                 candidates.add(new Point(x, y));
             }
@@ -47,15 +53,23 @@ public class PropPlacer {
 
         int placed = 0;
         int tries = 0;
-        int maxTries = count * 25;
+        int maxTries = count * 30;
 
+        // --------------------------------------------------
+        // Placement loop
+        // --------------------------------------------------
         while (placed < count && tries++ < maxTries && !candidates.isEmpty()) {
+
             Point cell = candidates.get(rng.nextInt(candidates.size()));
             PropType type = randomType(rng);
 
             if (occupied.contains(cell)) continue;
 
-            if (!hasRoomSpaceForFootprint(maze, cell, type)) continue;
+            // Larger props need more free room space
+            int radius = (type.tilesW >= 2 || type.tilesH >= 2) ? 2 : 1;
+
+            if (!openArea(maze, cell.x, cell.y, radius)) continue;
+            if (!footprintIsRoomInterior(maze, cell, type)) continue;
 
             if (!reserveFootprint(cell, maze, type, occupied)) continue;
 
@@ -68,100 +82,113 @@ public class PropPlacer {
             float wx = cell.x * maze.getTileSize();
             float wy = cell.y * maze.getTileSize();
 
-            out.add(new Prop(new Vector2(wx, wy), type, sprite, maze.getTileSize()));
+            out.add(new Prop(
+                    new Vector2(wx, wy),
+                    type,
+                    sprite,
+                    maze.getTileSize()
+            ));
+
             placed++;
         }
 
         return out;
     }
 
+    // ======================================================
+    // Helpers
+    // ======================================================
+
     private PropType randomType(Random rng) {
         PropType[] v = PropType.values();
         return v[rng.nextInt(v.length)];
     }
 
-    private int walkableNeighbors4(Maze maze, int x, int y) {
-        int c = 0;
-        if (maze.getTile(x + 1, y).isWalkable()) c++;
-        if (maze.getTile(x - 1, y).isWalkable()) c++;
-        if (maze.getTile(x, y + 1).isWalkable()) c++;
-        if (maze.getTile(x, y - 1).isWalkable()) c++;
-        return c;
+    private boolean isRoomInterior(Maze maze, int x, int y) {
+        if (maze.getTile(x, y) != Tiles.FLOOR) return false;
+
+        // corridors always fail this
+        return maze.getTile(x + 1, y).isWalkable()
+                && maze.getTile(x - 1, y).isWalkable()
+                && maze.getTile(x, y + 1).isWalkable()
+                && maze.getTile(x, y - 1).isWalkable();
+    }
+
+    private boolean openArea(Maze maze, int x, int y, int radius) {
+        for (int dy = -radius; dy <= radius; dy++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                int nx = x + dx;
+                int ny = y + dy;
+
+                if (!maze.inBounds(nx, ny)) return false;
+                if (maze.getTile(nx, ny) != Tiles.FLOOR) return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean footprintIsRoomInterior(Maze maze, Point cell, PropType type) {
+        int w = Math.max(1, type.tilesW);
+        int h = Math.max(1, type.tilesH);
+
+        for (int dy = 0; dy < h; dy++) {
+            for (int dx = 0; dx < w; dx++) {
+                int x = cell.x + dx;
+                int y = cell.y + dy;
+
+                if (!maze.inBounds(x, y)) return false;
+                if (!isRoomInterior(maze, x, y)) return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean reserveFootprint(Point cell, Maze maze, PropType type, Set<Point> occupied) {
+        int w = Math.max(1, type.tilesW);
+        int h = Math.max(1, type.tilesH);
+
+        for (int dy = 0; dy < h; dy++) {
+            for (int dx = 0; dx < w; dx++) {
+                int x = cell.x + dx;
+                int y = cell.y + dy;
+
+                if (!maze.inBounds(x, y)) return false;
+                if (maze.getTile(x, y) != Tiles.FLOOR) return false;
+
+                if (occupied.contains(new Point(x, y))) return false;
+            }
+        }
+
+        for (int dy = 0; dy < h; dy++) {
+            for (int dx = 0; dx < w; dx++) {
+                occupied.add(new Point(cell.x + dx, cell.y + dy));
+            }
+        }
+
+        return true;
+    }
+
+    private void freeFootprint(Point cell, PropType type, Set<Point> occupied) {
+        int w = Math.max(1, type.tilesW);
+        int h = Math.max(1, type.tilesH);
+
+        for (int dy = 0; dy < h; dy++) {
+            for (int dx = 0; dx < w; dx++) {
+                occupied.remove(new Point(cell.x + dx, cell.y + dy));
+            }
+        }
     }
 
     private boolean nearTile(Maze maze, int x, int y, Tiles t, int r) {
         for (int dy = -r; dy <= r; dy++) {
             for (int dx = -r; dx <= r; dx++) {
-                int nx = x + dx, ny = y + dy;
+                int nx = x + dx;
+                int ny = y + dy;
+
                 if (!maze.inBounds(nx, ny)) continue;
                 if (maze.getTile(nx, ny) == t) return true;
             }
         }
         return false;
     }
-
-    private boolean reserveFootprint(Point cell, Maze maze, PropType type, Set<Point> occupied) {
-
-        int wTiles = Math.max(1, type.tilesW);
-        int hTiles = Math.max(1, type.tilesH);
-
-        // validate footprint area
-        for (int dy = 0; dy < hTiles; dy++) {
-            for (int dx = 0; dx < wTiles; dx++) {
-                int x = cell.x + dx;
-                int y = cell.y + dy;
-
-                if (!maze.inBounds(x, y)) return false;
-                if (maze.getTile(x, y) != Tiles.FLOOR) return false;
-
-                Point p = new Point(x, y);
-                if (occupied.contains(p)) return false;
-            }
-        }
-
-        // reserve
-        for (int dy = 0; dy < hTiles; dy++) {
-            for (int dx = 0; dx < wTiles; dx++) {
-                occupied.add(new Point(cell.x + dx, cell.y + dy));
-            }
-        }
-        return true;
-    }
-
-    private void freeFootprint(Point cell, PropType type, Set<Point> occupied) {
-
-        int wTiles = Math.max(1, type.tilesW);
-        int hTiles = Math.max(1, type.tilesH);
-
-        for (int dy = 0; dy < hTiles; dy++) {
-            for (int dx = 0; dx < wTiles; dx++) {
-                occupied.remove(new Point(cell.x + dx, cell.y + dy));
-            }
-        }
-    }
-
-    private boolean isRoomLike(Maze maze, int x, int y) {
-        // A room tile should be "open": typically 3-4 walkable neighbors
-        return walkableNeighbors4(maze, x, y) >= 3;
-    }
-
-    private boolean hasRoomSpaceForFootprint(Maze maze, Point cell, PropType type) {
-        // Every tile under the prop footprint should also be room-like
-        int wTiles = Math.max(1, type.tilesW);
-        int hTiles = Math.max(1, type.tilesH);
-
-        for (int dy = 0; dy < hTiles; dy++) {
-            for (int dx = 0; dx < wTiles; dx++) {
-                int x = cell.x + dx;
-                int y = cell.y + dy;
-
-                if (!maze.inBounds(x, y)) return false;
-                if (maze.getTile(x, y) != Tiles.FLOOR) return false;
-
-                if (!isRoomLike(maze, x, y)) return false;
-            }
-        }
-        return true;
-    }
-
 }

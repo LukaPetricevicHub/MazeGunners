@@ -65,8 +65,6 @@ public class MazeRunnerGame extends Game {
 
         this.loadCharacterAnimation(); // Load character animation
 
-        wallHitSound =Gdx.audio.newSound(Gdx.files.internal("bumpintowall_X5CNQPB.wav"));
-
 
 
         goToMenu(); // Navigate to the menu screen

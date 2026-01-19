@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.map;
 
 public enum Tiles {
+
     WALL(0),
     FLOOR(1),
     SPAWN(2),
@@ -8,18 +9,10 @@ public enum Tiles {
     KEY(4),
     DOOR(5);
 
-    private final int id;
+    public final int id;
 
-    Tiles(int id) { this.id = id; }
-
-    public int id() { return id; }
-
-    public static Tiles fromId(int id) {
-        for (Tiles t : values()) {
-            if (t.id == id) return t;
-        }
-        // IMPORTANT: unknown ids should NOT become floor
-        return WALL;
+    Tiles(int id) {
+        this.id = id;
     }
 
     public boolean isWall() {
@@ -27,6 +20,17 @@ public enum Tiles {
     }
 
     public boolean isWalkable() {
-        return this == FLOOR || this == SPAWN || this == EXIT || this == KEY || this == DOOR;
+        return this == FLOOR
+                || this == SPAWN
+                || this == EXIT
+                || this == KEY
+                || this == DOOR;
+    }
+
+    public static Tiles fromId(int id) {
+        for (Tiles t : values()) {
+            if (t.id == id) return t;
+        }
+        return FLOOR;
     }
 }

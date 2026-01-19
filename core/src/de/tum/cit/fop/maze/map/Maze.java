@@ -5,6 +5,7 @@ import de.tum.cit.fop.maze.util.GridUtils;
 
 import java.awt.Point;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Maze {
@@ -12,7 +13,11 @@ public class Maze {
     private final int width;
     private final int height;
     private final int tileSize;
+
     private final Tiles[][] grid;
+
+    // NEW: room vs hall mask (renderer-only info)
+    private final boolean[][] roomMask;
 
     private Point entryCell;
     private Point exitCell;
@@ -27,7 +32,14 @@ public class Maze {
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
                 grid[x][y] = Tiles.WALL;
+
+        // default false = not room (hall/other)
+        roomMask = new boolean[width][height];
     }
+
+    // --------------------------------------------------
+    // Basic getters
+    // --------------------------------------------------
 
     public int getWidth() { return width; }
     public int getHeight() { return height; }
@@ -36,6 +48,10 @@ public class Maze {
     public boolean inBounds(int x, int y) {
         return GridUtils.inBounds(x, y, width, height);
     }
+
+    // --------------------------------------------------
+    // Tile access
+    // --------------------------------------------------
 
     public Tiles getTile(int x, int y) {
         if (!inBounds(x, y)) return Tiles.WALL;
@@ -47,7 +63,7 @@ public class Maze {
 
         Tiles old = grid[x][y];
 
-        // Remove old special state
+        // remove old special state
         if (old == Tiles.SPAWN && entryCell != null &&
                 entryCell.x == x && entryCell.y == y) {
             entryCell = null;
@@ -62,7 +78,7 @@ public class Maze {
 
         grid[x][y] = tile;
 
-        // Add new special state
+        // add new special state
         if (tile == Tiles.SPAWN) {
             entryCell = new Point(x, y);
         } else if (tile == Tiles.EXIT) {
@@ -70,6 +86,33 @@ public class Maze {
             exitCells.add(new Point(x, y));
         }
     }
+
+    // --------------------------------------------------
+    // Room mask (visual-only)
+    // --------------------------------------------------
+
+    /** Clears all room markings (called before carving rooms). */
+    public void clearRoomMask() {
+        for (int x = 0; x < width; x++) {
+            Arrays.fill(roomMask[x], false);
+        }
+    }
+
+    /** Marks whether a tile belongs to a room (true) or hall (false). */
+    public void setRoomCell(int x, int y, boolean isRoom) {
+        if (!inBounds(x, y)) return;
+        roomMask[x][y] = isRoom;
+    }
+
+    /** Used by renderer to choose room vs hall floor texture. */
+    public boolean isRoomCell(int x, int y) {
+        if (!inBounds(x, y)) return false;
+        return roomMask[x][y];
+    }
+
+    // --------------------------------------------------
+    // Entry / exit
+    // --------------------------------------------------
 
     public Point getEntryCell() {
         return entryCell == null ? null : new Point(entryCell);
@@ -82,6 +125,19 @@ public class Maze {
     public List<Point> getExitCells() {
         return List.copyOf(exitCells);
     }
+
+    public void setEntryCell(Point p) {
+        entryCell = (p == null) ? null : new Point(p);
+    }
+
+    public void setExitCell(Point p) {
+        exitCell = (p == null) ? null : new Point(p);
+        if (p == null) exitCells.clear();
+    }
+
+    // --------------------------------------------------
+    // Collision helpers
+    // --------------------------------------------------
 
     public boolean isWallCell(int x, int y) {
         return getTile(x, y).isWall();
@@ -103,17 +159,5 @@ public class Maze {
 
     public boolean isBlockedExit(int x, int y, boolean hasKey) {
         return getTile(x, y) == Tiles.EXIT && !hasKey;
-    }
-
-    // Explicit setters (useful when generator wants to clear tracked cells)
-    public void setEntryCell(Point p) {
-        entryCell = (p == null) ? null : new Point(p);
-    }
-
-    public void setExitCell(Point p) {
-        exitCell = (p == null) ? null : new Point(p);
-        if (p == null) {
-            exitCells.clear();
-        }
     }
 }
