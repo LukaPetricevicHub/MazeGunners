@@ -48,9 +48,9 @@ public class EnemySpawner {
             int enemySelection = rngGen.nextInt(3);
 
             switch (enemySelection) {
-                case 0 -> spawnedEnemies.add(new MutantWorker(spawnLocation, 175f, targetPlayer));
+                case 0 -> spawnedEnemies.add(new MutantWorker(spawnLocation, 200f, targetPlayer));
                 case 1 -> spawnedEnemies.add(new RobotGuard(spawnLocation, 60f, createPatrolRoute(maze, cell), targetPlayer));
-                case 2 -> spawnedEnemies.add(new FlyingDrone(spawnLocation, 110f, createPatrolRoute(maze, cell), targetPlayer));
+                case 2 -> spawnedEnemies.add(new FlyingDrone(spawnLocation, 100f, createPatrolRoute(maze, cell), targetPlayer));
             }
         }
 
@@ -77,26 +77,35 @@ public class EnemySpawner {
         Array<Vector2> patrolRoute = new Array<>();
         float tileSize = maze.getTileSize();
 
-        Vector2 startPoint = new Vector2((startCell.x + 0.5f) * tileSize, (startCell.y + 0.5f) * tileSize);
+        Vector2 startPoint = new Vector2(
+                (startCell.x + 0.5f) * tileSize,
+                (startCell.y + 0.5f) * tileSize
+        );
         patrolRoute.add(startPoint);
 
         int[][] offsets = {{3, 0}, {-3, 0}, {0, 3}, {0, -3}};
 
-        for (int[] move : offsets) {
+        // Shuffle offsets to avoid bias
+        List<int[]> shuffled = Arrays.asList(offsets);
+        Collections.shuffle(shuffled);
+
+        for (int[] move : shuffled) {
             int targetX = startCell.x + move[0];
             int targetY = startCell.y + move[1];
 
-            if(!maze.inBounds(targetX, targetY))
+            if (!maze.inBounds(targetX, targetY))
                 continue;
 
-            if (maze.getTile(targetX, targetY) != Tiles.FLOOR) {
+            if (maze.getTile(targetX, targetY) != Tiles.FLOOR)
                 continue;
-            }
 
-            patrolRoute.add(new Vector2((targetX + 0.5f) * tileSize, (targetY + 0.5f) * tileSize));
-            return patrolRoute;
+            patrolRoute.add(new Vector2(
+                    (targetX + 0.5f) * tileSize,
+                    (targetY + 0.5f) * tileSize
+            ));
         }
 
         return patrolRoute;
     }
+
 }

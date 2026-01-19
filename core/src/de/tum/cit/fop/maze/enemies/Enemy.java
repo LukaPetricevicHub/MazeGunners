@@ -58,27 +58,27 @@ public abstract class Enemy {
         float dist2 = worldPosition.dst2(getPlayerPosition());
         boolean playerInRange = dist2 <= chaseRadius * chaseRadius;
 
-        if (playerInRange) {
+        // 1) Activation for aggro-lock enemies (ONCE)
+        if (playerInRange && supportsAggroLock()) {
+            aggroLocked = true;
+        }
 
+        // 2) Decide whether we should chase
+        if (aggroLocked || playerInRange) {
             chaseMemoryTimer = 0f;
-
-            if (supportsAggroLock()) {
-                aggroLocked = true;
-            }
 
             if (activeBehavior.getType() != BehaviorStateType.CHASE) {
                 setCurrentBehavior(createChaseBehavior());
             }
+            return; // IMPORTANT: stop here
         }
 
+        // 3) Only non-aggro enemies reach this point
+        chaseMemoryTimer += deltaTime;
 
-        else if (!aggroLocked) {
-            chaseMemoryTimer += deltaTime;
-
-            if (chaseMemoryTimer >= CHASE_MEMORY_DURATION
-                    && activeBehavior.getType() == BehaviorStateType.CHASE) {
-                setCurrentBehavior(createDefaultBehavior());
-            }
+        if (chaseMemoryTimer >= CHASE_MEMORY_DURATION
+                && activeBehavior.getType() == BehaviorStateType.CHASE) {
+            setCurrentBehavior(createDefaultBehavior());
         }
     }
 

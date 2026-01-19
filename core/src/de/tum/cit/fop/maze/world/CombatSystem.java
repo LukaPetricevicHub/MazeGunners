@@ -47,9 +47,15 @@ public class CombatSystem {
             obs.updateCooldown(deltaTime);
 
             if (obs.tryActivate(playerHitbox)) {
-                player.takeDamage(obs.getDamageToPlayer());
                 obs.onActivate();
+
+                if (obs instanceof SpikeTrap spike) {
+                    player.takeDamage(1);
+                } else {
+                    player.takeDamage(obs.getDamageToPlayer());
+                }
             }
+
 
             if (obs instanceof SpikeTrap spike) {
                 spike.update(deltaTime);
