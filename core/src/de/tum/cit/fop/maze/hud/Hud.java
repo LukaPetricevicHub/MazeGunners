@@ -9,6 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.player.Player;
@@ -17,7 +18,7 @@ import de.tum.cit.fop.maze.ui.DevConsole;
 public class Hud {
 
     private static final int MAX_LIVES = 5;
-
+    private float messageTimer = 0f;
     private final Stage stage;
 
     private final Image[] heartImages;
@@ -32,7 +33,7 @@ public class Hud {
     private float exitY;
     private boolean hasExitTarget = false;
 
-    private final Label centerMessage;
+    private final Label notificationLabel;
 
     private DevConsole devConsole;
 
@@ -52,9 +53,7 @@ public class Hud {
             heartsTable.add(heartImages[i]).size(16, 16).padRight(4);
         }
 
-        // Key
         keyLabel = new Label("Key: NO", skin);
-
 
         Table mainContainer = new Table();
         mainContainer.setFillParent(true);
@@ -65,21 +64,19 @@ public class Hud {
 
         stage.addActor(mainContainer);
 
-        centerMessage = new Label("", skin);
-        centerMessage.setFontScale(5f);
-        centerMessage.setColor(Color.WHITE);
-        centerMessage.setVisible(false);
+        notificationLabel = new Label("", skin);
+        notificationLabel.setFontScale(1.0f);
+        notificationLabel.setColor(Color.YELLOW);
+        notificationLabel.setAlignment(Align.right);
+        notificationLabel.setVisible(false);
 
+        Table notificationTable = new Table();
+        notificationTable.setFillParent(true);
+        notificationTable.top().right().pad(20);
+        notificationTable.add(notificationLabel);
 
-        Table centerTable = new Table();
-        centerTable.setFillParent(true);
-        centerTable.center();
-        centerTable.add(centerMessage);
+        stage.addActor(notificationTable);
 
-        stage.addActor(centerTable);
-
-
-        // Arrow
         arrowTexture = new Texture("arrow.png");
         arrow = new Image(arrowTexture);
         arrow.setSize(32, 32);
@@ -95,14 +92,11 @@ public class Hud {
         stage.addActor(devConsole);
     }
 
-
-    // Update HUD along Player
     public void update(Player player) {
         int lives = player.getLives();
         for(int i = 0; i < heartImages.length; i++) {
             heartImages[i].setVisible(i < lives);
         }
-
 
         keyLabel.setText(player.hasKey() ? "Key: YES" : "Key: NO");
 
@@ -124,6 +118,14 @@ public class Hud {
 
     public void act(float dt) {
         stage.act(dt);
+
+        // Timer Logic
+        if (messageTimer > 0) {
+            messageTimer -= dt;
+            if (messageTimer <= 0) {
+                notificationLabel.setVisible(false);
+            }
+        }
     }
 
     public void draw() {
@@ -140,10 +142,12 @@ public class Hud {
         this.hasExitTarget = true;
     }
 
-    public void showCenterMessage(String text) {
-        centerMessage.setText(text);
-        centerMessage.setVisible(true);
+    public void showNotification(String text) {
+        notificationLabel.setText(text);
+        notificationLabel.setVisible(true);
+        messageTimer = 5.0f;
     }
+
     public DevConsole getDevConsole() {
         return devConsole;
     }
