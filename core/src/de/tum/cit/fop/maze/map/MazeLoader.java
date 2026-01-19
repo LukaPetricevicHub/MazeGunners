@@ -109,4 +109,10 @@ public class MazeLoader {
             }
         }
     }
+
+    public Maze loadMazeFromProperties(FileHandle file, int tileSize) {
+        LevelSpec spec = loadFromProperties(file);
+        return buildMaze(spec, tileSize);
+    }
+
 }

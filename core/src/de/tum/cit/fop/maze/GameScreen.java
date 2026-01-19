@@ -73,10 +73,6 @@ public class GameScreen implements Screen {
     private static final int PROP_TILE_PX = 32;
     private Texture texFloorRoom, texFloorHall, texWallFill, texWallSet, texSpawn, texExit, texDoor, texKey;
 
-
-//    private RoomLock ambushRoom;
-//    private float ambushTimer = 0f;
-
     private Hud hud;
 
     private GameStateController gameStateController;
@@ -168,16 +164,6 @@ public class GameScreen implements Screen {
             }
 
             Rectangle playerBounds = new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
-
-//            if (gameStateController.isRunning()) {
-//                ambushRoom.update(playerBounds, maze);
-//                if (ambushRoom.isLocked()) {
-//                    ambushTimer += delta;
-//                    if (ambushTimer > 5f) {
-//                        ambushRoom.unlockRoom(maze);
-//                    }
-//                }
-//            }
 
             if (gameStateController.isRunning()) {
                 int previousLives = player.getLives();
@@ -332,7 +318,16 @@ public class GameScreen implements Screen {
             default -> 20;
         };
 
-        obstacles.addAll(new PropPlacer().placeProps(maze, propCount, seed, level, propSprites));
+        System.out.println("propSprites size = " + propSprites.size());
+
+        PropPlacer propPlacer = new PropPlacer();
+        var placedProps = propPlacer.placeProps(maze, propCount, seed, level, propSprites);
+
+        System.out.println("placedProps size = " + placedProps.size());
+
+        obstacles.addAll(placedProps);
+
+        System.out.println("obstacles total = " + obstacles.size());
 
         enemies = new EnemySpawner().spawnEnemies(maze, player, 200, seed);
 
@@ -344,7 +339,7 @@ public class GameScreen implements Screen {
         List<Point> doors = new ArrayList<>();
         doors.add(new Point(50, 49));
         doors.add(new Point(55, 55));
-//        ambushRoom = new RoomLock(trigger, doors);
+
     }
 
     private void createHud() {
@@ -412,16 +407,19 @@ public class GameScreen implements Screen {
 
     private void loadPropTexturesForLevel() {
         propTilesetTexture = new Texture("PROPS.png");
+
         int textureH = propTilesetTexture.getHeight();
 
         for (PropType type : PropType.values()) {
-            int srcX = type.col * PROP_TILE_PX;
-            int srcY = textureH - (type.row + type.tilesH) * PROP_TILE_PX;
-            int srcW = type.tilesW * PROP_TILE_PX;
-            int srcH = type.tilesH * PROP_TILE_PX;
+            int srcX = type.xPx;
+            int srcY = textureH - type.yTopPx - type.hPx;  // convert top->bottom
+            int srcW = type.wPx;
+            int srcH = type.hPx;
+
             propSprites.put(type, new TextureRegion(propTilesetTexture, srcX, srcY, srcW, srcH));
         }
     }
+
 
 
     private void togglePause() {
@@ -621,6 +619,11 @@ public class GameScreen implements Screen {
         return false;
     }
 
+    public void loadCustomMaze(FileHandle file) {
+        MazeLoader loader = new MazeLoader();
+        MazeLoader.LevelSpec spec = loader.loadFromProperties(file);
+        maze = loader.buildMaze(spec, TILE_SIZE);
+    }
 
     @Override public void pause() {}
     @Override public void resume() {}

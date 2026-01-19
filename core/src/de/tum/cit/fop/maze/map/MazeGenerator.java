@@ -46,8 +46,8 @@ public class MazeGenerator {
             {},            // unused (index 0)
             {10, 14},        // level 1
             {16, 22},       // level 2
-            {20, 24},      // level 3
-            {22, 25},      // level 4
+            {25, 30},      // level 3
+            {25, 30},      // level 4
             {30, 32}       // level 5
     };
 
