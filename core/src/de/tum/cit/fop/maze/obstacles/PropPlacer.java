@@ -70,10 +70,7 @@ public class PropPlacer {
                 placedHere = tryPlaceSpecific(maze, anchor, PropType.BARREL, propSprites, occupied, out)
                         || tryPlaceSpecific(maze, anchor, PropType.CRATE, propSprites, occupied, out)
                         || tryPlaceSpecific(maze, anchor, PropType.SKELETON, propSprites, occupied, out)
-                        || tryPlaceSpecific(maze, anchor, PropType.ROBOT, propSprites, occupied, out)
-                        || tryPlaceSpecific(maze, anchor, PropType.FLESH, propSprites, occupied, out)
-                        || tryPlaceSpecific(maze, anchor, PropType.FLASKS, propSprites, occupied, out)
-                        || tryPlaceSpecific(maze, anchor, PropType.SKELETON, propSprites, occupied, out);
+                        || tryPlaceSpecific(maze, anchor, PropType.ROBOT, propSprites, occupied, out);
 
                 if (placedHere) placed++;
             }

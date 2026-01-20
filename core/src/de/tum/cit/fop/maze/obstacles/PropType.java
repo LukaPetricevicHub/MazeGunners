@@ -5,11 +5,7 @@ public enum PropType {
     BARREL("BARREL.png", 1, 1, true, 35),
     CRATE ("CRATE.png",  1, 1, true, 35),
     SKELETON ("SKELETON.png",  1, 1, true, 35),
-    ROBOT ("ROBOT.png",  1, 1, true, 35),
-    FLESH ("FLESH.png",  1, 1, true, 35),
-    FLASKS ("FLASKS.png", 1, 1, true, 35),
-    INCUBATOR("INCUBATOR.png", 1,1, true, 35)
-    ;
+    ROBOT ("ROBOT.png",  1, 1, true, 35);
 
     public final String texturePath;
     public final int tilesW;

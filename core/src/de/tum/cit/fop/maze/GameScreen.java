@@ -68,9 +68,10 @@ public class GameScreen implements Screen {
     private Player player;
     private List<Enemy> enemies;
     private List<Obstacle> obstacles;
-    private final Map<PropType, TextureRegion> propSprites = new HashMap<>();
     private Texture propTilesetTexture;
+    private final Map<PropType, TextureRegion> propSprites = new HashMap<>();
     private final Map<PropType, Texture> propTextures = new HashMap<>();
+
 
     private static final int PROP_TILE_PX = 32;
     private Texture texFloorRoom, texFloorHall, texWallFill, texWallSet, texSpawn, texExit, texDoor, texKey;
@@ -432,7 +433,7 @@ public class GameScreen implements Screen {
     }
 
     private void loadPropTexturesForLevel() {
-        // If reloading (e.g. restarting), dispose old textures first
+        // dispose if reloading
         for (Texture t : propTextures.values()) t.dispose();
         propTextures.clear();
         propSprites.clear();
@@ -444,7 +445,10 @@ public class GameScreen implements Screen {
             propTextures.put(type, tex);
             propSprites.put(type, new TextureRegion(tex));
         }
+
+        System.out.println("Loaded propSprites: " + propSprites.keySet());
     }
+
 
 
     private void togglePause() {
