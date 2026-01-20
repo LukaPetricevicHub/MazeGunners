@@ -13,6 +13,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import com.badlogic.gdx.files.FileHandle;
 
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
@@ -35,7 +36,7 @@ import de.tum.cit.fop.maze.FogOfWarRenderer;
 import de.tum.cit.fop.maze.obstacles.PropType;
 import de.tum.cit.fop.maze.obstacles.Prop;
 
-import de.tum.cit.fop.maze.ui.GameOverWindow;
+import de.tum.cit.fop.maze.GameOverWindow;
 import de.tum.cit.fop.maze.ui.PauseMenuWindow;
 
 import java.awt.Point;
@@ -49,6 +50,7 @@ public class GameScreen implements Screen {
 
     // Attributes
     private final MazeRunnerGame game;
+    private final FileHandle levelFile;
 
     private boolean isGameOverShown = false;
     private boolean isPaused = false;
@@ -98,10 +100,16 @@ public class GameScreen implements Screen {
 
     private FogOfWarRenderer fog;
 
-    public GameScreen(MazeRunnerGame game, int level) {
+    public GameScreen(MazeRunnerGame game, int level, FileHandle levelFile) {
         this.game = game;
+        this.levelFile = levelFile;
         this.level = level;
         this.viewport = new ScreenViewport();
+
+    }
+
+    public GameScreen(MazeRunnerGame game, int level) {
+        this(game, level, null);
     }
 
 
@@ -291,8 +299,8 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
+        Gdx.app.log("MAZE", "GameScreen level=" + level);
         long seed = System.currentTimeMillis();
-
 
         // IMPORTANT: gives ScreenViewport a real size BEFORE creating GameCamera
         viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
@@ -386,20 +394,39 @@ public class GameScreen implements Screen {
         game.getAudioManager().playBackgroundMusic(musicFile);
     }
 
+    private static long mazeChecksum(Maze m) {
+        long h = 1469598103934665603L;
+        for (int y = 0; y < m.getHeight(); y++) {
+            for (int x = 0; x < m.getWidth(); x++) {
+                h ^= (m.getTile(x, y).id + 31L * x + 131L * y);
+                h *= 1099511628211L;
+            }
+        }
+        return h;
+    }
+
     private void initializeMaze(long seed) {
         MazeLoader loader = new MazeLoader();
 
-        FileHandle template = Gdx.files.internal("maps/level-" + level + ".properties");
-        MazeLoader.LevelSpec spec = loader.loadFromProperties(template);
+        FileHandle target = getLevelTargetFile(level);
+        Gdx.app.log("MAZE", "WRITE → " + target.file().getAbsolutePath());
 
-        MazeGenerator gen = new MazeGenerator();
-        maze = gen.generate(spec, TILE_SIZE, seed, level);   //keep generated maze (roomMask included)
+        MazeGenerator generator = new MazeGenerator();
+        MazeLoader.LevelSpec spec = new MazeLoader.LevelSpec(80, 80, new HashMap<>());
+        Maze generated = generator.generate(spec, TILE_SIZE, seed, level);
 
-        // Optional: export for inspection/debugging (but DON'T reload)
-        Gdx.files.local("maps").mkdirs();
-        FileHandle out = Gdx.files.local("maps/level-" + level + ".properties");
-        MazeExporter.saveToProperties(maze, out);
+        MazeExporter.saveToProperties(generated, target);
+        this.maze = loader.loadMazeFromProperties(target, TILE_SIZE);
+
+        Gdx.app.log("MAZE", "Loaded maze from → " + target.file().getAbsolutePath()
+                + " bytes=" + target.length() + " modified=" + target.lastModified());
+
+        String firstLine = target.readString().split("\n", 2)[0];
+        Gdx.app.log("MAZE", "FILE FIRST LINE NOW: " + firstLine);
+
     }
+
+
 
     private void initializeGraphics() {
         gameCamera = new GameCamera(
@@ -515,7 +542,8 @@ public class GameScreen implements Screen {
         if (pauseWindow != null) pauseWindow.setVisible(false);
         if (settingsWindow != null) settingsWindow.setVisible(false);
 
-        de.tum.cit.fop.maze.ui.GameOverWindow window = new de.tum.cit.fop.maze.ui.GameOverWindow(game.getSkin(), game, level, won);
+        de.tum.cit.fop.maze.GameOverWindow window = new de.tum.cit.fop.maze.GameOverWindow(game.getSkin(), game, level, won, levelFile);
+
 
         window.setPosition(
                 (viewport.getWorldWidth() - window.getWidth()) / 2f,
@@ -679,5 +707,17 @@ public class GameScreen implements Screen {
         propTextures.clear();
         propSprites.clear();
 
+    }
+
+    private FileHandle getLevelTargetFile(int level) {
+        boolean DEV_WRITE_TO_ASSETS = true; // set false for final submission
+
+        if (DEV_WRITE_TO_ASSETS) {
+            String root = System.getProperty("user.dir");
+            return Gdx.files.absolute(root + "/desktop/src/main/assets/maps/level-" + level + ".properties");
+        } else {
+            Gdx.files.local("maps").mkdirs();
+            return Gdx.files.local("maps/level-" + level + ".properties");
+        }
     }
 }

@@ -1,9 +1,12 @@
 package de.tum.cit.fop.maze.ui;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
+
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.GameScreen;
 import de.tum.cit.fop.maze.player.Player;
@@ -24,7 +27,7 @@ public class DevConsole extends Table {
         this.setVisible(false);
 
         Table container = new Table(skin);
-        container.setBackground(skin.newDrawable("white", 0, 0, 0, 0.8f)); // 80% transparent black
+        container.setBackground(skin.newDrawable("white", 0, 0, 0, 0.8f));
 
         logLabel = new Label("Dev Console Ready", skin);
         logLabel.setFontScale(0.8f);
@@ -69,37 +72,45 @@ public class DevConsole extends Table {
     }
 
     private void executeCommand(String rawCommand) {
-        if (rawCommand.trim().isEmpty()) return;
+        if (rawCommand == null || rawCommand.trim().isEmpty()) return;
 
-        String[] parts = rawCommand.toLowerCase().trim().split(" ");
+        String[] parts = rawCommand.toLowerCase().trim().split("\\s+");
         String command = parts[0];
 
         try {
             switch (command) {
                 case "god":
+                    requirePlayer();
                     player.setGodMode(true);
                     log("God Mode ON");
                     break;
+
                 case "ungod":
+                    requirePlayer();
                     player.setGodMode(false);
                     log("God Mode OFF");
                     break;
 
                 case "noclip":
+                    requirePlayer();
                     player.setNoClip(true);
                     log("No Clip ON (Walk through walls)");
                     break;
+
                 case "clip":
+                    requirePlayer();
                     player.setNoClip(false);
                     log("No Clip OFF");
                     break;
 
                 case "key":
+                    requirePlayer();
                     player.giveKey();
                     log("Key added to inventory.");
                     break;
 
                 case "speed":
+                    requirePlayer();
                     if (parts.length > 1) {
                         float amount = Float.parseFloat(parts[1]);
                         player.setSpeedMultiplier(amount);
@@ -110,27 +121,43 @@ public class DevConsole extends Table {
                     break;
 
                 case "heal":
+                    requirePlayer();
                     player.addLife();
                     log("Player healed.");
+                    break;
+
+                case "xp":
+                    requirePlayer();
+                    if (parts.length > 1) {
+                        int amount = Integer.parseInt(parts[1]);
+                        player.addExperience(amount);
+                        log("Gave " + amount + " XP");
+                    } else {
+                        log("Usage: xp <amount>");
+                    }
                     break;
 
                 case "level":
                     if (parts.length > 1) {
                         int lvl = Integer.parseInt(parts[1]);
-                        log("Teleporting to Level " + lvl + "...");
-                        game.setScreen(new GameScreen(game, lvl));
-                    }
-                    break;
-                case "xp":
-                    if (parts.length > 1) {
-                        int amount = Integer.parseInt(parts[1]);
-                        player.addExperience(amount);
-                        log("Gave " + amount + " XP");
+                        FileHandle file = resolveLevelFile(lvl);
+
+                        if (file != null && file.exists()) {
+                            log("Loading level " + lvl + " from " + file.path());
+                            game.setScreen(new GameScreen(game, lvl, file));
+                        } else {
+                            // If file missing: still open GameScreen with null file
+                            // -> your GameScreen initializeMaze() can generate a local file fallback
+                            log("Level file not found. Generating/loading fallback for level " + lvl + "...");
+                            game.setScreen(new GameScreen(game, lvl, null));
+                        }
+                    } else {
+                        log("Usage: level <number>");
                     }
                     break;
 
                 case "help":
-                    log("cmds: god, ungod, noclip, clip, key, speed <x>, level <x>");
+                    log("cmds: god, ungod, noclip, clip, key, speed <x>, heal, xp <n>, level <n>");
                     break;
 
                 default:
@@ -140,6 +167,27 @@ public class DevConsole extends Table {
         } catch (Exception e) {
             log("Error executing command: " + e.getMessage());
         }
+    }
+
+    private void requirePlayer() {
+        if (player == null) throw new IllegalStateException("Player not set in DevConsole.");
+    }
+
+    /**
+     * Looks for a level file in:
+     *  1) internal/maps/level-X.properties (shipped maps)
+     *  2) local/maps/level-X.properties    (generated/custom maps)
+     */
+    private FileHandle resolveLevelFile(int lvl) {
+        String name = "maps/level-" + lvl + ".properties";
+
+        FileHandle internal = Gdx.files.internal(name);
+        if (internal.exists()) return internal;
+
+        FileHandle local = Gdx.files.local(name);
+        if (local.exists()) return local;
+
+        return null;
     }
 
     private void log(String message) {

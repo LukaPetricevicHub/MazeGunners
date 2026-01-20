@@ -1,131 +1,100 @@
 package de.tum.cit.fop.maze;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.utils.Align;
+import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
-/**
- * Screen for selecting a level to play (Option A: regenerate every entry).
- */
+import de.tum.cit.fop.maze.LevelDiscovery;
+
 public class LevelMenuScreen implements Screen {
 
-    private final Stage stage;
-    private final Skin skin;
     private final MazeRunnerGame game;
-    private com.badlogic.gdx.audio.Sound clickSound;
+    private final Stage stage;
 
     public LevelMenuScreen(MazeRunnerGame game) {
-
-        this.stage = new Stage(new ScreenViewport(), game.getSpriteBatch());
-        this.skin = game.getSkin();
         this.game = game;
-
-        Table mainTable = new Table();
-        mainTable.setFillParent(true);
-        stage.addActor(mainTable);
-
-        Label title = new Label("Select a Level", skin, "title");
-        mainTable.add(title).padBottom(40).row();
-
-        Table buttonTable = new Table();
-
-        int maxUnlocked = game.getPreferences().getMaxLevel();
-
-        for (int level = 1; level <= 5; level++) {
-            final int lvl = level;
-            TextButton button;
-
-            if (lvl <= maxUnlocked) {
-                button = new TextButton("Level " + lvl, skin);
-                button.addListener(new ChangeListener() {
-                    @Override
-                    public void changed(ChangeEvent event, Actor actor) {
-                        playClickSound();
-                        game.setScreen(new GameScreen(game, lvl));
-                    }
-                });
-            } else {
-                button = new TextButton("Locked", skin);
-                button.setDisabled(true);
-                button.setColor(1, 1, 1, 0.5f); // 50% opacity
-            }
-
-            buttonTable.add(button).width(300).pad(10).row();
-        }
-        buttonTable.row().padTop(40);
-        TextButton backButton = new TextButton("Back to Menu", skin);
-        backButton.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                playClickSound();
-                game.goToMenu();
-            }
-        });
-
-        buttonTable.add(backButton).width(300).pad(10).row();
-
-
-        ScrollPane scrollPane = new ScrollPane(buttonTable, skin);
-        scrollPane.setFadeScrollBars(false);
-        mainTable.add(scrollPane).fill().expand();
-    }
-
-    private void playClickSound() {
-        if (clickSound != null) {
-            long id = clickSound.play();
-            clickSound.setVolume(id, game.getPreferences().getSoundVolume());
-        }
+        this.stage = new Stage(new ScreenViewport(new OrthographicCamera()), game.getSpriteBatch());
     }
 
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
+        buildUI(); // ✅ rebuild every time you open the screen
+    }
 
-        if (Gdx.files.internal("audio/click.mp3").exists()) {
-            clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/click.mp3"));
-        } else if (Gdx.files.internal("audio/pickup.mp3").exists()) {
-            clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/pickup.mp3"));
+    private void buildUI() {
+        stage.clear();
+
+        Table root = new Table();
+        root.setFillParent(true);
+        stage.addActor(root);
+
+        Label title = new Label("Select Level", game.getSkin(), "title");
+        title.setAlignment(Align.center);
+        root.add(title).padBottom(25).row();
+
+        Table listTable = new Table();
+        ScrollPane scroll = new ScrollPane(listTable, game.getSkin());
+        scroll.setFadeScrollBars(false);
+
+        var levels = LevelDiscovery.listAllLevels();
+
+        if (levels.size == 0) {
+            listTable.add(new Label("No .properties levels found in maps/.", game.getSkin()))
+                    .pad(10).row();
+        } else {
+            for (FileHandle levelFile : levels) {
+                String label = levelFile.nameWithoutExtension();
+
+                TextButton btn = new TextButton(label, game.getSkin());
+                btn.addListener(new ChangeListener() {
+                    @Override
+                    public void changed(ChangeEvent event, Actor actor) {
+                        int lvl = guessDifficulty(levelFile.name());
+                        game.setScreen(new GameScreen(game, lvl, levelFile));
+                    }
+                });
+
+                listTable.add(btn).width(360).pad(6).row();
+            }
         }
+
+        root.add(scroll).width(440).height(460).row();
+
+        TextButton back = new TextButton("Back", game.getSkin());
+        back.addListener(new ChangeListener() {
+            @Override public void changed(ChangeEvent event, Actor actor) {
+                game.setScreen(new MenuScreen(game));
+            }
+        });
+        root.add(back).width(200).padTop(18).row();
+    }
+
+    private int guessDifficulty(String filename) {
+        String digits = filename.replaceAll("\\D+", "");
+        if (digits.isEmpty()) return 1;
+        try { return Integer.parseInt(digits); }
+        catch (NumberFormatException e) { return 1; }
     }
 
     @Override
     public void render(float delta) {
-        Gdx.input.setInputProcessor(stage);
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            playClickSound();
-            game.goToMenu();
-            return;
-        }
-
-        Gdx.gl.glClearColor(0, 0, 0, 1);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-
+        ScreenUtils.clear(0,0,0,1);
         stage.act(delta);
         stage.draw();
     }
 
-    @Override
-    public void resize(int width, int height) {
-        stage.getViewport().update(width, height, true);
-    }
-
-    @Override
-    public void dispose() {
-        stage.dispose();
-        if (clickSound != null) clickSound.dispose();
-    }
-
-    @Override public void hide() {}
+    @Override public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
     @Override public void pause() {}
     @Override public void resume() {}
+    @Override public void hide() {}
+    @Override public void dispose() { stage.dispose(); }
 }

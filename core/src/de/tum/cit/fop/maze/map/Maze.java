@@ -87,6 +87,26 @@ public class Maze {
         }
     }
 
+    public void recomputeSpecialCells() {
+        entryCell = null;
+        exitCell = null;
+        exitCells.clear();
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                Tiles t = grid[x][y];
+
+                if (t == Tiles.SPAWN) {
+                    entryCell = new Point(x, y);
+                } else if (t == Tiles.EXIT) {
+                    Point p = new Point(x, y);
+                    exitCells.add(p);
+                    if (exitCell == null) exitCell = new Point(p);
+                }
+            }
+        }
+    }
+
     // --------------------------------------------------
     // Room mask (visual-only)
     // --------------------------------------------------

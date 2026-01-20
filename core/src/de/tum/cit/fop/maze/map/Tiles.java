@@ -20,17 +20,13 @@ public enum Tiles {
     }
 
     public boolean isWalkable() {
-        return this == FLOOR
-                || this == SPAWN
-                || this == EXIT
-                || this == KEY
-                || this == DOOR;
+        return this != WALL;
     }
 
     public static Tiles fromId(int id) {
         for (Tiles t : values()) {
             if (t.id == id) return t;
         }
-        return FLOOR;
+        throw new IllegalArgumentException("Unknown tile id: " + id);
     }
 }

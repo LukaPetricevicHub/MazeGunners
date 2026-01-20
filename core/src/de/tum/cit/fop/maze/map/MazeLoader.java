@@ -13,8 +13,6 @@ public class MazeLoader {
     public static final class LevelSpec {
         public final int width;
         public final int height;
-
-        // Store parsed tiles directly (not ints)
         public final Map<Point, Tiles> overrides;
 
         public LevelSpec(int width, int height, Map<Point, Tiles> overrides) {
@@ -47,7 +45,7 @@ public class MazeLoader {
                 String raw = props.getProperty(key);
                 if (raw == null) continue;
 
-                Tiles tile = parseTile(raw);
+                Tiles tile = parseTileNumericOnly(raw);
 
                 overrides.put(new Point(x, y), tile);
                 maxX = Math.max(maxX, x);
@@ -72,41 +70,16 @@ public class MazeLoader {
             maze.setTile(x, y, e.getValue());
         }
 
+        maze.recomputeSpecialCells();
         return maze;
     }
 
-    /**
-     * Robust parser that supports:
-     *  - enum names (e.g., "WALL", "FLOOR")
-     *  - exported variant names that don't exist in Tiles (e.g., "FLOOR_ROOM")
-     *  - numeric fallback (if older maps store IDs)
-     */
-    private static Tiles parseTile(String raw) {
-        if (raw == null) throw new IllegalArgumentException("Tile value is null");
-
-        String s = raw.trim().toUpperCase();
-
-        // ---- Aliases: map tokens found in properties to actual enum constants ----
-        // Adjust these mappings to match your Tiles enum constants.
-        s = switch (s) {
-            case "FLOOR_ROOM" -> "FLOOR"; // or "ROOM_FLOOR" etc., depending on your enum
-            case "FLOOR_HALL" -> "FLOOR";
-            case "WALL_FILL"  -> "WALL";
-            case "WALL_SET"   -> "WALL";
-            default -> s;
-        };
-
-        // 1) Try enum parsing
+    private static Tiles parseTileNumericOnly(String raw) {
         try {
-            return Tiles.valueOf(s);
-        } catch (IllegalArgumentException ignored) {
-            // 2) Fallback: try numeric IDs
-            try {
-                int id = Integer.parseInt(s);
-                return Tiles.fromId(id);
-            } catch (NumberFormatException nfe) {
-                throw new IllegalArgumentException("Unknown tile token: " + raw, nfe);
-            }
+            int id = Integer.parseInt(raw.trim());
+            return Tiles.fromId(id);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Tile value must be numeric id, got: " + raw);
         }
     }
 
@@ -114,5 +87,4 @@ public class MazeLoader {
         LevelSpec spec = loadFromProperties(file);
         return buildMaze(spec, tileSize);
     }
-
 }
