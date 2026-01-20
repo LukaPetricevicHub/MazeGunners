@@ -74,6 +74,7 @@ public class GameScreen implements Screen {
 
     private static final int PROP_TILE_PX = 32;
     private Texture texFloorRoom, texFloorHall, texWallFill, texWallSet, texSpawn, texExit, texDoor, texKey;
+    private int trackedLevel = 1;
 
 
     private Hud hud;
@@ -120,6 +121,18 @@ public class GameScreen implements Screen {
         if (!isPaused && gameStateController.isRunning()) {
             player.update(delta, maze, game, this::collidesWithBlockingObstacle);
 
+            if (player.getPlayerLevel() > trackedLevel) {
+                trackedLevel = player.getPlayerLevel();
+
+                hud.showNotification("LEVEL UP! (" + trackedLevel + ")\n+1 Skill Point\nHealth Restored");
+
+                if (pickupSound != null) {
+                    long id = pickupSound.play();
+                    pickupSound.setPitch(id, 1.5f);
+                    pickupSound.setVolume(id, game.getPreferences().getSoundVolume());
+                }
+            }
+
 
             boolean onExit = worldLogic.isPlayerOnExit(player, maze);
 
@@ -146,6 +159,7 @@ public class GameScreen implements Screen {
                     }
                 }
             }
+
 
             // Item Pickups
             java.util.Iterator<de.tum.cit.fop.maze.items.AbstractCollectable> iter = items.iterator();
@@ -278,6 +292,7 @@ public class GameScreen implements Screen {
     public void show() {
         long seed = System.currentTimeMillis();
 
+
         // IMPORTANT: gives ScreenViewport a real size BEFORE creating GameCamera
         viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
 
@@ -296,6 +311,8 @@ public class GameScreen implements Screen {
         initializePlayer();
         initializeEnemiesAndObstacles(seed);
         initializeEvents();
+
+        trackedLevel = player.getPlayerLevel();
 
         hud.getDevConsole().setPlayer(player);
 

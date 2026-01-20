@@ -41,7 +41,7 @@ public class DevConsole extends Table {
             public boolean keyDown(InputEvent event, int keycode) {
                 if (keycode == Input.Keys.ENTER) {
                     executeCommand(inputField.getText());
-                    inputField.setText(""); // Clear input
+                    inputField.setText("");
                     return true;
                 }
 
@@ -119,6 +119,13 @@ public class DevConsole extends Table {
                         int lvl = Integer.parseInt(parts[1]);
                         log("Teleporting to Level " + lvl + "...");
                         game.setScreen(new GameScreen(game, lvl));
+                    }
+                    break;
+                case "xp":
+                    if (parts.length > 1) {
+                        int amount = Integer.parseInt(parts[1]);
+                        player.addExperience(amount);
+                        log("Gave " + amount + " XP");
                     }
                     break;
 

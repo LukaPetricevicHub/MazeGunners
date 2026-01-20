@@ -44,6 +44,16 @@ public class Player {
     private boolean godMode = false;
     private boolean noClip = false;
 
+    private int experience = 0;
+    private int playerLevel = 1;
+    private int skillPoints = 0;
+
+    private int skillSpeedLevel = 0;
+    private int skillHealthLevel = 0;
+    private int skillDamageLevel = 0;
+
+    private static final int XP_PER_LEVEL_BASE = 100;
+
 
 
     @FunctionalInterface
@@ -126,6 +136,50 @@ public class Player {
         return new MovementInput(dx, dy);
     }
 
+    public void addExperience(int amount) {
+        this.experience += amount;
+        System.out.println("Gained " + amount + " XP. Total: " + experience);
+
+        checkLevelUp();
+    }
+
+    private void checkLevelUp() {
+        int xpNeeded = playerLevel * XP_PER_LEVEL_BASE;
+
+        while (experience >= xpNeeded) {
+            experience -= xpNeeded;
+            playerLevel++;
+            skillPoints++;
+
+            lives = Math.min(lives + 1, 5);
+
+            System.out.println("LEVEL UP! Now Level " + playerLevel + ". Skill Points: " + skillPoints);
+
+            xpNeeded = playerLevel * XP_PER_LEVEL_BASE;
+        }
+    }
+    public boolean upgradeSpeed() {
+        if (skillPoints > 0 && skillSpeedLevel < 5) { // Max level 5
+            skillPoints--;
+            skillSpeedLevel++;
+            System.out.println("Upgraded Speed to Lv " + skillSpeedLevel);
+            return true;
+        }
+        return false;
+    }
+
+    public boolean upgradeHealth() {
+        if (skillPoints > 0 && skillHealthLevel < 5) {
+            skillPoints--;
+            skillHealthLevel++;
+            // Immediately give the extra life
+            if (lives < getMaxLives()) lives++;
+            System.out.println("Upgraded Health to Lv " + skillHealthLevel);
+            return true;
+        }
+        return false;
+    }
+
 
     // Collision & Movement
     private void attemptMove(float dx, float dy, Maze maze, MazeRunnerGame game, BlockChecker blockChecker) {
@@ -144,7 +198,6 @@ public class Player {
                 } else {
                     hitWallX = true;
                 }
-
             } else {
                 hitWallX = true;
             }
@@ -153,7 +206,6 @@ public class Player {
         // --- move Y ---
         if (dy != 0f) {
             float nextY = y + dy;
-
             if (canOccupy(x, nextY, maze)) {
 
                 if (blockChecker == null || !blockChecker.isBlocked(makeRect(x, nextY))) {
@@ -166,7 +218,6 @@ public class Player {
                 hitWallY = true;
             }
         }
-
         if (hitWallX || hitWallY) {
             game.playWallHitSound();
         }
@@ -188,7 +239,7 @@ public class Player {
     }
 
     public void addLife() {
-        if (lives < 5) {
+        if (lives < getMaxLives()) {
             lives++;
             System.out.println("Life Added! Current lives: " + lives);
         }
@@ -283,7 +334,16 @@ public class Player {
         this.noClip = enabled;
         System.out.println("No Clip set to: " + enabled);
     }
-
+    public int getMaxLives() {
+        return 3 + skillHealthLevel;
+    }
+    public float getWalkSpeed() {
+        return WALK_SPEED + (skillSpeedLevel * 50f);
+    }
+    public int getExperience() { return experience; }
+    public int getPlayerLevel() { return playerLevel; }
+    public int getSkillPoints() { return skillPoints; }
+    public int getXpToNextLevel() { return playerLevel * XP_PER_LEVEL_BASE; }
 
     // Internal helper
     private record MovementInput(float dx, float dy) {}
