@@ -14,7 +14,6 @@ public class Prop extends Obstacle {
         this.type = type;
         this.sprite = sprite;
 
-        // World/collision size is based on tile footprint (NOT sprite crop pixels)
         float w = type.tilesW * tileSize;
         float h = type.tilesH * tileSize;
 

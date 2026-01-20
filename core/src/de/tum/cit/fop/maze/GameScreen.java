@@ -70,8 +70,11 @@ public class GameScreen implements Screen {
     private List<Obstacle> obstacles;
     private final Map<PropType, TextureRegion> propSprites = new HashMap<>();
     private Texture propTilesetTexture;
+    private final Map<PropType, Texture> propTextures = new HashMap<>();
+
     private static final int PROP_TILE_PX = 32;
     private Texture texFloorRoom, texFloorHall, texWallFill, texWallSet, texSpawn, texExit, texDoor, texKey;
+
 
     private Hud hud;
 
@@ -412,18 +415,17 @@ public class GameScreen implements Screen {
     }
 
     private void loadPropTexturesForLevel() {
-        propTilesetTexture = new Texture("PROPS.png");
-
-        propTilesetTexture = new Texture("arrow.png");
-        int textureH = propTilesetTexture.getHeight();
+        // If reloading (e.g. restarting), dispose old textures first
+        for (Texture t : propTextures.values()) t.dispose();
+        propTextures.clear();
+        propSprites.clear();
 
         for (PropType type : PropType.values()) {
-            int srcX = type.xPx;
-            int srcY = textureH - type.yTopPx - type.hPx;  // convert top->bottom
-            int srcW = type.wPx;
-            int srcH = type.hPx;
+            Texture tex = new Texture(Gdx.files.internal(type.texturePath));
+            tex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
 
-            propSprites.put(type, new TextureRegion(propTilesetTexture, srcX, srcY, srcW, srcH));
+            propTextures.put(type, tex);
+            propSprites.put(type, new TextureRegion(tex));
         }
     }
 
@@ -652,6 +654,9 @@ public class GameScreen implements Screen {
         if (propTilesetTexture != null) propTilesetTexture.dispose();
         propSprites.clear();
         if (mazeRenderer != null) mazeRenderer.dispose();
+        for (Texture t : propTextures.values()) t.dispose();
+        propTextures.clear();
+        propSprites.clear();
 
     }
 }

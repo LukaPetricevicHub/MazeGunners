@@ -20,45 +20,11 @@ public class PropPlacer {
     ) {
         Random rng = new Random(seed * 31L + level * 997L);
 
-        // 1) Candidate tiles: FLOOR tiles that are in open areas and not corridors/chokepoints
-        List<Point> candidates = new ArrayList<>();
-        for (int y = 1; y < maze.getHeight() - 1; y++) {
-            for (int x = 1; x < maze.getWidth() - 1; x++) {
+        List<Point> candidates = buildCandidates(maze, true);
 
-                // Only place on FLOOR (not on DOOR/EXIT/KEY/SPAWN)
-                if (maze.getTile(x, y) != Tiles.FLOOR) continue;
-
-                // Avoid corridors / chokepoints (prevents blocking the map)
-                if (walkable4(maze, x, y) <= 2) continue;
-
-                // Require "room-like" openness: lots of walkable neighbors
-                if (!isOpenArea8(maze, x, y, 6)) continue;
-
-                // Avoid important tiles nearby
-                if (nearTile(maze, x, y, Tiles.DOOR, 3)) continue;
-                if (nearTile(maze, x, y, Tiles.SPAWN, 5)) continue;
-                if (nearTile(maze, x, y, Tiles.EXIT, 5)) continue;
-                if (nearTile(maze, x, y, Tiles.KEY, 5)) continue;
-
-                candidates.add(new Point(x, y));
-            }
-        }
-
-        // If your generator makes small rooms, strict filtering may leave few candidates.
-        // Fall back to slightly relaxed openness if needed.
+        // relax if needed
         if (candidates.isEmpty()) {
-            for (int y = 1; y < maze.getHeight() - 1; y++) {
-                for (int x = 1; x < maze.getWidth() - 1; x++) {
-                    if (maze.getTile(x, y) != Tiles.FLOOR) continue;
-                    if (walkable4(maze, x, y) <= 1) continue;
-                    if (!isOpenArea8(maze, x, y, 4)) continue;
-                    if (nearTile(maze, x, y, Tiles.DOOR, 3)) continue;
-                    if (nearTile(maze, x, y, Tiles.SPAWN, 5)) continue;
-                    if (nearTile(maze, x, y, Tiles.EXIT, 5)) continue;
-                    if (nearTile(maze, x, y, Tiles.KEY, 5)) continue;
-                    candidates.add(new Point(x, y));
-                }
-            }
+            candidates = buildCandidates(maze, false);
         }
 
         Collections.shuffle(candidates, rng);
@@ -66,13 +32,9 @@ public class PropPlacer {
         List<Obstacle> out = new ArrayList<>();
         Set<Long> occupied = new HashSet<>();
 
-        // Sort prop types small-to-large so small props place first
-        PropType[] types = PropType.values();
-        Arrays.sort(types, Comparator.comparingInt(t -> t.tilesW * t.tilesH));
-
         int placed = 0;
         int tries = 0;
-        int maxTries = Math.max(200, count * 200);
+        int maxTries = Math.max(300, count * 300);
 
         while (placed < count && tries++ < maxTries && !candidates.isEmpty()) {
 
@@ -80,25 +42,20 @@ public class PropPlacer {
 
             boolean placedHere = false;
 
-            // Try a few random types (biased toward small)
-            for (int attempt = 0; attempt < types.length; attempt++) {
-                PropType type = types[attempt];
+            // Try up to N random types, then fall back to small ones
+            for (int attempt = 0; attempt < 10; attempt++) {
+                PropType type = randomWeightedType(rng);
                 TextureRegion sprite = propSprites.get(type);
                 if (sprite == null) continue;
 
                 int wTiles = type.tilesW;
                 int hTiles = type.tilesH;
 
-                // Ensure the entire footprint is safe
-                if (!footprintWalkableAndNotCorridor(maze, anchor.x, anchor.y, wTiles, hTiles)) continue;
-
-                // Ensure we don't overlap already-placed props
+                if (!footprintSafe(maze, anchor.x, anchor.y, wTiles, hTiles)) continue;
                 if (!footprintNotOccupied(anchor.x, anchor.y, wTiles, hTiles, occupied, maze)) continue;
 
-                // Reserve occupancy
                 reserve(anchor.x, anchor.y, wTiles, hTiles, occupied);
 
-                // Create prop (world coords)
                 float wx = anchor.x * maze.getTileSize();
                 float wy = anchor.y * maze.getTileSize();
 
@@ -108,8 +65,21 @@ public class PropPlacer {
                 break;
             }
 
-            // If this anchor never works, you can optionally remove it after repeated failures
-            if (!placedHere && candidates.size() > 20 && tries % 25 == 0) {
+            // Fallback: try small props explicitly so we still place something
+            if (!placedHere) {
+                placedHere = tryPlaceSpecific(maze, anchor, PropType.BARREL, propSprites, occupied, out)
+                        || tryPlaceSpecific(maze, anchor, PropType.CRATE, propSprites, occupied, out)
+                        || tryPlaceSpecific(maze, anchor, PropType.SKELETON, propSprites, occupied, out)
+                        || tryPlaceSpecific(maze, anchor, PropType.ROBOT, propSprites, occupied, out)
+                        || tryPlaceSpecific(maze, anchor, PropType.FLESH, propSprites, occupied, out)
+                        || tryPlaceSpecific(maze, anchor, PropType.FLASKS, propSprites, occupied, out)
+                        || tryPlaceSpecific(maze, anchor, PropType.SKELETON, propSprites, occupied, out);
+
+                if (placedHere) placed++;
+            }
+
+            // Optional: occasionally drop random candidates to reduce repeated failures
+            if (!placedHere && candidates.size() > 80 && tries % 50 == 0) {
                 candidates.remove(rng.nextInt(candidates.size()));
             }
         }
@@ -118,7 +88,110 @@ public class PropPlacer {
     }
 
     // ---------------------------------------------------------
-    // Corridor / room detection helpers
+    // Candidate building
+    // ---------------------------------------------------------
+
+    private List<Point> buildCandidates(Maze maze, boolean strict) {
+        List<Point> candidates = new ArrayList<>();
+
+        for (int y = 1; y < maze.getHeight() - 1; y++) {
+            for (int x = 1; x < maze.getWidth() - 1; x++) {
+
+                if (maze.getTile(x, y) != Tiles.FLOOR) continue;
+
+                int deg = walkable4(maze, x, y);
+
+                // strict: avoid anything corridor-like
+                if (strict) {
+                    if (deg <= 2) continue;
+                    if (!isOpenArea8(maze, x, y, 6)) continue;
+                } else {
+                    // relaxed: still avoid dead ends, allow more room-ish areas
+                    if (deg <= 1) continue;
+                    if (!isOpenArea8(maze, x, y, 4)) continue;
+                }
+
+                // avoid important tiles nearby
+                if (nearTile(maze, x, y, Tiles.DOOR, 3)) continue;
+                if (nearTile(maze, x, y, Tiles.SPAWN, 5)) continue;
+                if (nearTile(maze, x, y, Tiles.EXIT, 5)) continue;
+                if (nearTile(maze, x, y, Tiles.KEY, 5)) continue;
+
+                candidates.add(new Point(x, y));
+            }
+        }
+
+        return candidates;
+    }
+
+    // ---------------------------------------------------------
+    // Placement checks
+    // ---------------------------------------------------------
+
+    private boolean footprintSafe(Maze maze, int ax, int ay, int wTiles, int hTiles) {
+        for (int dy = 0; dy < hTiles; dy++) {
+            for (int dx = 0; dx < wTiles; dx++) {
+                int x = ax + dx;
+                int y = ay + dy;
+
+                if (!maze.inBounds(x, y)) return false;
+                if (maze.getTile(x, y) != Tiles.FLOOR) return false;
+
+                // don't allow props sitting on corridor-like cells
+                if (walkable4(maze, x, y) <= 2) return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean footprintNotOccupied(int ax, int ay, int wTiles, int hTiles, Set<Long> occupied, Maze maze) {
+        for (int dy = 0; dy < hTiles; dy++) {
+            for (int dx = 0; dx < wTiles; dx++) {
+                int x = ax + dx;
+                int y = ay + dy;
+                if (!maze.inBounds(x, y)) return false;
+                if (occupied.contains(pack(x, y))) return false;
+            }
+        }
+        return true;
+    }
+
+    private void reserve(int ax, int ay, int wTiles, int hTiles, Set<Long> occupied) {
+        for (int dy = 0; dy < hTiles; dy++) {
+            for (int dx = 0; dx < wTiles; dx++) {
+                occupied.add(pack(ax + dx, ay + dy));
+            }
+        }
+    }
+
+    private boolean tryPlaceSpecific(
+            Maze maze,
+            Point anchor,
+            PropType type,
+            Map<PropType, TextureRegion> propSprites,
+            Set<Long> occupied,
+            List<Obstacle> out
+    ) {
+        TextureRegion sprite = propSprites.get(type);
+        if (sprite == null) return false;
+
+        int wTiles = type.tilesW;
+        int hTiles = type.tilesH;
+
+        if (!footprintSafe(maze, anchor.x, anchor.y, wTiles, hTiles)) return false;
+        if (!footprintNotOccupied(anchor.x, anchor.y, wTiles, hTiles, occupied, maze)) return false;
+
+        reserve(anchor.x, anchor.y, wTiles, hTiles, occupied);
+
+        float wx = anchor.x * maze.getTileSize();
+        float wy = anchor.y * maze.getTileSize();
+
+        out.add(new Prop(new Vector2(wx, wy), type, sprite, maze.getTileSize()));
+        return true;
+    }
+
+    // ---------------------------------------------------------
+    // Geometry helpers
     // ---------------------------------------------------------
 
     private int walkable4(Maze maze, int x, int y) {
@@ -144,53 +217,6 @@ public class PropPlacer {
         return walkable >= minWalkable;
     }
 
-    // ---------------------------------------------------------
-    // Footprint checks: walkable and not choking corridors
-    // ---------------------------------------------------------
-
-    private boolean footprintWalkableAndNotCorridor(Maze maze, int ax, int ay, int wTiles, int hTiles) {
-        for (int dy = 0; dy < hTiles; dy++) {
-            for (int dx = 0; dx < wTiles; dx++) {
-                int x = ax + dx;
-                int y = ay + dy;
-
-                if (!maze.inBounds(x, y)) return false;
-
-                // Only place on FLOOR footprint (never on doors/spawn/etc.)
-                if (maze.getTile(x, y) != Tiles.FLOOR) return false;
-
-                // Prevent placing on corridor-like cells
-                if (walkable4(maze, x, y) <= 2) return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean footprintNotOccupied(int ax, int ay, int wTiles, int hTiles, Set<Long> occupied, Maze maze) {
-        for (int dy = 0; dy < hTiles; dy++) {
-            for (int dx = 0; dx < wTiles; dx++) {
-                int x = ax + dx;
-                int y = ay + dy;
-
-                if (!maze.inBounds(x, y)) return false;
-                if (occupied.contains(pack(x, y))) return false;
-            }
-        }
-        return true;
-    }
-
-    private void reserve(int ax, int ay, int wTiles, int hTiles, Set<Long> occupied) {
-        for (int dy = 0; dy < hTiles; dy++) {
-            for (int dx = 0; dx < wTiles; dx++) {
-                occupied.add(pack(ax + dx, ay + dy));
-            }
-        }
-    }
-
-    // ---------------------------------------------------------
-    // Nearby special tiles
-    // ---------------------------------------------------------
-
     private boolean nearTile(Maze maze, int x, int y, Tiles t, int r) {
         for (int dy = -r; dy <= r; dy++) {
             for (int dx = -r; dx <= r; dx++) {
@@ -205,5 +231,23 @@ public class PropPlacer {
 
     private long pack(int x, int y) {
         return (((long) x) << 32) ^ (y & 0xffffffffL);
+    }
+
+    // ---------------------------------------------------------
+    // Weighted random type
+    // ---------------------------------------------------------
+
+    private PropType randomWeightedType(Random rng) {
+        PropType[] vals = PropType.values();
+        int total = 0;
+        for (PropType t : vals) total += t.weight;
+
+        int roll = rng.nextInt(total);
+        int acc = 0;
+        for (PropType t : vals) {
+            acc += t.weight;
+            if (roll < acc) return t;
+        }
+        return vals[0];
     }
 }
