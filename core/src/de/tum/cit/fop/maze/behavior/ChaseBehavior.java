@@ -56,10 +56,23 @@ public class ChaseBehavior implements BehaviorState {
         boolean needsNewPath = isStuck || currentPath.isEmpty() || currentWaypointIndex >= currentPath.size() || trackedPlayerTile == null || !playerTile.equals(trackedPlayerTile) || timeUntilRepath <= 0f;
 
         if (needsNewPath) {
-            Point bestGoal = GridPathfinder.findReachableGoalNearPlayer(maze, enemyTile, playerTile, 2);
+            Point bestGoal = GridPathfinder.findReachableGoalNearPlayer(
+                    maze,
+                    enemyTile,
+                    playerTile,
+                    2,
+                    enemy.getPathfindingFootprint()
+            );
+
 
             if (bestGoal != null)
-                currentPath = GridPathfinder.findPath(maze, enemyTile, bestGoal);
+                currentPath = currentPath = GridPathfinder.findPath(
+                        maze,
+                        enemyTile,
+                        bestGoal,
+                        enemy.getPathfindingFootprint()
+                );
+
             else
                 currentPath = List.of();
 

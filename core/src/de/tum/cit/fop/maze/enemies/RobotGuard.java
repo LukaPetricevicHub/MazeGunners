@@ -6,35 +6,27 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.behavior.BehaviorState;
-import de.tum.cit.fop.maze.behavior.EvadeBehavior;
 import de.tum.cit.fop.maze.behavior.PatrolBehavior;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
 public class RobotGuard extends Enemy {
 
-    // ---------------- Render size ----------------
+
     public static final float RENDER_WIDTH  = 32f;
     public static final float RENDER_HEIGHT = 32f;
 
-    // ---------------- Animation config ----------------
     private static final int WALK_FRAMES = 5;
     private static final float WALK_FRAME_DURATION = 0.15f;
 
-    // ---------------- Direction ----------------
     private enum Direction {
         DOWN, LEFT, RIGHT, UP
     }
 
     private Direction currentDirection = Direction.DOWN;
 
-    // ---------------- Behaviors ----------------
     private final PatrolBehavior defaultPatrol;
-    private final EvadeBehavior fleeingLogic = new EvadeBehavior();
 
-    private static final float ESCAPE_THRESHOLD = 80f;
-
-    // ---------------- Animations ----------------
     private static Animation<TextureRegion> walkDown;
     private static Animation<TextureRegion> walkLeft;
     private static Animation<TextureRegion> walkRight;
@@ -42,10 +34,8 @@ public class RobotGuard extends Enemy {
 
     private float animationTimer = 0f;
 
-    // Used to infer movement direction
     private final Vector2 lastPosition = new Vector2();
 
-    // ---------------- Constructor ----------------
     public RobotGuard(
             Vector2 startWorldPosition,
             float movementSpeed,
@@ -62,7 +52,6 @@ public class RobotGuard extends Enemy {
         ensureAnimationsLoaded();
     }
 
-    // ---------------- Animation loading ----------------
     private static void ensureAnimationsLoaded() {
         if (walkDown != null) return;
 
@@ -106,7 +95,7 @@ public class RobotGuard extends Enemy {
         return anim;
     }
 
-    // ---------------- Behavior hooks ----------------
+
     @Override
     protected BehaviorState createChaseBehavior() {
         return defaultPatrol;
@@ -120,18 +109,13 @@ public class RobotGuard extends Enemy {
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
         animationTimer += deltaTime;
+
+        defaultPatrol.execute(this, deltaTime, maze);
+
         updateDirectionFromMovement();
-
-        float distToPlayer = worldPosition.dst(targetPlayer.getX(), targetPlayer.getY());
-
-        if (distToPlayer < ESCAPE_THRESHOLD) {
-            fleeingLogic.execute(this, deltaTime, maze);
-        } else {
-            defaultPatrol.execute(this, deltaTime, maze);
-        }
     }
 
-    // ---------------- Direction logic ----------------
+
     private void updateDirectionFromMovement() {
         Vector2 pos = getPosition();
 
@@ -149,7 +133,6 @@ public class RobotGuard extends Enemy {
         lastPosition.set(pos);
     }
 
-    // ---------------- Frame access ----------------
     public TextureRegion getCurrentFrame() {
         return switch (currentDirection) {
             case LEFT  -> walkLeft.getKeyFrame(animationTimer, true);

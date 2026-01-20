@@ -1,5 +1,5 @@
 package de.tum.cit.fop.maze.behavior;
 
 public enum BehaviorStateType {
-    PATROL, CHASE, EVADE, RETREAT
+    PATROL, CHASE, EVADE, RETREAT, RETURN
 }

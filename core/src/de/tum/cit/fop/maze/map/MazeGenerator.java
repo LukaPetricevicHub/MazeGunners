@@ -26,7 +26,6 @@ public class MazeGenerator {
 
     private static final int MAX_ATTEMPTS = 40;
 
-    // ---------- tune these ----------
     private static final int MIN_LEAF = 18;
     private static final int MIN_ROOM = 8;
     private static final int ROOM_MARGIN = 2;
@@ -35,7 +34,6 @@ public class MazeGenerator {
     private static final float OVERLAP_THRESHOLD = 0.45f; // lower -> more likely to connect neighbors
     private static final int GRID_SNAP = 1;               // tiles. 1 = no snap. (2 or 4 makes blockier)
     private static final int HALL_WIDTH = 2;
-    // -------------------------------
 
     // Level sizes for level=1..5 (index 0 unused)
     private static final int[] LEVEL_W = {0, 80, 80, 90, 90, 100};
@@ -155,10 +153,6 @@ public class MazeGenerator {
         throw new RuntimeException("Failed to generate BSP dungeon after " + MAX_ATTEMPTS + " attempts");
     }
 
-    // ============================================================
-    // BSP leaf
-    // ============================================================
-
     private static class Leaf {
         final int x, y, w, h;
         Leaf left, right;
@@ -259,10 +253,6 @@ public class MazeGenerator {
     }
 
 
-    // ============================================================
-    // Neighbor discovery on leaf rectangles
-    // ============================================================
-
     private void discoverNeighbors(List<Leaf> leaves) {
         for (Leaf l : leaves) l.neighbors.clear();
 
@@ -299,9 +289,6 @@ public class MazeGenerator {
         return hi - lo;
     }
 
-    // ============================================================
-    // Shrink leaf -> room
-    // ============================================================
 
     private Room makeShrunkRoom(Leaf l, Random rng) {
         int innerX = l.x + ROOM_MARGIN;
@@ -324,10 +311,6 @@ public class MazeGenerator {
 
         return new Room(rx, ry, rw, rh);
     }
-
-    // ============================================================
-    // Candidate halls (neighbor overlap on SHRUNK rooms)
-    // ============================================================
 
     private enum Orientation {LR, UD}
 
@@ -414,9 +397,6 @@ public class MazeGenerator {
         return dx * dx + dy * dy;
     }
 
-    // ============================================================
-    // Randomized Prim MST -> HallPlans (STRAIGHT)
-    // ============================================================
 
     private static class HallPlan {
         final Orientation orient;
@@ -488,9 +468,6 @@ public class MazeGenerator {
         return lo + rng.nextInt(hi - lo + 1);
     }
 
-    // ============================================================
-    // Carving (rooms + STRAIGHT halls) - EXACT WIDTH (even/odd) + doors
-    // ============================================================
 
     private void carveRooms(Maze maze, List<Room> rooms) {
         maze.clearRoomMask();
@@ -636,9 +613,6 @@ public class MazeGenerator {
         if (t == Tiles.FLOOR) maze.setTile(x, y, Tiles.DOOR);
     }
 
-    // ============================================================
-    // Optional: snap (tile grid)
-    // ============================================================
 
     private void snapRooms(List<Room> rooms, int snap, Maze maze) {
         for (int i = 0; i < rooms.size(); i++) {
@@ -672,9 +646,6 @@ public class MazeGenerator {
         return (v / snap) * snap;
     }
 
-    // ============================================================
-    // Cleanup: remove 1-tile spikes outside rooms
-    // ============================================================
 
     private void cleanupThinArtifacts(Maze maze, List<Room> rooms) {
         boolean[][] inRoom = new boolean[maze.getWidth()][maze.getHeight()];
@@ -710,10 +681,6 @@ public class MazeGenerator {
         return c;
     }
 
-    // ============================================================
-    // Special placement: BORDER EXIT (width matches hallWidth)
-    // + exit corridor cannot intersect other rooms
-    // ============================================================
 
     private static class PlaceResult {
         final boolean ok;
@@ -799,10 +766,6 @@ public class MazeGenerator {
         return null;
     }
 
-    /**
-     * Carve a straight wide corridor from spawnRoom to border and place SPAWN tiles on the border.
-     * Width matches hallWidth. Returns representative border point for reachability.
-     */
     private Point carveStraightToBorderAndPlaceSpawn(Maze maze, Room spawnRoom, BorderEntryPlan be, int hallWidth) {
         int W = maze.getWidth();
         int H = maze.getHeight();
@@ -1111,9 +1074,6 @@ public class MazeGenerator {
         return new Point(x, H - 1);
     }
 
-    // ============================================================
-    // Helpers
-    // ============================================================
 
     private MazeLoader.LevelSpec applyLevelSize(MazeLoader.LevelSpec spec, int level) {
         int lv = clamp(level, 1, 5);
@@ -1143,6 +1103,103 @@ public class MazeGenerator {
     private static int rndBetween(Random rng, int a, int b) {
         if (b < a) return a;
         return a + rng.nextInt(b - a + 1);
+    }
+
+    public GeneratedMaze generateWithRooms(
+            MazeLoader.LevelSpec spec,
+            int tileSize,
+            long seed,
+            int level
+    ) {
+        Objects.requireNonNull(spec, "LevelSpec must not be null");
+
+        // We reuse the existing generate logic,
+        // but intercept the rooms before returning.
+        GenerationCapture capture = new GenerationCapture();
+
+        Maze maze = generateInternal(spec, tileSize, seed, level, capture);
+
+        return new GeneratedMaze(maze, capture.rooms);
+    }
+
+    private static final class GenerationCapture {
+        List<Room> rooms;
+    }
+
+    private Maze generateInternal(
+            MazeLoader.LevelSpec spec,
+            int tileSize,
+            long seed,
+            int level,
+            GenerationCapture capture
+    ) {
+        Objects.requireNonNull(spec, "LevelSpec must not be null");
+        spec = applyLevelSize(spec, level);
+
+        Random rng = new Random(seed);
+
+        if (spec.width < MIN_LEAF * 2 + 4 || spec.height < MIN_LEAF * 2 + 4) {
+            throw new IllegalArgumentException(
+                    "Map too small for BSP. width/height should be at least ~" + (MIN_LEAF * 2 + 4));
+        }
+
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            Maze maze = new Maze(spec.width, spec.height, tileSize);
+            fill(maze, Tiles.WALL);
+
+            Leaf root = new Leaf(1, 1, spec.width - 2, spec.height - 2);
+            List<Leaf> leaves = splitLeaves(root, rng, level, spec.width, spec.height);
+
+            discoverNeighbors(leaves);
+
+            List<Room> rooms = new ArrayList<>();
+            for (Leaf l : leaves) {
+                Room r = makeShrunkRoom(l, rng);
+                if (r == null) continue;
+                l.room = r;
+                rooms.add(r);
+            }
+            if (rooms.size() < 3) continue;
+
+            int lv = clampLevel(level);
+            int minRooms = LEVEL_ROOMS[lv][0];
+            int maxRooms = LEVEL_ROOMS[lv][1];
+
+            if (rooms.size() < minRooms) continue;
+
+            if (rooms.size() > maxRooms) {
+                Collections.shuffle(rooms, rng);
+                rooms = new ArrayList<>(rooms.subList(0, maxRooms));
+
+                Set<Room> keep = new HashSet<>(rooms);
+                for (Leaf l : leaves) {
+                    if (l.room != null && !keep.contains(l.room)) l.room = null;
+                }
+            }
+
+            List<CandidateEdge> candidates = buildHallCandidates(leaves);
+            if (candidates.isEmpty()) continue;
+
+            List<HallPlan> hallPlans = buildMSTPlans(rooms, candidates, rng);
+            if (hallPlans.size() < rooms.size() - 1) continue;
+
+            carveRooms(maze, rooms);
+            carveStraightHallsWide(maze, hallPlans, HALL_WIDTH);
+            cleanupThinArtifacts(maze, rooms);
+            clearSpecialTiles(maze);
+
+            PlaceResult placed =
+                    assignSpecialRoomsAndPlaceTiles_BORDER_EXIT(maze, rooms, rng, HALL_WIDTH);
+
+            if (!placed.ok) continue;
+
+            if (MazeUtils.reachable(maze, placed.spawn, placed.exit)) {
+                capture.rooms = rooms;
+                return maze;
+            }
+        }
+
+        throw new RuntimeException("Failed to generate BSP dungeon after " + MAX_ATTEMPTS + " attempts");
     }
 
 }

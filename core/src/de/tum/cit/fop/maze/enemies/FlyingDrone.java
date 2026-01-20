@@ -6,42 +6,32 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.behavior.BehaviorState;
+import de.tum.cit.fop.maze.behavior.BehaviorStateType;
 import de.tum.cit.fop.maze.behavior.ChaseBehavior;
 import de.tum.cit.fop.maze.behavior.PatrolBehavior;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
+import de.tum.cit.fop.maze.behavior.ReturnToPatrolBehavior;
+
 
 public class FlyingDrone extends Enemy {
 
-    // ---------------- Render size ----------------
     public static final float RENDER_WIDTH  = 32f;
     public static final float RENDER_HEIGHT = 32f;
 
-    // ---------------- Animation config ----------------
     private static final int FLY_FRAMES = 5;
     private static final float FLY_FRAME_DURATION = 0.12f;
 
-    // ---------------- Hover animation ----------------
-    // Per-frame vertical hover offsets (pixels)
-    private static final float[] HOVER_Y_OFFSETS = {
-            0f, // frame 1
-            4f, // frame 2
-            8f, // frame 3
-            4f, // frame 4
-            0f  // frame 5
-    };
 
-    // ---------------- Direction ----------------
+    private static final float[] HOVER_Y_OFFSETS = {0f, 4f, 8f, 4f, 0f};
+
     private enum Direction {
         DOWN, LEFT, RIGHT, UP
     }
 
     private Direction currentDirection = Direction.DOWN;
+    private final Array<Vector2> patrolPoints;
 
-    // ---------------- Behavior ----------------
-    private final PatrolBehavior defaultPatrol;
-
-    // ---------------- Animations ----------------
     private static Animation<TextureRegion> flyDown;
     private static Animation<TextureRegion> flyLeft;
     private static Animation<TextureRegion> flyRight;
@@ -49,10 +39,13 @@ public class FlyingDrone extends Enemy {
 
     private float animationTimer = 0f;
 
-    // Used to infer movement direction
-    private final Vector2 lastPosition = new Vector2();
 
-    // ---------------- Constructor ----------------
+    private final Vector2 lastPosition = new Vector2();
+    private boolean snapToCenterOnChase = false;
+    private boolean snapToCenterOnReturn = false;
+
+
+
     public FlyingDrone(
             Vector2 startWorldPosition,
             float movementSpeed,
@@ -60,14 +53,14 @@ public class FlyingDrone extends Enemy {
             Player targetPlayer
     ) {
         super(startWorldPosition, movementSpeed, new PatrolBehavior(patrolWorldPositions), targetPlayer);
-        this.defaultPatrol = (PatrolBehavior) activeBehavior;
-        this.chaseRadius = 240f;
+        this.patrolPoints = new Array<>(patrolWorldPositions);
+        this.chaseRadius = 160f;
+
 
         lastPosition.set(startWorldPosition);
         ensureAnimationsLoaded();
     }
 
-    // ---------------- Animation loading ----------------
     private static void ensureAnimationsLoaded() {
         if (flyDown != null) return;
 
@@ -91,6 +84,27 @@ public class FlyingDrone extends Enemy {
         t.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
     }
 
+    @Override
+    protected void updateAI(float deltaTime) {
+        float dist2 = worldPosition.dst2(getPlayerPosition());
+        boolean playerInRange = dist2 <= chaseRadius * chaseRadius;
+
+        if (playerInRange) {
+            if (activeBehavior.getType() != BehaviorStateType.CHASE) {
+                snapToCenterOnChase = true;
+                setCurrentBehavior(createChaseBehavior());
+            }
+        } else {
+            if (activeBehavior.getType() == BehaviorStateType.CHASE) {
+                snapToCenterOnReturn = true;
+                setCurrentBehavior(new ReturnToPatrolBehavior());
+            }
+        }
+    }
+
+
+
+
     private static Animation<TextureRegion> buildStripAnim(Texture tex, int frames, float frameDuration) {
         int frameWidth  = tex.getWidth() / frames;
         int frameHeight = tex.getHeight();
@@ -111,7 +125,6 @@ public class FlyingDrone extends Enemy {
         return anim;
     }
 
-    // ---------------- Behavior hooks ----------------
     @Override
     protected BehaviorState createChaseBehavior() {
         return new ChaseBehavior();
@@ -119,17 +132,37 @@ public class FlyingDrone extends Enemy {
 
     @Override
     protected BehaviorState createDefaultBehavior() {
-        return defaultPatrol;
+        return new PatrolBehavior(patrolPoints);
     }
+
 
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
+
+        if (snapToCenterOnChase || snapToCenterOnReturn) {
+            float ts = maze.getTileSize();
+            Vector2 pos = getPosition();
+
+            int tx = (int)(pos.x / ts);
+            int ty = (int)(pos.y / ts);
+
+            pos.set(
+                    tx * ts + ts * 0.5f,
+                    ty * ts + ts * 0.5f
+            );
+
+            snapToCenterOnChase = false;
+            snapToCenterOnReturn = false;
+        }
+
         animationTimer += deltaTime;
-        updateDirectionFromMovement();
         super.updateBehavior(deltaTime, maze);
+        updateDirectionFromMovement();
     }
 
-    // ---------------- Direction logic ----------------
+
+
+
     private void updateDirectionFromMovement() {
         Vector2 pos = getPosition();
 
@@ -147,7 +180,6 @@ public class FlyingDrone extends Enemy {
         lastPosition.set(pos);
     }
 
-    // ---------------- Frame access ----------------
     public TextureRegion getCurrentFrame() {
         return switch (currentDirection) {
             case LEFT  -> flyLeft.getKeyFrame(animationTimer, true);
@@ -157,10 +189,41 @@ public class FlyingDrone extends Enemy {
         };
     }
 
-    // ---------------- Hover offset access ----------------
     public float getHoverYOffset() {
         int frameIndex = flyDown.getKeyFrameIndex(animationTimer);
         return HOVER_Y_OFFSETS[frameIndex];
     }
+
+    public Vector2 getClosestPatrolPoint() {
+        Vector2 pos = getPosition();
+        Vector2 closest = patrolPoints.first();
+        float bestDist = pos.dst2(closest);
+
+        for (Vector2 p : patrolPoints) {
+            float d = pos.dst2(p);
+            if (d < bestDist) {
+                bestDist = d;
+                closest = p;
+            }
+        }
+        return closest;
+    }
+
+    public BehaviorState createPatrolBehavior() {
+        return new PatrolBehavior(patrolPoints);
+    }
+
+
+    @Override
+    protected boolean shouldResetPatrolOnReturn() {
+        return false;
+    }
+
+    @Override
+    public int getPathfindingFootprint() {
+        return 1;
+    }
+
+
 }
 

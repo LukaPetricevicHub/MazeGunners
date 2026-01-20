@@ -4,6 +4,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import de.tum.cit.fop.maze.behavior.BehaviorState;
 import de.tum.cit.fop.maze.behavior.BehaviorStateType;
+import de.tum.cit.fop.maze.behavior.PatrolBehavior;
 import de.tum.cit.fop.maze.collision.CollisionHandler;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
@@ -23,6 +24,11 @@ public abstract class Enemy {
     private float chaseMemoryTimer = 0f;
     private static final float CHASE_MEMORY_DURATION = 2.0f;
     protected boolean aggroLocked = false;
+    private final Vector2 prevPosition = new Vector2();
+    private float stuckTimer = 0f;
+    private static final float STUCK_TIME_THRESHOLD = 0.4f;
+    private static final float MIN_MOVEMENT_EPSILON = 0.5f;
+
 
 
     // Constructor
@@ -44,10 +50,27 @@ public abstract class Enemy {
 
     // Update enemy logic
     public final void update(float deltaTime, Maze maze) {
+        prevPosition.set(worldPosition);
+
         updateAI(deltaTime);
         updateBehavior(deltaTime, maze);
+
         collisionBounds.setPosition(worldPosition.x, worldPosition.y);
+
+        // ---- STUCK DETECTION ----
+        if (prevPosition.dst2(worldPosition) < MIN_MOVEMENT_EPSILON * MIN_MOVEMENT_EPSILON) {
+            stuckTimer += deltaTime;
+        } else {
+            stuckTimer = 0f;
+        }
+
+        if (stuckTimer >= STUCK_TIME_THRESHOLD) {
+            onStuck(maze);
+            stuckTimer = 0f;
+        }
     }
+
+
 
 
     // AI state switching
@@ -112,8 +135,12 @@ public abstract class Enemy {
     public Vector2 getHomePosition() { return homeWorldPosition; }
 
     public void setCurrentBehavior(BehaviorState behavior) {
+        if (behavior instanceof PatrolBehavior patrol && shouldResetPatrolOnReturn()) {
+            patrol.resetToClosest(worldPosition);
+        }
         this.activeBehavior = behavior;
     }
+
 
 
     public boolean isAggroLocked() {
@@ -124,6 +151,33 @@ public abstract class Enemy {
     protected boolean supportsAggroLock() {
         return false;
     }
+
+
+    protected boolean usesAISwitching() {
+        return true;
+    }
+
+    protected boolean shouldResetPatrolOnReturn() {
+        return true;
+    }
+
+    protected void onStuck(Maze maze) {
+        // Default: do nothing
+    }
+
+    protected boolean canMoveTo(float x, float y, Maze maze) {
+        float inset = 2f;
+
+        return !maze.isWallWorld(x + inset, y + inset)
+                && !maze.isWallWorld(x + 32f - inset, y + inset)
+                && !maze.isWallWorld(x + inset, y + 32f - inset)
+                && !maze.isWallWorld(x + 32f - inset, y + 32f - inset);
+    }
+
+    public int getPathfindingFootprint() {
+        return 2;
+    }
+
 
 }
 

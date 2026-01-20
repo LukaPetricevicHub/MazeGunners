@@ -183,4 +183,35 @@ public class MutantWorker extends Enemy {
                 ? getAttackAnim().getKeyFrame(animTimer)
                 : getWalkAnim().getKeyFrame(animTimer, true);
     }
+
+    @Override
+    protected void onStuck(Maze maze) {
+        // Small perpendicular nudge to escape wall-lock
+        float nudge = 8f;
+
+        // Try perpendicular directions first
+        Vector2[] escapeDirs = {
+                new Vector2(0, nudge),
+                new Vector2(0, -nudge),
+                new Vector2(nudge, 0),
+                new Vector2(-nudge, 0)
+        };
+
+        for (Vector2 dir : escapeDirs) {
+            float nx = worldPosition.x + dir.x;
+            float ny = worldPosition.y + dir.y;
+
+            if (canMoveTo(nx, ny, maze)) {
+                worldPosition.set(nx, ny);
+                return;
+            }
+        }
+
+        // As last resort: random small jitter
+        worldPosition.add(
+                (float) (Math.random() - 0.5f) * nudge,
+                (float) (Math.random() - 0.5f) * nudge
+        );
+    }
+
 }
