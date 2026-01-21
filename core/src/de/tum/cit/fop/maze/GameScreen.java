@@ -13,7 +13,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
-import com.badlogic.gdx.files.FileHandle;
 
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
@@ -38,6 +37,8 @@ import de.tum.cit.fop.maze.obstacles.Prop;
 
 import de.tum.cit.fop.maze.GameOverWindow;
 import de.tum.cit.fop.maze.ui.PauseMenuWindow;
+import de.tum.cit.fop.maze.map.GeneratedMaze;
+
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -99,6 +100,8 @@ public class GameScreen implements Screen {
     private java.util.List<de.tum.cit.fop.maze.items.AbstractCollectable> items;
 
     private FogOfWarRenderer fog;
+    private List<Room> rooms;
+
 
     public GameScreen(MazeRunnerGame game, int level, FileHandle levelFile) {
         this.game = game;
@@ -364,7 +367,9 @@ public class GameScreen implements Screen {
 
         System.out.println("obstacles total = " + obstacles.size());
 
-        enemies = new EnemySpawner().spawnEnemies(maze, player, 200, seed);
+        enemies = new EnemySpawner().spawnEnemies(
+                maze, rooms, player, 48, seed);
+
 
         items = new de.tum.cit.fop.maze.items.ItemSpawner().spawnItems(maze, 10);
     }
@@ -413,18 +418,22 @@ public class GameScreen implements Screen {
 
         MazeGenerator generator = new MazeGenerator();
         MazeLoader.LevelSpec spec = new MazeLoader.LevelSpec(80, 80, new HashMap<>());
-        Maze generated = generator.generate(spec, TILE_SIZE, seed, level);
 
-        MazeExporter.saveToProperties(generated, target);
-        this.maze = loader.loadMazeFromProperties(target, TILE_SIZE);
+        GeneratedMaze generated = generator.generateWithRooms(spec, TILE_SIZE, seed, level);
+
+        this.maze = generated.getMaze();
+        this.rooms = generated.getRooms();
+
+
+        MazeExporter.saveToProperties(maze, target);
 
         Gdx.app.log("MAZE", "Loaded maze from → " + target.file().getAbsolutePath()
                 + " bytes=" + target.length() + " modified=" + target.lastModified());
 
         String firstLine = target.readString().split("\n", 2)[0];
         Gdx.app.log("MAZE", "FILE FIRST LINE NOW: " + firstLine);
-
     }
+
 
 
 

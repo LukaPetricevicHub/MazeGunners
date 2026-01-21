@@ -18,11 +18,14 @@ public class Maze {
     private Point exitCell;
     private final List<Point> exitCells = new ArrayList<>();
     private List<Room> rooms = List.of();
+    private final boolean[][] roomMask;
 
     public Maze(int width, int height, int tileSize) {
         this.width = width;
         this.height = height;
         this.tileSize = tileSize;
+        this.roomMask = new boolean[width][height];
+
 
         grid = new Tiles[width][height];
         for (int x = 0; x < width; x++)
@@ -131,4 +134,23 @@ public class Maze {
         }
         return false;
     }
+
+    public void clearRoomMask() {
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                roomMask[x][y] = false;
+            }
+        }
+    }
+
+    public void setRoomCell(int x, int y, boolean isRoom) {
+        if (!inBounds(x, y)) return;
+        roomMask[x][y] = isRoom;
+    }
+
+    public boolean isRoomCell(int x, int y) {
+        if (!inBounds(x, y)) return false;
+        return roomMask[x][y];
+    }
+
 }

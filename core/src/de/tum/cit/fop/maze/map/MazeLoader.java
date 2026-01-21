@@ -70,7 +70,6 @@ public class MazeLoader {
             maze.setTile(x, y, e.getValue());
         }
 
-        maze.recomputeSpecialCells();
         return maze;
     }
 
