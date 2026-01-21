@@ -146,14 +146,18 @@ public class FlyingDrone extends Enemy {
             int tx = (int)(pos.x / ts);
             int ty = (int)(pos.y / ts);
 
-            pos.set(
-                    tx * ts + ts * 0.5f,
-                    ty * ts + ts * 0.5f
-            );
+            // ✅ ONLY snap inside rooms (safe convex space)
+            if (maze.isRoomCell(tx, ty)) {
+                pos.set(
+                        tx * ts + ts * 0.5f,
+                        ty * ts + ts * 0.5f
+                );
+            }
 
             snapToCenterOnChase = false;
             snapToCenterOnReturn = false;
         }
+
 
         animationTimer += deltaTime;
         super.updateBehavior(deltaTime, maze);

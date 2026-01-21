@@ -27,13 +27,19 @@ public class ReturnToPatrolBehavior implements BehaviorState {
         if (!(enemy instanceof FlyingDrone drone))
             return;
 
-        // Convert current world position to tile coordinates
+        // Current enemy tile
         Point enemyTile = toTile(enemy.getPosition(), maze);
 
-        // Convert target patrol position to tile
-        Point targetTile = toTile(drone.getClosestPatrolPoint(), maze);
+        // Closest patrol point (WORLD SPACE!)
+        Vector2 patrolPoint = drone.getClosestPatrolPoint();
 
-        // If no path or finished path → recalc
+        // Tile under the patrol point (ONLY for pathfinding)
+        Point targetTile = new Point(
+                (int) (patrolPoint.x / maze.getTileSize()),
+                (int) (patrolPoint.y / maze.getTileSize())
+        );
+
+        // Recalculate path if needed
         if (path.isEmpty() || index >= path.size()) {
             path = GridPathfinder.findPath(
                     maze,
@@ -44,7 +50,7 @@ public class ReturnToPatrolBehavior implements BehaviorState {
             index = 0;
         }
 
-        // If still no valid path, cannot move
+        // No path → cannot move
         if (path.isEmpty())
             return;
 
@@ -53,11 +59,15 @@ public class ReturnToPatrolBehavior implements BehaviorState {
                 enemy, maze, path, index, deltaTime
         );
 
-        // Once we’ve reached the final tile → resume patrol
+        // FINAL STEP: snap EXACTLY to patrol point
         if (index >= path.size()) {
+
+            enemy.getPosition().set(patrolPoint);
+
             enemy.setCurrentBehavior(drone.createPatrolBehavior());
         }
     }
+
 
     private Point toTile(Vector2 pos, Maze maze) {
         return new Point(

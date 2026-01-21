@@ -20,8 +20,9 @@ public final class RoomPatrolBuilder {
         float ts = maze.getTileSize();
         Array<Vector2> pts = new Array<>();
 
-        int ax = e.x();
-        int ay = e.y();
+        int ax = e.x() - e.dirX(); // move INTO the room
+        int ay = e.y() - e.dirY();
+
 
         int tx, ty;
         if (e.dirX() != 0) {
@@ -34,10 +35,17 @@ public final class RoomPatrolBuilder {
             ty = 0;
         }
 
-        Vector2 anchor = new Vector2(
-                ax * ts,
-                ay * ts
-        );
+        float axw = ax * ts;
+        float ayw = ay * ts;
+
+        if (tx == 0) {
+            axw += ts * 0.5f;
+        }
+        else {
+            ayw += ts * 0.5f;
+        }
+
+        Vector2 anchor = new Vector2(axw, ayw);
 
 
 
@@ -81,7 +89,7 @@ public final class RoomPatrolBuilder {
             int ny = y + dy;
 
             if (!maze.inBounds(nx, ny)) break;
-            if (!roomContains(room, nx, ny)) break;
+            if (!maze.isRoomCell(nx, ny)) break;
             if (maze.getTile(nx, ny) != Tiles.FLOOR) break;
 
             x = nx;
@@ -91,10 +99,21 @@ public final class RoomPatrolBuilder {
 
         if (x == ax && y == ay) return null;
 
-        return new Vector2(
-                x * ts,
-                y * ts
-        );
+        float px = x * ts;
+        float py = y * ts;
+
+
+        if (dx == 0) {
+            px += ts * 0.5f;
+        }
+
+        else {
+            py += ts * 0.5f;
+        }
+
+        return new Vector2(px, py);
+
+
 
 
     }

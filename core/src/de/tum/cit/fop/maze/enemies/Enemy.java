@@ -86,15 +86,19 @@ public abstract class Enemy {
             aggroLocked = true;
         }
 
-        // 2) Decide whether we should chase
         if (aggroLocked || playerInRange) {
             chaseMemoryTimer = 0f;
 
             if (activeBehavior.getType() != BehaviorStateType.CHASE) {
-                setCurrentBehavior(createChaseBehavior());
+                BehaviorState chase = createChaseBehavior();
+                setCurrentBehavior(chase);
+
+                // 🔥 FORCE first movement tick
+                chase.execute(this, 0f, null);
             }
-            return; // IMPORTANT: stop here
+            return;
         }
+
 
         // 3) Only non-aggro enemies reach this point
         chaseMemoryTimer += deltaTime;
