@@ -368,7 +368,7 @@ public class GameScreen implements Screen {
         System.out.println("obstacles total = " + obstacles.size());
 
         enemies = new EnemySpawner().spawnEnemies(
-                maze, rooms, player, 48, seed);
+                maze, rooms, player, 28, seed);
 
 
         items = new de.tum.cit.fop.maze.items.ItemSpawner().spawnItems(maze, 10);
