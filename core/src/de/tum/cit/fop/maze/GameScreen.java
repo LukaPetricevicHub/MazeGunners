@@ -26,6 +26,7 @@ import de.tum.cit.fop.maze.enemies.FlyingDrone;
 import de.tum.cit.fop.maze.enemies.MutantWorker;
 import de.tum.cit.fop.maze.enemies.RobotGuard;
 import de.tum.cit.fop.maze.hud.Hud;
+import de.tum.cit.fop.maze.items.ItemSpawner;
 import de.tum.cit.fop.maze.map.*;
 import de.tum.cit.fop.maze.obstacles.*;
 import de.tum.cit.fop.maze.player.Player;
@@ -101,18 +102,27 @@ public class GameScreen implements Screen {
 
     private FogOfWarRenderer fog;
     private List<Room> rooms;
+    private final boolean endlessMode;
+    private int floor;              // current endless floor (starts at 1)
+    private long runSeed;           // optional: keep for deterministic-ish runs
 
 
     public GameScreen(MazeRunnerGame game, int level, FileHandle levelFile) {
-        this.game = game;
-        this.levelFile = levelFile;
-        this.level = level;
-        this.viewport = new ScreenViewport();
-
+        this(game, level, levelFile, false, level);
     }
 
     public GameScreen(MazeRunnerGame game, int level) {
-        this(game, level, null);
+        this(game, level, null, false, level);
+    }
+
+    // NEW: endless constructor
+    public GameScreen(MazeRunnerGame game, int level, FileHandle levelFile, boolean endlessMode, int startFloor) {
+        this.game = game;
+        this.levelFile = levelFile;
+        this.level = level;                  // keep if you still use it elsewhere
+        this.viewport = new ScreenViewport();
+        this.endlessMode = endlessMode;
+        this.floor = startFloor;
     }
 
 
@@ -148,7 +158,21 @@ public class GameScreen implements Screen {
 
             boolean onExit = worldLogic.isPlayerOnExit(player, maze);
 
+// Endless: if exit + key, go next floor instead of winning
+            if (!isPaused && gameStateController.isRunning() && endlessMode && onExit && player.hasKey()) {
+                advanceToNextFloor();
+                // IMPORTANT: do not continue this frame with old maze/enemies
+                // (prevents state controller from switching to WON)
+                return;
+            }
+
+            if (endlessMode && onExit && player.hasKey()) {
+                advanceToNextFloor();
+                return; // IMPORTANT: stop this frame
+            }
+
             gameStateController.update(delta, onExit, player.hasKey(), player.getLives());
+
             // Trigger Game Over Menu (Once)
             if (!isGameOverShown) {
                 if (gameStateController.getState() == GameStateController.State.WON) {
@@ -177,14 +201,10 @@ public class GameScreen implements Screen {
             java.util.Iterator<de.tum.cit.fop.maze.items.AbstractCollectable> iter = items.iterator();
             while (iter.hasNext()) {
                 de.tum.cit.fop.maze.items.AbstractCollectable item = iter.next();
-
-
                 Rectangle playerBounds = new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
-
 
                 if (item.isActive() && playerBounds.overlaps(item.getBounds())) {
                     item.applyEffect(player);
-
 
                     if (pickupSound != null) {
                         long id = pickupSound.play();
@@ -303,7 +323,8 @@ public class GameScreen implements Screen {
     @Override
     public void show() {
         Gdx.app.log("MAZE", "GameScreen level=" + level);
-        long seed = System.currentTimeMillis();
+        runSeed = System.currentTimeMillis();
+
 
         // IMPORTANT: gives ScreenViewport a real size BEFORE creating GameCamera
         viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
@@ -316,12 +337,15 @@ public class GameScreen implements Screen {
 
         createPauseMenu();
         createHud();
+        if (endlessMode) hud.setFloorText("Floor: " + floor);
+        else hud.setFloorText("Level: " + level);
 
-        initializeMaze(seed);
+
+        initializeMaze(runSeed);
         initializeGraphics();
 
         initializePlayer();
-        initializeEnemiesAndObstacles(seed);
+        initializeEnemiesAndObstacles(runSeed);
         initializeEvents();
 
         trackedLevel = player.getPlayerLevel();
@@ -347,32 +371,34 @@ public class GameScreen implements Screen {
     private void initializeEnemiesAndObstacles(long seed) {
         obstacles = new ObstaclePlacer().placeObstacles(maze, 40, seed);
 
-        int propCount = switch (level) {
+        int effectiveLevel = endlessMode ? floor : level;
+
+        int propCount = (effectiveLevel <= 5)
+                ? switch (effectiveLevel) {
             case 1 -> 10;
             case 2 -> 18;
             case 3 -> 28;
             case 4 -> 40;
             case 5 -> 55;
             default -> 20;
-        };
-
-        System.out.println("propSprites size = " + propSprites.size());
+        }
+                : 55 + (effectiveLevel - 5) * 8; // scale props in endless
 
         PropPlacer propPlacer = new PropPlacer();
-        var placedProps = propPlacer.placeProps(maze, propCount, seed, level, propSprites);
-
-        System.out.println("placedProps size = " + placedProps.size());
-
+        var placedProps = propPlacer.placeProps(maze, propCount, seed, Math.min(effectiveLevel, 5), propSprites);
         obstacles.addAll(placedProps);
 
-        System.out.println("obstacles total = " + obstacles.size());
+        // ENEMIES scale
+        int baseEnemies = 28;
+        int enemyCount = endlessMode ? (baseEnemies + (floor - 1) * 6) : baseEnemies;
 
-        enemies = new EnemySpawner().spawnEnemies(
-                maze, rooms, player, 28, seed);
+        enemies = new EnemySpawner().spawnEnemies(maze, rooms, player, enemyCount, seed);
 
-
-        items = new de.tum.cit.fop.maze.items.ItemSpawner().spawnItems(maze, 10);
+        // ITEMS scale + add endless potion
+        int itemCount = endlessMode ? (10 + floor / 2) : 10;
+        items = new ItemSpawner().spawnItems(maze, 10);
     }
+
 
     private void initializeEvents() {
         Rectangle trigger = new Rectangle(50 * TILE_SIZE, 50 * TILE_SIZE, 5 * TILE_SIZE, 5 * TILE_SIZE);
@@ -411,7 +437,7 @@ public class GameScreen implements Screen {
     }
 
     private void initializeMaze(long seed) {
-        MazeLoader loader = new MazeLoader();
+        int effectiveLevel = endlessMode ? floor : level;
 
         FileHandle target = getLevelTargetFile(level);
         Gdx.app.log("MAZE", "WRITE → " + target.file().getAbsolutePath());
@@ -419,7 +445,7 @@ public class GameScreen implements Screen {
         MazeGenerator generator = new MazeGenerator();
         MazeLoader.LevelSpec spec = new MazeLoader.LevelSpec(80, 80, new HashMap<>());
 
-        GeneratedMaze generated = generator.generateWithRooms(spec, TILE_SIZE, seed, level);
+        GeneratedMaze generated = generator.generateWithRooms(spec, TILE_SIZE, seed, effectiveLevel);
 
         this.maze = generated.getMaze();
         this.rooms = generated.getRooms();
@@ -630,6 +656,49 @@ public class GameScreen implements Screen {
         gameCamera.resize(viewport.getWorldWidth(), viewport.getWorldHeight());
         fog.resize(width, height);
     }
+
+    private void advanceToNextFloor() {
+        floor++;
+        hud.showNotification("FLOOR " + floor);
+        hud.setFloorText("Floor: " + floor);
+
+
+        long seed = System.nanoTime();
+        runSeed = seed;
+
+        // regenerate maze (use effective level = floor in endless)
+        initializeMaze(seed);
+
+        // update camera bounds for new maze size
+        gameCamera = new GameCamera(
+                viewport.getWorldWidth(),
+                viewport.getWorldHeight(),
+                maze.getWidth() * TILE_SIZE,
+                maze.getHeight() * TILE_SIZE
+        );
+        gameCamera.setZoom(0.25f);
+        cameraInput = new CameraInputController(gameCamera);
+
+        // respawn player at new spawn and clear key
+        Point entry = maze.getEntryCell();
+        if (entry == null) entry = new Point(1, 1);
+        Point safeSpawn = findSafeSpawnPosition(entry, maze);
+        player.setPosition(safeSpawn.x * TILE_SIZE, safeSpawn.y * TILE_SIZE);
+        player.clearKey();
+
+        // rebuild enemies/obstacles/items (scale using floor)
+        initializeEnemiesAndObstacles(seed);
+
+        // restore input processors (cameraInput object changed)
+        multiplexer.clear();
+        multiplexer.addProcessor(cameraInput);
+        multiplexer.addProcessor(hud.getStage());
+        Gdx.input.setInputProcessor(multiplexer);
+
+        isGameOverShown = false;
+    }
+
+
 
     private Point findSafeSpawnPosition(Point entryCell, Maze maze) {
         int maxRadius = 10;

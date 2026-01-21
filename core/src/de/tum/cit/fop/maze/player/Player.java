@@ -15,7 +15,7 @@ public class Player {
     private float x;
     private float y;
 
-    private int lives = 1000;
+    private int lives = 5;
     private boolean hasKey = false;
 
     private boolean invulnerable = false;
@@ -356,6 +356,16 @@ public class Player {
 
         return false;
     }
+
+    public void setPosition(float x, float y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public void clearKey() {
+        this.hasKey = false;
+    }
+
 
     private Rectangle makeRect(float px, float py) {
         // Use SAME collision "top" you used in canOccupy (40px tall)

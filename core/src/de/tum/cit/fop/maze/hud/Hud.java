@@ -20,6 +20,7 @@ public class Hud {
     private static final int MAX_LIVES = 5;
     private float messageTimer = 0f;
     private final Stage stage;
+    private Label floorLabel;
 
     private final Image[] heartImages;
     private final Texture heartTexture;
@@ -48,6 +49,8 @@ public class Hud {
         Table heartsTable = new Table();
         heartsTable.left();
 
+
+
         for (int i = 0; i < MAX_LIVES; i++) {
             heartImages[i] = new Image(new TextureRegion(heartTexture));
             heartsTable.add(heartImages[i]).size(16, 16).padRight(4);
@@ -60,7 +63,9 @@ public class Hud {
         mainContainer.top().left().pad(10);
 
         mainContainer.add(heartsTable).left().row();
-        mainContainer.add(keyLabel).left().padTop(5);
+        mainContainer.add(keyLabel).left().padTop(5).row();
+        mainContainer.add(floorLabel).left().padTop(5);
+
 
         stage.addActor(mainContainer);
 
@@ -147,6 +152,11 @@ public class Hud {
         notificationLabel.setVisible(true);
         messageTimer = 5.0f;
     }
+
+    public void setFloorText(String text) {
+        if (floorLabel != null) floorLabel.setText(text);
+    }
+
 
     public DevConsole getDevConsole() {
         return devConsole;

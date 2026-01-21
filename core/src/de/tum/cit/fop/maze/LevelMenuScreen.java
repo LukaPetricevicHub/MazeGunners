@@ -27,7 +27,7 @@ public class LevelMenuScreen implements Screen {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
-        buildUI(); // ✅ rebuild every time you open the screen
+        buildUI(); // rebuild every time you open the screen
     }
 
     private void buildUI() {
@@ -52,9 +52,10 @@ public class LevelMenuScreen implements Screen {
                     .pad(10).row();
         } else {
             for (FileHandle levelFile : levels) {
-                String label = levelFile.nameWithoutExtension();
-
+                int lvl = guessDifficulty(levelFile.name());
+                String label = "Floor " + lvl + levelFile.nameWithoutExtension();
                 TextButton btn = new TextButton(label, game.getSkin());
+
                 btn.addListener(new ChangeListener() {
                     @Override
                     public void changed(ChangeEvent event, Actor actor) {
@@ -68,6 +69,17 @@ public class LevelMenuScreen implements Screen {
         }
 
         root.add(scroll).width(440).height(460).row();
+
+        TextButton endlessBtn = new TextButton("Endless Mode", game.getSkin());
+        endlessBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                // start at floor 1
+                game.setScreen(new GameScreen(game, 1, null, true, 1));
+            }
+        });
+        root.add(endlessBtn).width(200).padTop(12).row();
+
 
         TextButton back = new TextButton("Back", game.getSkin());
         back.addListener(new ChangeListener() {

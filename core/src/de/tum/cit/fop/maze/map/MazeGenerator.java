@@ -42,11 +42,11 @@ public class MazeGenerator {
     // Target number of rooms per level (min, max)
     private static final int[][] LEVEL_ROOMS = {
             {},            // unused (index 0)
-            {10, 14},        // level 1
-            {16, 22},       // level 2
-            {25, 30},      // level 3
-            {25, 30},      // level 4
-            {30, 32}       // level 5
+            {12, 14},        // level 1
+            {14, 16},       // level 2
+            {16, 18},      // level 3
+            {18, 20},      // level 4
+            {20, 22}       // level 5
     };
 
     public Maze generate(MazeLoader.LevelSpec spec, int tileSize, long seed, int level) {
@@ -1076,13 +1076,25 @@ public class MazeGenerator {
 
 
     private MazeLoader.LevelSpec applyLevelSize(MazeLoader.LevelSpec spec, int level) {
-        int lv = clamp(level, 1, 5);
-        int targetW = LEVEL_W[lv];
-        int targetH = LEVEL_H[lv];
+        // keep your original sizes for 1..5
+        if (level <= 5) {
+            int lv = clamp(level, 1, 5);
+            return new MazeLoader.LevelSpec(LEVEL_W[lv], LEVEL_H[lv], spec.overrides);
+        }
 
-        // Force the level sizes (as you did in your latest snippet)
+        // Endless scaling after 5:
+        // Start from 100x100 and grow by +8 tiles per floor (tweak as you like)
+        int extra = (level - 5) * 8;
+        int targetW = 100 + extra;
+        int targetH = 100 + extra;
+
+        // safety cap (prevents insane memory/cpu)
+        targetW = clamp(targetW, 80, 220);
+        targetH = clamp(targetH, 80, 220);
+
         return new MazeLoader.LevelSpec(targetW, targetH, spec.overrides);
     }
+
 
     private void fill(Maze maze, Tiles tile) {
         for (int y = 0; y < maze.getHeight(); y++) {
