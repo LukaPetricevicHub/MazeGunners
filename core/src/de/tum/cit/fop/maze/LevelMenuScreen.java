@@ -53,19 +53,19 @@ public class LevelMenuScreen implements Screen {
         } else {
             for (FileHandle levelFile : levels) {
                 int lvl = guessDifficulty(levelFile.name());
-                String label = "Floor " + lvl + levelFile.nameWithoutExtension();
-                TextButton btn = new TextButton(label, game.getSkin());
+                String label = "Floor " + lvl;
 
+                TextButton btn = new TextButton(label, game.getSkin());
                 btn.addListener(new ChangeListener() {
                     @Override
                     public void changed(ChangeEvent event, Actor actor) {
-                        int lvl = guessDifficulty(levelFile.name());
                         game.setScreen(new GameScreen(game, lvl, levelFile));
                     }
                 });
 
                 listTable.add(btn).width(360).pad(6).row();
             }
+
         }
 
         root.add(scroll).width(440).height(460).row();
@@ -78,7 +78,7 @@ public class LevelMenuScreen implements Screen {
                 game.setScreen(new GameScreen(game, 1, null, true, 1));
             }
         });
-        root.add(endlessBtn).width(200).padTop(12).row();
+        root.add(endlessBtn).width(360).padTop(12).row();
 
 
         TextButton back = new TextButton("Back", game.getSkin());
