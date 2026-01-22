@@ -77,8 +77,8 @@ public class MazeLoader {
         try {
             int id = Integer.parseInt(raw.trim());
             return Tiles.fromId(id);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Tile value must be numeric id, got: " + raw);
+        } catch (NumberFormatException e) {
+            return Tiles.valueOf(raw.trim().toUpperCase());
         }
     }
 

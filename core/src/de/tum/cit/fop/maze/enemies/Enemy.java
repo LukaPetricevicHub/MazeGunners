@@ -8,6 +8,7 @@ import de.tum.cit.fop.maze.behavior.PatrolBehavior;
 import de.tum.cit.fop.maze.collision.CollisionHandler;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
+import com.badlogic.gdx.math.Vector2;
 
 public abstract class Enemy {
 
@@ -24,6 +25,26 @@ public abstract class Enemy {
     private float chaseMemoryTimer = 0f;
     private static final float CHASE_MEMORY_DURATION = 2.0f;
     protected boolean aggroLocked = false;
+    protected int health = 3;
+    protected boolean markedForRemoval = false;
+    protected Vector2 position;
+
+    public void takeDamage(int amount) {
+        this.health -= amount;
+        System.out.println("Enemy hit! HP: " + health);
+        if (this.health <= 0) {
+            die();
+        }
+    }
+
+    protected void die() {
+        markedForRemoval = true;
+    }
+
+    public boolean isDead() { return markedForRemoval; }
+    public Rectangle getBounds() {
+        return new Rectangle(position.x, position.y, 32, 32);
+    }
     private final Vector2 prevPosition = new Vector2();
     private float stuckTimer = 0f;
     private static final float STUCK_TIME_THRESHOLD = 0.4f;

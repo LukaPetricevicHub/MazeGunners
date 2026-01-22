@@ -50,11 +50,9 @@ public class MenuScreen implements Screen {
         title.setFontScale(1.2f);
         table.add(title).padBottom(60).row();
 
-        // Create and add a button to go to the game screen
-
-        //Play button
-        TextButton goToGameButton = new TextButton("Go To Game", game.getSkin());
-        table.add(goToGameButton).width(300).row();
+        // --- 1. NEW GAME BUTTON ---
+        TextButton goToGameButton = new TextButton("New Game", game.getSkin());
+        table.add(goToGameButton).width(300).padBottom(10).row();
         goToGameButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -63,9 +61,35 @@ public class MenuScreen implements Screen {
             }
         });
 
-        //Settings Button
+        // --- 2. LOAD GAME BUTTON (THIS IS NEW) ---
+        TextButton loadButton = new TextButton("Load Game", game.getSkin());
+        table.add(loadButton).width(300).padBottom(10).row();
+        loadButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                playClickSound();
+                // Calls the load method in MazeRunnerGame
+                if (game.loadGame()) {
+                    System.out.println("Save loaded successfully!");
+                } else {
+                    System.out.println("No save file found.");
+                }
+            }
+        });
+
+        // --- 3. ACHIEVEMENTS BUTTON ---
+        TextButton achievementBtn = new TextButton("Achievements", game.getSkin());
+        achievementBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                game.setScreen(new de.tum.cit.fop.maze.ui.AchievementScreen(game));
+            }
+        });
+        table.add(achievementBtn).width(300).padBottom(10).row();
+
+        // --- 4. SETTINGS BUTTON ---
         TextButton settingsButton = new TextButton("Settings", game.getSkin());
-        table.add(settingsButton).width(300).padBottom(20).row();
+        table.add(settingsButton).width(300).padBottom(10).row();
         settingsButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -74,7 +98,7 @@ public class MenuScreen implements Screen {
             }
         });
 
-        //Exit Button
+        // --- 5. EXIT BUTTON ---
         TextButton exitButton = new TextButton("Exit", game.getSkin());
         table.add(exitButton).width(300).row();
         exitButton.addListener(new ChangeListener() {
@@ -84,7 +108,6 @@ public class MenuScreen implements Screen {
                 Gdx.app.exit();
             }
         });
-
     }
 
     private void playClickSound() {
@@ -133,16 +156,7 @@ public class MenuScreen implements Screen {
         }
     }
 
-    // The following methods are part of the Screen interface but are not used in this screen.
-    @Override
-    public void pause() {
-    }
-
-    @Override
-    public void resume() {
-    }
-
-    @Override
-    public void hide() {
-    }
+    @Override public void pause() {}
+    @Override public void resume() {}
+    @Override public void hide() {}
 }

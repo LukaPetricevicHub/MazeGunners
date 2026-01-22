@@ -10,5 +10,6 @@ public class HeartItem extends AbstractCollectable {
     @Override
     public void applyEffect(Player player) {
         player.addLife();
+        player.addScore(50);
     }
 }

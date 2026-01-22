@@ -1,6 +1,8 @@
 package de.tum.cit.fop.maze.world;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.math.Rectangle;
+import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.map.Tiles;
 import de.tum.cit.fop.maze.player.Player;
@@ -16,6 +18,9 @@ public class InteractionLogic {
         if (maze.getTile(tile.x, tile.y) == Tiles.KEY) {
             maze.setTile(tile.x, tile.y, Tiles.FLOOR);
             player.giveKey();
+
+            MazeRunnerGame game = (MazeRunnerGame) Gdx.app.getApplicationListener();
+            game.getAchievementManager().unlock("collector");
             return true;
         }
         return false;

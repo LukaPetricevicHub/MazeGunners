@@ -11,15 +11,20 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import de.tum.cit.fop.maze.GameScreen;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.LevelDiscovery;
+import de.tum.cit.fop.maze.player.Player;
 
 public class GameOverWindow extends Window {
 
+    // IMPORTANT: Note that 'won' and 'player' are declared here in the arguments
     public GameOverWindow(Skin skin,
                           MazeRunnerGame game,
                           int currentLevel,
                           boolean won,
-                          FileHandle currentLevelFile) {
+                          FileHandle currentLevelFile,
+                          int score,
+                          Player player) {
 
+        // We call super() first, but we DO NOT close the bracket '}' yet!
         super(won ? "LEVEL " + currentLevel + " COMPLETED" : "GAME OVER", skin);
 
         this.getTitleLabel().setAlignment(1);
@@ -27,7 +32,12 @@ public class GameOverWindow extends Window {
         this.setModal(true);
 
         String message = won ? "Great Job!" : "Better luck next time...";
-        this.add(new Label(message, skin)).padBottom(20).row();
+        this.add(new Label(message, skin)).padBottom(10).row();
+
+        // Display Score
+        Label scoreLabel = new Label("Final Score: " + score, skin);
+        scoreLabel.setFontScale(1.0f);
+        this.add(scoreLabel).padBottom(20).row();
 
         // Next Level Button
         if (won) {
@@ -36,11 +46,16 @@ public class GameOverWindow extends Window {
                 @Override
                 public void changed(ChangeEvent event, Actor actor) {
                     FileHandle nextFile = findNextLevelFile(currentLevelFile);
+
+                    // Save stats (Player Level, XP, Gun) to memory
+                    if (player != null) {
+                        game.handleLevelTransition(player);
+                    }
+
                     if (nextFile != null) {
                         int nextDifficulty = guessDifficulty(nextFile.name());
                         game.setScreen(new GameScreen(game, nextDifficulty, nextFile));
                     } else {
-                        // If no next file exists, go back to menu
                         game.goToMenu();
                     }
                 }
@@ -48,7 +63,7 @@ public class GameOverWindow extends Window {
             this.add(nextBtn).width(200).padBottom(10).row();
         }
 
-        // Restart Button (reopen same file)
+        // Restart Button
         TextButton restartBtn = new TextButton("Restart Level", skin);
         restartBtn.addListener(new ChangeListener() {
             @Override
@@ -59,6 +74,7 @@ public class GameOverWindow extends Window {
         });
         this.add(restartBtn).width(200).padBottom(10).row();
 
+        // Menu Button
         TextButton menuBtn = new TextButton("Main Menu", skin);
         menuBtn.addListener(new ChangeListener() {
             @Override
@@ -69,24 +85,20 @@ public class GameOverWindow extends Window {
         this.add(menuBtn).width(200).row();
 
         this.pack();
-    }
+    } // <--- The constructor closes HERE, at the very end.
 
     private FileHandle findNextLevelFile(FileHandle current) {
         var all = LevelDiscovery.listAllLevels();
         if (all.size == 0) return null;
 
-        // If we don't know current file, just take the first one
         if (current == null) return all.get(0);
 
-        // Find current in the list and return the next one
         for (int i = 0; i < all.size; i++) {
             if (all.get(i).path().equals(current.path())) {
                 if (i + 1 < all.size) return all.get(i + 1);
                 return null;
             }
         }
-
-        // current not found -> return first
         return all.get(0);
     }
 

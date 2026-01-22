@@ -13,11 +13,11 @@ import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
-
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.utils.Timer;
 
 import de.tum.cit.fop.maze.camera.GameCamera;
 import de.tum.cit.fop.maze.camera.CameraInputController;
@@ -27,26 +27,22 @@ import de.tum.cit.fop.maze.enemies.MutantWorker;
 import de.tum.cit.fop.maze.enemies.RobotGuard;
 import de.tum.cit.fop.maze.hud.Hud;
 import de.tum.cit.fop.maze.items.ItemSpawner;
+import de.tum.cit.fop.maze.items.AbstractCollectable; // Added import
 import de.tum.cit.fop.maze.map.*;
 import de.tum.cit.fop.maze.obstacles.*;
 import de.tum.cit.fop.maze.player.Player;
+import de.tum.cit.fop.maze.ui.SkillWindow;
 import de.tum.cit.fop.maze.util.GridUtils;
 import de.tum.cit.fop.maze.world.*;
-import de.tum.cit.fop.maze.FogOfWarRenderer;
 import de.tum.cit.fop.maze.obstacles.PropType;
 import de.tum.cit.fop.maze.obstacles.Prop;
-
-import de.tum.cit.fop.maze.GameOverWindow;
 import de.tum.cit.fop.maze.ui.PauseMenuWindow;
-import de.tum.cit.fop.maze.map.GeneratedMaze;
-
 
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 
 public class GameScreen implements Screen {
 
@@ -59,6 +55,7 @@ public class GameScreen implements Screen {
     private Stage pauseStage;
     private Window pauseWindow;
     private Window settingsWindow;
+    private SkillWindow skillWindow;
 
     private Viewport viewport;
     private GameCamera gameCamera;
@@ -75,12 +72,7 @@ public class GameScreen implements Screen {
     private Texture propTilesetTexture;
     private final Map<PropType, TextureRegion> propSprites = new HashMap<>();
     private final Map<PropType, Texture> propTextures = new HashMap<>();
-
-
-    private static final int PROP_TILE_PX = 32;
-    private Texture texFloorRoom, texFloorHall, texWallFill, texWallSet, texSpawn, texExit, texDoor, texKey;
-    private int trackedLevel = 1;
-
+    private FileHandle activeLevelFile;
 
     private Hud hud;
 
@@ -94,18 +86,20 @@ public class GameScreen implements Screen {
 
     private Texture keyTexture;
     private final int level;
+    private int trackedLevel = 1;
 
     private Sound pickupSound;
     private Sound hitSound;
     private Sound clickSound;
-    private java.util.List<de.tum.cit.fop.maze.items.AbstractCollectable> items;
+    private List<AbstractCollectable> items;
 
     private FogOfWarRenderer fog;
     private List<Room> rooms;
     private final boolean endlessMode;
-    private int floor;              // current endless floor (starts at 1)
-    private long runSeed;           // optional: keep for deterministic-ish runs
+    private int floor;
+    private long runSeed;
 
+    // --- CONSTRUCTORS ---
 
     public GameScreen(MazeRunnerGame game, int level, FileHandle levelFile) {
         this(game, level, levelFile, false, level);
@@ -115,16 +109,33 @@ public class GameScreen implements Screen {
         this(game, level, null, false, level);
     }
 
-    // NEW: endless constructor
     public GameScreen(MazeRunnerGame game, int level, FileHandle levelFile, boolean endlessMode, int startFloor) {
         this.game = game;
         this.levelFile = levelFile;
-        this.level = level;                  // keep if you still use it elsewhere
+        this.level = level;
         this.viewport = new ScreenViewport();
         this.endlessMode = endlessMode;
         this.floor = startFloor;
     }
 
+    public GameScreen(MazeRunnerGame game, String mapPath) {
+        this.game = game;
+        this.viewport = new ScreenViewport();
+        this.levelFile = Gdx.files.internal(mapPath);
+        this.endlessMode = false;
+        this.floor = 1;
+
+        // Extract level number from filename
+        String filename = levelFile.nameWithoutExtension();
+        int parsedLevel = 1;
+        try {
+            String numberPart = filename.replace("level-", "");
+            parsedLevel = Integer.parseInt(numberPart);
+        } catch (NumberFormatException e) {
+            System.out.println("Could not parse level number from " + filename);
+        }
+        this.level = parsedLevel;
+    }
 
     @Override
     public void render(float delta) {
@@ -145,9 +156,7 @@ public class GameScreen implements Screen {
 
             if (player.getPlayerLevel() > trackedLevel) {
                 trackedLevel = player.getPlayerLevel();
-
                 hud.showNotification("LEVEL UP! (" + trackedLevel + ")\n+1 Skill Point\nHealth Restored");
-
                 if (pickupSound != null) {
                     long id = pickupSound.play();
                     pickupSound.setPitch(id, 1.5f);
@@ -155,20 +164,12 @@ public class GameScreen implements Screen {
                 }
             }
 
-
             boolean onExit = worldLogic.isPlayerOnExit(player, maze);
 
-// Endless: if exit + key, go next floor instead of winning
+            // Endless: if exit + key, go next floor instead of winning
             if (!isPaused && gameStateController.isRunning() && endlessMode && onExit && player.hasKey()) {
                 advanceToNextFloor();
-                // IMPORTANT: do not continue this frame with old maze/enemies
-                // (prevents state controller from switching to WON)
                 return;
-            }
-
-            if (endlessMode && onExit && player.hasKey()) {
-                advanceToNextFloor();
-                return; // IMPORTANT: stop this frame
             }
 
             gameStateController.update(delta, onExit, player.hasKey(), player.getLives());
@@ -176,6 +177,7 @@ public class GameScreen implements Screen {
             // Trigger Game Over Menu (Once)
             if (!isGameOverShown) {
                 if (gameStateController.getState() == GameStateController.State.WON) {
+                    player.addScore(1000); // Level Finish Bonus
                     showGameOverMenu(true);
                     isGameOverShown = true;
                 } else if (gameStateController.getState() == GameStateController.State.LOST) {
@@ -196,11 +198,10 @@ public class GameScreen implements Screen {
                 }
             }
 
-
             // Item Pickups
-            java.util.Iterator<de.tum.cit.fop.maze.items.AbstractCollectable> iter = items.iterator();
+            java.util.Iterator<AbstractCollectable> iter = items.iterator();
             while (iter.hasNext()) {
-                de.tum.cit.fop.maze.items.AbstractCollectable item = iter.next();
+                AbstractCollectable item = iter.next();
                 Rectangle playerBounds = new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
 
                 if (item.isActive() && playerBounds.overlaps(item.getBounds())) {
@@ -216,11 +217,8 @@ public class GameScreen implements Screen {
                 }
             }
 
-            Rectangle playerBounds = new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
-
             if (gameStateController.isRunning()) {
                 int previousLives = player.getLives();
-
                 combatSystem.update(delta, player, maze, enemies, obstacles, gameCamera);
 
                 if (player.getLives() < previousLives) {
@@ -234,7 +232,7 @@ public class GameScreen implements Screen {
             hud.update(player);
             hud.act(delta);
 
-            // Follow player (position)
+            // Follow player
             gameCamera.follow(
                     player.getX() + PLAYER_WIDTH / 2f,
                     player.getY() + PLAYER_HEIGHT / 2f,
@@ -242,7 +240,7 @@ public class GameScreen implements Screen {
             );
         }
 
-        // Apply smooth zoom AFTER follow (so they don't fight)
+        // Apply smooth zoom AFTER follow
         gameCamera.update(delta);
 
         // 4) Render world
@@ -251,8 +249,7 @@ public class GameScreen implements Screen {
         game.getSpriteBatch().begin();
 
         mazeRenderer.render(maze, game.getSpriteBatch());
-
-
+        combatSystem.renderProjectiles(game.getSpriteBatch());
 
         for (Obstacle obstacle : obstacles) {
             if (obstacle instanceof SpikeTrap spike) {
@@ -272,7 +269,6 @@ public class GameScreen implements Screen {
                         prop.getCollisionBox().width,
                         prop.getCollisionBox().height);
             }
-
         }
 
         if (player.isDamageFlashing()) {
@@ -283,7 +279,7 @@ public class GameScreen implements Screen {
         game.getSpriteBatch().setColor(Color.WHITE);
 
         // Draw Items
-        for (de.tum.cit.fop.maze.items.AbstractCollectable item : items) {
+        for (AbstractCollectable item : items) {
             item.render(game.getSpriteBatch());
         }
 
@@ -298,9 +294,6 @@ public class GameScreen implements Screen {
                 game.getSpriteBatch().draw(frame, enemy.getPosition().x, enemy.getPosition().y, 32, 32);
             }
         }
-
-        float worldW = maze.getWidth() * TILE_SIZE;
-        float worldH = maze.getHeight() * TILE_SIZE;
 
         float px = player.getX() + PLAYER_WIDTH / 2f;
         float py = player.getY() + PLAYER_HEIGHT / 2f;
@@ -325,8 +318,6 @@ public class GameScreen implements Screen {
         Gdx.app.log("MAZE", "GameScreen level=" + level);
         runSeed = System.currentTimeMillis();
 
-
-        // IMPORTANT: gives ScreenViewport a real size BEFORE creating GameCamera
         viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
 
         gameStateController = new GameStateController();
@@ -335,26 +326,32 @@ public class GameScreen implements Screen {
 
         playLevelMusic();
 
-        createPauseMenu();
-        createHud();
-        if (endlessMode) hud.setFloorText("Floor: " + floor);
-        else hud.setFloorText("Level: " + level);
-
-
+        // 1. GENERATE MAZE & GRAPHICS FIRST (Need map to spawn player)
         initializeMaze(runSeed);
         initializeGraphics();
 
+        // 2. CREATE PLAYER (Must be done before UI)
         initializePlayer();
+
+        // 3. CREATE UI (Now safe because player exists)
+        createPauseMenu(); // This creates SkillWindow which calls player.getSkillPoints()
+        createHud();
+
+        if (endlessMode) hud.setFloorText("Floor: " + floor);
+        else hud.setFloorText("Level: " + level);
+
+        game.getAchievementManager().setHud(hud);
+
+        // 4. ENEMIES & EVENTS
         initializeEnemiesAndObstacles(runSeed);
         initializeEvents();
 
         trackedLevel = player.getPlayerLevel();
-
         hud.getDevConsole().setPlayer(player);
 
         multiplexer = new InputMultiplexer();
-        multiplexer.addProcessor(cameraInput);     // camera FIRST
-        multiplexer.addProcessor(hud.getStage());  // UI SECOND
+        multiplexer.addProcessor(cameraInput);
+        multiplexer.addProcessor(hud.getStage());
         Gdx.input.setInputProcessor(multiplexer);
 
         fog = new FogOfWarRenderer();
@@ -365,7 +362,49 @@ public class GameScreen implements Screen {
         Point entry = maze.getEntryCell();
         if (entry == null) entry = new Point(1, 1);
         Point safeSpawn = findSafeSpawnPosition(entry, maze);
-        player = new Player(safeSpawn.x * TILE_SIZE, safeSpawn.y * TILE_SIZE, game.getCharacterDownAnimation());
+
+        // FIXED: Added 'game' to the end of constructor for Bullet system
+        player = new Player(
+                safeSpawn.x * TILE_SIZE,
+                safeSpawn.y * TILE_SIZE,
+                game.getAnimDown(),
+                game.getAnimUp(),
+                game.getAnimLeft(),
+                game.getAnimRight(),
+                game // <--- IMPORTANT: Required for bullets
+        );
+
+        // --- CHECK FOR SAVED DATA ---
+        GameState savedState = game.getPendingSaveState();
+        if (savedState != null) {
+            System.out.println("Loading Saved State...");
+
+            player.setScore(savedState.score);
+            player.setLives(savedState.lives);
+            player.setPlayerLevel(savedState.playerLevel);
+            player.setExperience(savedState.experience);
+            player.setSkillSpeedLevel(savedState.skillSpeedLevel);
+            player.setSkillHealthLevel(savedState.skillHealthLevel);
+
+            if (savedState.hasGun) {
+                player.equipGun();
+            }
+            if (savedState.godMode) {
+                player.setGodMode(true);
+            }
+            if (savedState.noClip) {
+                player.setNoClip(true);
+            }
+
+            if (savedState.shouldRestorePosition) {
+                if (canPlayerOccupy(savedState.playerX, savedState.playerY, maze)) {
+                    player.setPosition(savedState.playerX, savedState.playerY);
+                } else {
+                    System.out.println("Saved position invalid (wall). Using default spawn.");
+                }
+            }
+            game.clearPendingSaveState();
+        }
     }
 
     private void initializeEnemiesAndObstacles(long seed) {
@@ -382,30 +421,23 @@ public class GameScreen implements Screen {
             case 5 -> 55;
             default -> 20;
         }
-                : 55 + (effectiveLevel - 5) * 8; // scale props in endless
+                : 55 + (effectiveLevel - 5) * 8;
 
         PropPlacer propPlacer = new PropPlacer();
         var placedProps = propPlacer.placeProps(maze, propCount, seed, Math.min(effectiveLevel, 5), propSprites);
         obstacles.addAll(placedProps);
 
-        // ENEMIES scale
         int baseEnemies = 28;
         int enemyCount = endlessMode ? (baseEnemies + (floor - 1) * 6) : baseEnemies;
 
         enemies = new EnemySpawner().spawnEnemies(maze, rooms, player, enemyCount, seed);
 
-        // ITEMS scale + add endless potion
         int itemCount = endlessMode ? (10 + floor / 2) : 10;
-        items = new ItemSpawner().spawnItems(maze, 10);
+        items = new ItemSpawner().spawnItems(maze, itemCount); // Fixed item count usage
     }
 
-
     private void initializeEvents() {
-        Rectangle trigger = new Rectangle(50 * TILE_SIZE, 50 * TILE_SIZE, 5 * TILE_SIZE, 5 * TILE_SIZE);
-        List<Point> doors = new ArrayList<>();
-        doors.add(new Point(50, 49));
-        doors.add(new Point(55, 55));
-
+        // Placeholder for event logic
     }
 
     private void createHud() {
@@ -425,43 +457,39 @@ public class GameScreen implements Screen {
         game.getAudioManager().playBackgroundMusic(musicFile);
     }
 
-    private static long mazeChecksum(Maze m) {
-        long h = 1469598103934665603L;
-        for (int y = 0; y < m.getHeight(); y++) {
-            for (int x = 0; x < m.getWidth(); x++) {
-                h ^= (m.getTile(x, y).id + 31L * x + 131L * y);
-                h *= 1099511628211L;
-            }
-        }
-        return h;
-    }
-
     private void initializeMaze(long seed) {
+        // FIXED: Define the loader
+        MazeLoader loader = new MazeLoader();
         int effectiveLevel = endlessMode ? floor : level;
 
+        boolean forceFreshMaze = (this.level == 1 && game.getPendingSaveState() == null);
+
+        if (!forceFreshMaze && levelFile != null && levelFile.exists()) {
+            activeLevelFile = levelFile;
+            maze = loader.loadMazeFromProperties(levelFile, TILE_SIZE);
+            Gdx.app.log("MAZE", "Loaded existing map -> " + levelFile.path());
+            return;
+        }
+
         FileHandle target = getLevelTargetFile(level);
-        Gdx.app.log("MAZE", "WRITE → " + target.file().getAbsolutePath());
+        Gdx.app.log("MAZE", "Generating NEW RANDOM maze -> " + target.path());
 
         MazeGenerator generator = new MazeGenerator();
         MazeLoader.LevelSpec spec = new MazeLoader.LevelSpec(80, 80, new HashMap<>());
 
+        // FIXED: Use generateWithRooms since we need rooms
         GeneratedMaze generated = generator.generateWithRooms(spec, TILE_SIZE, seed, effectiveLevel);
 
         this.maze = generated.getMaze();
         this.rooms = generated.getRooms();
 
+        // Save generated maze
+        MazeExporter.saveToProperties(this.maze, target);
 
-        MazeExporter.saveToProperties(maze, target);
-
-        Gdx.app.log("MAZE", "Loaded maze from → " + target.file().getAbsolutePath()
-                + " bytes=" + target.length() + " modified=" + target.lastModified());
-
-        String firstLine = target.readString().split("\n", 2)[0];
-        Gdx.app.log("MAZE", "FILE FIRST LINE NOW: " + firstLine);
+        activeLevelFile = target;
+        // Reload it back to ensure consistency
+        this.maze = loader.loadMazeFromProperties(target, TILE_SIZE);
     }
-
-
-
 
     private void initializeGraphics() {
         gameCamera = new GameCamera(
@@ -486,16 +514,11 @@ public class GameScreen implements Screen {
         if (Gdx.files.internal("audio/click.mp3").exists()) {
             clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/click.mp3"));
         }
-        else if (Gdx.files.internal("audio/pickup.mp3").exists()) {
-            clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/pickup.mp3"));
-        }
 
         loadPropTexturesForLevel();
-
     }
 
     private void loadPropTexturesForLevel() {
-        // dispose if reloading
         for (Texture t : propTextures.values()) t.dispose();
         propTextures.clear();
         propSprites.clear();
@@ -507,25 +530,19 @@ public class GameScreen implements Screen {
             propTextures.put(type, tex);
             propSprites.put(type, new TextureRegion(tex));
         }
-
-        System.out.println("Loaded propSprites: " + propSprites.keySet());
     }
-
-
 
     private void togglePause() {
         isPaused = !isPaused;
 
         if (isPaused) {
             game.getAudioManager().pauseMusic();
-
             multiplexer.clear();
             multiplexer.addProcessor(cameraInput);
             multiplexer.addProcessor(pauseStage);
             Gdx.input.setInputProcessor(multiplexer);
         } else {
             game.getAudioManager().resumeMusic();
-
             multiplexer.clear();
             multiplexer.addProcessor(cameraInput);
             multiplexer.addProcessor(hud.getStage());
@@ -536,22 +553,48 @@ public class GameScreen implements Screen {
     private void createPauseMenu() {
         pauseStage = new Stage(viewport, game.getSpriteBatch());
 
+        skillWindow = new SkillWindow(game.getSkin(), player, () -> {
+            playClickSound();
+            skillWindow.setVisible(false);
+            pauseWindow.setVisible(true);
+        });
+        skillWindow.setVisible(false);
+
         pauseWindow = new PauseMenuWindow(
                 game.getSkin(),
+                () -> { playClickSound(); togglePause(); },
+                () -> { playClickSound(); pauseWindow.setVisible(false); settingsWindow.setVisible(true); },
                 () -> {
                     playClickSound();
-                    togglePause();
-                },
-                () -> {
-                    playClickSound();
+                    skillWindow.refresh();
                     pauseWindow.setVisible(false);
-                    if (settingsWindow != null) settingsWindow.setVisible(true);
+                    skillWindow.setVisible(true);
+
+                    skillWindow.setPosition(
+                            (viewport.getWorldWidth() - skillWindow.getWidth()) / 2f,
+                            (viewport.getWorldHeight() - skillWindow.getHeight()) / 2f
+                    );
                 },
-                () -> {
-                    playClickSound();
-                    game.goToMenu();
-                }
+                () -> { playClickSound(); game.goToMenu(); }
         );
+
+        TextButton saveButton = new TextButton("Save Game", game.getSkin());
+        saveButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                playClickSound();
+                game.saveGame(player, level);
+                saveButton.setText("Saved!");
+                Timer.schedule(new Timer.Task() {
+                    @Override
+                    public void run() {
+                        saveButton.setText("Save Game");
+                    }
+                }, 1f);
+            }
+        });
+        pauseWindow.add(saveButton).fillX().pad(10).row();
+        pauseWindow.pack();
 
         pauseWindow.setPosition(
                 (viewport.getWorldWidth() - pauseWindow.getWidth()) / 2f,
@@ -562,23 +605,31 @@ public class GameScreen implements Screen {
 
         pauseStage.addActor(pauseWindow);
         pauseStage.addActor(settingsWindow);
+        pauseStage.addActor(skillWindow);
 
         settingsWindow.setVisible(false);
+        skillWindow.setVisible(false);
         pauseWindow.setVisible(true);
     }
 
     private void showGameOverMenu(boolean won) {
         if (won) {
             int nextLevel = level + 1;
-
             game.getPreferences().setMaxLevel(nextLevel);
         }
 
         if (pauseWindow != null) pauseWindow.setVisible(false);
         if (settingsWindow != null) settingsWindow.setVisible(false);
 
-        de.tum.cit.fop.maze.GameOverWindow window = new de.tum.cit.fop.maze.GameOverWindow(game.getSkin(), game, level, won, levelFile);
-
+        de.tum.cit.fop.maze.GameOverWindow window = new de.tum.cit.fop.maze.GameOverWindow(
+                game.getSkin(),
+                game,
+                level,
+                won,
+                activeLevelFile != null ? activeLevelFile : levelFile,
+                player.getScore(),
+                player
+        );
 
         window.setPosition(
                 (viewport.getWorldWidth() - window.getWidth()) / 2f,
@@ -662,14 +713,11 @@ public class GameScreen implements Screen {
         hud.showNotification("FLOOR " + floor);
         hud.setFloorText("Floor: " + floor);
 
-
         long seed = System.nanoTime();
         runSeed = seed;
 
-        // regenerate maze (use effective level = floor in endless)
         initializeMaze(seed);
 
-        // update camera bounds for new maze size
         gameCamera = new GameCamera(
                 viewport.getWorldWidth(),
                 viewport.getWorldHeight(),
@@ -679,17 +727,14 @@ public class GameScreen implements Screen {
         gameCamera.setZoom(0.25f);
         cameraInput = new CameraInputController(gameCamera);
 
-        // respawn player at new spawn and clear key
         Point entry = maze.getEntryCell();
         if (entry == null) entry = new Point(1, 1);
         Point safeSpawn = findSafeSpawnPosition(entry, maze);
         player.setPosition(safeSpawn.x * TILE_SIZE, safeSpawn.y * TILE_SIZE);
         player.clearKey();
 
-        // rebuild enemies/obstacles/items (scale using floor)
         initializeEnemiesAndObstacles(seed);
 
-        // restore input processors (cameraInput object changed)
         multiplexer.clear();
         multiplexer.addProcessor(cameraInput);
         multiplexer.addProcessor(hud.getStage());
@@ -697,8 +742,6 @@ public class GameScreen implements Screen {
 
         isGameOverShown = false;
     }
-
-
 
     private Point findSafeSpawnPosition(Point entryCell, Maze maze) {
         int maxRadius = 10;
@@ -713,7 +756,6 @@ public class GameScreen implements Screen {
                     float worldX = cx * maze.getTileSize();
                     float worldY = cy * maze.getTileSize();
                     if (canPlayerOccupyWithObstacles(worldX, worldY, maze)) return new Point(cx, cy);
-
                 }
             }
         }
@@ -730,8 +772,6 @@ public class GameScreen implements Screen {
 
     private boolean canPlayerOccupyWithObstacles(float worldX, float worldY, Maze maze) {
         float inset = 2f;
-
-        // 1) wall checks (same as before)
         boolean wallFree = !maze.isWallWorld(worldX + inset, worldY + inset)
                 && !maze.isWallWorld(worldX + PLAYER_WIDTH - inset, worldY + inset)
                 && !maze.isWallWorld(worldX + inset, worldY + PLAYER_HEIGHT - inset)
@@ -739,7 +779,6 @@ public class GameScreen implements Screen {
 
         if (!wallFree) return false;
 
-        // 2) obstacle check (rectangle overlap)
         Rectangle r = new Rectangle(worldX, worldY, PLAYER_WIDTH, PLAYER_HEIGHT);
         return !collidesWithBlockingObstacle(r);
     }
@@ -752,12 +791,6 @@ public class GameScreen implements Screen {
             }
         }
         return false;
-    }
-
-    public void loadCustomMaze(FileHandle file) {
-        MazeLoader loader = new MazeLoader();
-        MazeLoader.LevelSpec spec = loader.loadFromProperties(file);
-        maze = loader.buildMaze(spec, TILE_SIZE);
     }
 
     @Override public void pause() {}
@@ -773,7 +806,7 @@ public class GameScreen implements Screen {
         if (hitSound != null) hitSound.dispose();
         if (clickSound != null) clickSound.dispose();
         if (items != null) {
-            for (de.tum.cit.fop.maze.items.AbstractCollectable item : items) {
+            for (AbstractCollectable item : items) {
                 item.dispose();
             }
         }
@@ -784,18 +817,11 @@ public class GameScreen implements Screen {
         for (Texture t : propTextures.values()) t.dispose();
         propTextures.clear();
         propSprites.clear();
-
     }
 
     private FileHandle getLevelTargetFile(int level) {
-        boolean DEV_WRITE_TO_ASSETS = true; // set false for final submission
-
-        if (DEV_WRITE_TO_ASSETS) {
-            String root = System.getProperty("user.dir");
-            return Gdx.files.absolute(root + "/desktop/src/main/assets/maps/level-" + level + ".properties");
-        } else {
-            Gdx.files.local("maps").mkdirs();
-            return Gdx.files.local("maps/level-" + level + ".properties");
-        }
+        FileHandle dir = Gdx.files.local("maps");
+        dir.mkdirs();
+        return dir.child("level-" + level + ".properties");
     }
 }

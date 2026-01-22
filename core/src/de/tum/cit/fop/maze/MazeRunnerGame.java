@@ -2,17 +2,21 @@ package de.tum.cit.fop.maze;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.graphics.Color; // Added
+import com.badlogic.gdx.graphics.Pixmap; // Added
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Json;
+import de.tum.cit.fop.maze.util.AchievementManager;
 import games.spooky.gdx.nativefilechooser.NativeFileChooser;
 import de.tum.cit.fop.maze.util.AudioManager;
 import de.tum.cit.fop.maze.util.GamePreferences;
+import de.tum.cit.fop.maze.player.Player;
 
 /**
  * The MazeRunnerGame class represents the core of the Maze Runner game.
@@ -32,42 +36,51 @@ public class MazeRunnerGame extends Game {
     private AudioManager audioManager;
     private GamePreferences preferences;
 
-    // Character animation downwards
-    private Animation<TextureRegion> characterDownAnimation;
+    // Standard Walking Animations
+    private Animation<TextureRegion> animDown, animUp, animLeft, animRight;
+
+    // --- NEW: Shooting Animations ---
+    private Animation<TextureRegion> shootDownAnim, shootUpAnim, shootLeftAnim, shootRightAnim;
+
+    // --- NEW: Bullet Texture ---
+    private TextureRegion bulletRegion;
 
     private Texture tileset;
     private TextureRegion[][] tiles;
 
-    //Sound
+    // Sound
     private Sound wallHitSound;
+
+    private AchievementManager achievementManager;
+
+    // Variable to temporarily hold loaded data until GameScreen is ready
+    private GameState pendingSaveState = null;
 
     /**
      * Constructor for MazeRunnerGame.
-     *
-     * @param fileChooser The file chooser for the game, typically used in desktop environment.
+     * @param fileChooser The file chooser for the game.
      */
     public MazeRunnerGame(NativeFileChooser fileChooser) {
         super();
     }
 
-    /**
-     * Called when the game is created. Initializes the SpriteBatch and Skin.
-     */
     @Override
     public void create() {
-        spriteBatch = new SpriteBatch(); // Create SpriteBatch
-        skin = new Skin(Gdx.files.internal("craft/craftacular-ui.json")); // Load UI skin
+        spriteBatch = new SpriteBatch();
+        skin = new Skin(Gdx.files.internal("craft/craftacular-ui.json"));
 
         preferences = new GamePreferences();
         audioManager = new AudioManager();
 
         audioManager.playBackgroundMusic("music/background.mp3");
 
-        this.loadCharacterAnimation(); // Load character animation
+        // Load animations and create bullet texture
+        this.loadCharacterAnimation();
+        this.createBulletTexture();
 
+        achievementManager = new AchievementManager();
 
-
-        goToMenu(); // Navigate to the menu screen
+        goToMenu(); // Start at Main Menu
 
         tileset = new Texture(Gdx.files.internal("basictiles.png"));
         tiles = TextureRegion.split(tileset, 16, 16);
@@ -76,15 +89,21 @@ public class MazeRunnerGame extends Game {
         }
     }
 
+    private void createBulletTexture() {
+        // Generate a 4x4 yellow pixel texture for the bullet so we don't need an image file
+        Pixmap pixmap = new Pixmap(4, 4, Pixmap.Format.RGBA8888);
+        pixmap.setColor(Color.YELLOW);
+        pixmap.fill();
+        bulletRegion = new TextureRegion(new Texture(pixmap));
+        pixmap.dispose();
+    }
+
     public void playWallHitSound(){
         if(wallHitSound != null){
             wallHitSound.play(0.6f);
         }
     }
 
-    /**
-     * Switches to the menu screen.
-     */
     public void goToMenu() {
         if (audioManager != null) {
             audioManager.playBackgroundMusic("music/background.mp3");
@@ -94,12 +113,11 @@ public class MazeRunnerGame extends Game {
             gameScreen.dispose();
             gameScreen = null;
         }
-
         this.setScreen(new MenuScreen(this));
     }
 
     /**
-     * Switches to the game screen.
+     * Switches to the Level Selection Menu.
      */
     public void goToGame() {
         this.setScreen(new LevelMenuScreen(this));
@@ -109,77 +127,170 @@ public class MazeRunnerGame extends Game {
         }
     }
 
+    /**
+     * Directly launches a specific level file (Used by Load Game).
+     */
+    public void goToLevel(int levelNumber) {
+        String mapPath = "maps/level-" + levelNumber + ".properties";
+
+        if (menuScreen != null) {
+            menuScreen.dispose();
+            menuScreen = null;
+        }
+
+        // Launch GameScreen directly
+        this.setScreen(new GameScreen(this, mapPath));
+    }
+
 
     /**
-     * Loads the character animation from the character.png file.
+     * SAVES the current game state to "save.json".
      */
+    public void saveGame(Player player, int currentLevel) {
+        Json json = new Json();
+        GameState state = new GameState();
+
+        // 1. Copy data from Player -> GameState object
+        state.level = currentLevel;
+        state.playerLevel = player.getPlayerLevel();
+        state.score = player.getScore();
+        state.lives = player.getLives();
+        state.experience = player.getExperience();
+        state.skillSpeedLevel = player.getSkillSpeedLevel();
+        state.skillHealthLevel = player.getSkillHealthLevel();
+        state.hasGun = player.hasGun();
+        state.godMode = player.isGodMode();
+        state.noClip = player.isNoClip();
+
+        state.playerX = player.getX();
+        state.playerY = player.getY();
+
+        // 2. Write to file
+        String text = json.toJson(state);
+        Gdx.files.local("save.json").writeString(text, false);
+
+        System.out.println("GAME SAVED! (Level " + currentLevel + ")");
+    }
+
+    /**
+     * LOADS the game state from "save.json".
+     */
+    public boolean loadGame() {
+        if (!Gdx.files.local("save.json").exists()) {
+            System.out.println("No save file found!");
+            return false;
+        }
+
+        try {
+            Json json = new Json();
+            String text = Gdx.files.local("save.json").readString();
+
+            // 1. Deserialize JSON
+            this.pendingSaveState = json.fromJson(GameState.class, text);
+
+            // 2. Unlock the saved level so we are allowed to play it
+            getPreferences().setMaxLevel(Math.max(getPreferences().getMaxLevel(), pendingSaveState.level));
+
+            // 3. LAUNCH THE SAVED LEVEL DIRECTLY
+            goToLevel(pendingSaveState.level);
+
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public void handleLevelTransition(Player player) {
+        GameState state = new GameState();
+
+        state.level = 0; // Irrelevant for transition
+        state.score = player.getScore();
+        state.lives = player.getLives();
+        state.playerLevel = player.getPlayerLevel();
+        state.experience = player.getExperience();
+        state.skillSpeedLevel = player.getSkillSpeedLevel();
+        state.skillHealthLevel = player.getSkillHealthLevel();
+        state.hasGun = player.hasGun();
+        state.godMode = player.isGodMode();
+        state.noClip = player.isNoClip();
+
+        state.shouldRestorePosition = true;
+
+        this.pendingSaveState = state;
+    }
+
+    public GameState getPendingSaveState() {
+        return pendingSaveState;
+    }
+
+    public void clearPendingSaveState() {
+        pendingSaveState = null;
+    }
+
+
     private void loadCharacterAnimation() {
         Texture walkSheet = new Texture(Gdx.files.internal("Main_character.png"));
+        int frameWidth = 16;
+        int frameHeight = 32;
 
-        int frameWidth = 108;
-        int frameHeight = 112;
-        int animationFrames = 5;
+        TextureRegion[][] tmp = TextureRegion.split(walkSheet, frameWidth, frameHeight);
 
-        int rowIndex = 4; //  5th row (0-based)
+        // Row 0: Down
+        Array<TextureRegion> framesDown = new Array<>();
+        for (int i = 0; i < 4; i++) framesDown.add(tmp[0][i]);
+        animDown = new Animation<>(0.15f, framesDown, Animation.PlayMode.LOOP);
 
-        Array<TextureRegion> walkFrames = new Array<>(TextureRegion.class);
+        // Row 1: Right
+        Array<TextureRegion> framesRight = new Array<>();
+        for (int i = 0; i < 4; i++) framesRight.add(tmp[1][i]);
+        animRight = new Animation<>(0.15f, framesRight, Animation.PlayMode.LOOP);
 
-        for (int col = 0; col < animationFrames; col++) {
-            walkFrames.add(new TextureRegion(
-                    walkSheet,
-                    col * frameWidth,
-                    rowIndex * frameHeight, //  여기만 바뀜
-                    frameWidth,
-                    frameHeight
-            ));
-        }
+        // Row 2: Up
+        Array<TextureRegion> framesUp = new Array<>();
+        for (int i = 0; i < 4; i++) framesUp.add(tmp[2][i]);
+        animUp = new Animation<>(0.15f, framesUp, Animation.PlayMode.LOOP);
 
-        characterDownAnimation = new Animation<>(0.09f, walkFrames);
-        characterDownAnimation.setPlayMode(Animation.PlayMode.LOOP);
+        // Row 3: Left
+        Array<TextureRegion> framesLeft = new Array<>();
+        for (int i = 0; i < 4; i++) framesLeft.add(tmp[3][i]);
+        animLeft = new Animation<>(0.15f, framesLeft, Animation.PlayMode.LOOP);
+
+        // --- SETUP SHOOTING ANIMATIONS ---
+        // (Currently mapping to walking animations to prevent errors if you don't have separate sprites)
+        shootDownAnim = animDown;
+        shootUpAnim = animUp;
+        shootLeftAnim = animLeft;
+        shootRightAnim = animRight;
     }
 
-
-    /**
-     * Cleans up resources when the game is disposed.
-     */
     @Override
     public void dispose() {
-        getScreen().hide(); // Hide the current screen
-        getScreen().dispose(); // Dispose the current screen
-        spriteBatch.dispose(); // Dispose the spriteBatch
-        skin.dispose();// Dispose the skin
+        getScreen().hide();
+        getScreen().dispose();
+        spriteBatch.dispose();
+        skin.dispose();
         tileset.dispose();
-        if(wallHitSound != null){
-            wallHitSound.dispose();
-        }
-        if (audioManager != null) {
-            audioManager.dispose();
-        }
+        if(wallHitSound != null) wallHitSound.dispose();
+        if (audioManager != null) audioManager.dispose();
     }
 
-    // Getter methods
-    public Skin getSkin() {
-        return skin;
-    }
+    // Getters
+    public Skin getSkin() { return skin; }
+    public SpriteBatch getSpriteBatch() { return spriteBatch; }
+    public TextureRegion getTile(int row, int col){ return tiles[row][col]; }
+    public AudioManager getAudioManager() { return audioManager; }
+    public GamePreferences getPreferences() { return preferences; }
+    public AchievementManager getAchievementManager() { return achievementManager; }
+    public Animation<TextureRegion> getAnimDown() { return animDown; }
+    public Animation<TextureRegion> getAnimUp() { return animUp; }
+    public Animation<TextureRegion> getAnimLeft() { return animLeft; }
+    public Animation<TextureRegion> getAnimRight() { return animRight; }
 
-    public Animation<TextureRegion> getCharacterDownAnimation() {
-        return characterDownAnimation;
-    }
-
-    public SpriteBatch getSpriteBatch() {
-        return spriteBatch;
-    }
-
-    public TextureRegion getTile(int row, int col){
-        return tiles[row][col];
-    }
-
-    public AudioManager getAudioManager() {
-        return audioManager;
-    }
-
-    public GamePreferences getPreferences() {
-        return preferences;
-    }
-
+    // --- NEW GETTERS FOR PLAYER CLASS ---
+    public Animation<TextureRegion> getShootDownAnim() { return shootDownAnim; }
+    public Animation<TextureRegion> getShootUpAnim() { return shootUpAnim; }
+    public Animation<TextureRegion> getShootLeftAnim() { return shootLeftAnim; }
+    public Animation<TextureRegion> getShootRightAnim() { return shootRightAnim; }
+    public TextureRegion getBulletRegion() { return bulletRegion; }
 }
