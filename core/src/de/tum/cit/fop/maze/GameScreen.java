@@ -121,7 +121,14 @@ public class GameScreen implements Screen {
     public GameScreen(MazeRunnerGame game, String mapPath) {
         this.game = game;
         this.viewport = new ScreenViewport();
-        this.levelFile = Gdx.files.internal(mapPath);
+
+        FileHandle localHandle = Gdx.files.local(mapPath);
+        if (localHandle.exists()) {
+            this.levelFile = localHandle;
+        } else {
+            this.levelFile = Gdx.files.internal(mapPath);
+        }
+
         this.endlessMode = false;
         this.floor = 1;
 
@@ -132,7 +139,7 @@ public class GameScreen implements Screen {
             String numberPart = filename.replace("level-", "");
             parsedLevel = Integer.parseInt(numberPart);
         } catch (NumberFormatException e) {
-            System.out.println("Could not parse level number from " + filename);
+            // Ignore if parsing fails
         }
         this.level = parsedLevel;
     }
@@ -458,26 +465,36 @@ public class GameScreen implements Screen {
     }
 
     private void initializeMaze(long seed) {
-        // FIXED: Define the loader
         MazeLoader loader = new MazeLoader();
         int effectiveLevel = endlessMode ? floor : level;
 
+        // Only force a fresh maze if we are on Level 1 AND NOT loading a save
         boolean forceFreshMaze = (this.level == 1 && game.getPendingSaveState() == null);
 
+        // Try to load existing map if available
         if (!forceFreshMaze && levelFile != null && levelFile.exists()) {
-            activeLevelFile = levelFile;
-            maze = loader.loadMazeFromProperties(levelFile, TILE_SIZE);
-            Gdx.app.log("MAZE", "Loaded existing map -> " + levelFile.path());
-            return;
+            try {
+                activeLevelFile = levelFile;
+                maze = loader.loadMazeFromProperties(levelFile, TILE_SIZE);
+
+                // --- FIX: Initialize rooms list to prevent EnemySpawner crash ---
+                this.rooms = new ArrayList<>();
+                // ------------------------------------------------------------
+
+                Gdx.app.log("MAZE", "Loaded existing map -> " + levelFile.path());
+                return;
+            } catch (Exception e) {
+                Gdx.app.error("MAZE", "Failed to load map, generating new one.", e);
+            }
         }
 
+        // Generate NEW RANDOM maze
         FileHandle target = getLevelTargetFile(level);
         Gdx.app.log("MAZE", "Generating NEW RANDOM maze -> " + target.path());
 
         MazeGenerator generator = new MazeGenerator();
         MazeLoader.LevelSpec spec = new MazeLoader.LevelSpec(80, 80, new HashMap<>());
 
-        // FIXED: Use generateWithRooms since we need rooms
         GeneratedMaze generated = generator.generateWithRooms(spec, TILE_SIZE, seed, effectiveLevel);
 
         this.maze = generated.getMaze();
@@ -487,7 +504,6 @@ public class GameScreen implements Screen {
         MazeExporter.saveToProperties(this.maze, target);
 
         activeLevelFile = target;
-        // Reload it back to ensure consistency
         this.maze = loader.loadMazeFromProperties(target, TILE_SIZE);
     }
 

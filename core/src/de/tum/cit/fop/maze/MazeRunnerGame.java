@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color; // Added
 import com.badlogic.gdx.graphics.Pixmap; // Added
 import com.badlogic.gdx.graphics.Texture;
@@ -150,7 +151,7 @@ public class MazeRunnerGame extends Game {
         Json json = new Json();
         GameState state = new GameState();
 
-        // 1. Copy data from Player -> GameState object
+        // 1. Copy data
         state.level = currentLevel;
         state.playerLevel = player.getPlayerLevel();
         state.score = player.getScore();
@@ -161,13 +162,18 @@ public class MazeRunnerGame extends Game {
         state.hasGun = player.hasGun();
         state.godMode = player.isGodMode();
         state.noClip = player.isNoClip();
-
         state.playerX = player.getX();
         state.playerY = player.getY();
 
         // 2. Write to file
         String text = json.toJson(state);
-        Gdx.files.local("save.json").writeString(text, false);
+
+        // --- FIX: Create the directory if it doesn't exist ---
+        FileHandle file = Gdx.files.local("saves/save.json");
+        file.parent().mkdirs(); // <--- THIS PREVENTS THE CRASH
+        // ----------------------------------------------------
+
+        file.writeString(text, false);
 
         System.out.println("GAME SAVED! (Level " + currentLevel + ")");
     }
@@ -176,14 +182,14 @@ public class MazeRunnerGame extends Game {
      * LOADS the game state from "save.json".
      */
     public boolean loadGame() {
-        if (!Gdx.files.local("save.json").exists()) {
+        if (!Gdx.files.local("saves/save.json").exists()) {
             System.out.println("No save file found!");
             return false;
         }
 
         try {
             Json json = new Json();
-            String text = Gdx.files.local("save.json").readString();
+            String text = Gdx.files.local("saves/save.json").readString();
 
             // 1. Deserialize JSON
             this.pendingSaveState = json.fromJson(GameState.class, text);
