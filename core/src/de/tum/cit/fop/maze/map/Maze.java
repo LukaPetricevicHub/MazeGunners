@@ -6,6 +6,8 @@ import de.tum.cit.fop.maze.util.GridUtils;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
+import com.badlogic.gdx.math.MathUtils;
+
 
 public class Maze {
 

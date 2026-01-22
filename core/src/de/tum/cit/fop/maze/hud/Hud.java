@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
@@ -17,36 +18,40 @@ import de.tum.cit.fop.maze.ui.DevConsole;
 
 public class Hud {
 
+    // --- CONFIG ---
+    private static final int MAX_LIVES = 5;
+    private static final float NOTIF_DURATION = 3.0f;
+
+    // --- CORE ---
     private final Stage stage;
     private final Skin skin;
 
-    // --- CONFIG ---
-    private static final int MAX_LIVES = 5;
-    private float messageTimer = 0f;
+    // --- TEXTURES ---
+    private final Texture pixelTexture;
+    private final Texture heartTexture;
+    private final Texture arrowTexture;
 
     // --- UI ELEMENTS ---
-    private final Texture pixelTexture;
-
-    // Left Section
     private final Image[] heartImages;
-    private final Texture heartTexture;
-    private final Label floorLabel; // Displays "Map: Level 1"
 
-    // Center Section
-    private final Label scoreLabel;
-    private final Label levelLabel; // Displays "Player Lvl"
-    private final ProgressBar xpBar;
-    private final Label xpTextLabel;
+    private final Label floorLabel;       // "Floor: 1" or "Round: 1"
+    private final Label hintLabel;        // "Hint: Cold/Warm/Hot"
+    private final Label keyLabel;         // "Key: YES/NO"
 
-    // Right Section
-    private final Label keyLabel;
+    private final Label scoreLabel;       // "000123"
+    private final Label levelLabel;       // "LEVEL 3"
+    private final ProgressBar xpBar;      // 0..1
+    private final Label xpTextLabel;      // "50 / 100 XP"
+
     private final Label notificationLabel;
 
-    // Navigation
+    // Arrow pinned top-right (always inside screen)
     private final Image arrow;
-    private final Texture arrowTexture;
     private float exitX, exitY;
     private boolean hasExitTarget = false;
+
+    // Timer for notifications
+    private float messageTimer = 0f;
 
     // Console
     private final DevConsole devConsole;
@@ -55,110 +60,107 @@ public class Hud {
         this.stage = new Stage(viewport, batch);
         this.skin = skin;
 
-        // 1. Create a 1x1 white pixel for background/bars
-        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        pixmap.setColor(Color.WHITE);
-        pixmap.fill();
-        pixelTexture = new Texture(pixmap);
-        pixmap.dispose();
+        // 1x1 pixel texture (for backgrounds/bars)
+        Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pm.setColor(Color.WHITE);
+        pm.fill();
+        pixelTexture = new Texture(pm);
+        pm.dispose();
 
-        // 2. MAIN TABLE (The Top Bar)
-        Table rootTable = new Table();
-        rootTable.top();
-        rootTable.setFillParent(true);
+        // Textures
+        heartTexture = new Texture("heart.png");
+        arrowTexture = new Texture("arrow.png");
 
-        // Background: 60% transparent black
-        Drawable bgDrawable = new TextureRegionDrawable(new TextureRegion(pixelTexture))
+        // Root container
+        Table root = new Table();
+        root.setFillParent(true);
+        root.top();
+        stage.addActor(root);
+
+        // Top bar background
+        Drawable bg = new TextureRegionDrawable(new TextureRegion(pixelTexture))
                 .tint(new Color(0f, 0f, 0f, 0.6f));
 
         Table topBar = new Table();
-        topBar.setBackground(bgDrawable);
+        topBar.setBackground(bg);
+        topBar.pad(8);
+        root.add(topBar).growX();
 
-        // --- LEFT SECTION: HEARTS & FLOOR ---
-        Table leftTable = new Table();
-        heartTexture = new Texture("heart.png");
+        // ---------------- LEFT: Hearts + Key + Floor + Hint ----------------
+        Table left = new Table();
+        left.left();
+
         heartImages = new Image[MAX_LIVES];
-
         Table heartsRow = new Table();
         for (int i = 0; i < MAX_LIVES; i++) {
             heartImages[i] = new Image(new TextureRegion(heartTexture));
-            heartsRow.add(heartImages[i]).size(24, 24).padRight(4);
+            heartsRow.add(heartImages[i]).size(16, 16).padRight(4);
         }
 
-        floorLabel = new Label("Map 1", skin);
-        floorLabel.setFontScale(0.8f);
-        floorLabel.setColor(Color.LIGHT_GRAY);
+        keyLabel = new Label("Key: NO", skin);
+        floorLabel = new Label("Floor: 1", skin);
+        hintLabel = new Label("Hint: ???", skin);
+        hintLabel.setColor(Color.SKY);
 
-        leftTable.add(heartsRow).left().row();
-        leftTable.add(floorLabel).left().padTop(4);
+        left.add(heartsRow).left().row();
+        left.add(keyLabel).left().padTop(3).row();
+        left.add(floorLabel).left().padTop(3).row();
+        left.add(hintLabel).left().padTop(3);
 
-        topBar.add(leftTable).padLeft(20).left();
+        topBar.add(left).left().padLeft(8);
 
-        // --- CENTER SECTION: LEVEL / XP / SCORE ---
-        Table centerTable = new Table();
+        // ---------------- CENTER: Level + Score + XP ----------------
+        Table center = new Table();
+        center.center();
 
-        levelLabel = new Label("LVL 1", skin, "title");
-        levelLabel.setFontScale(0.7f);
+        levelLabel = new Label("LEVEL 1", skin);
         levelLabel.setColor(Color.GOLD);
 
         scoreLabel = new Label("000000", skin);
-        scoreLabel.setFontScale(1.0f);
 
-        // Custom XP Bar Style
         ProgressBar.ProgressBarStyle barStyle = new ProgressBar.ProgressBarStyle();
         barStyle.background = new TextureRegionDrawable(new TextureRegion(pixelTexture)).tint(Color.DARK_GRAY);
-        barStyle.background.setMinHeight(12);
         barStyle.knobBefore = new TextureRegionDrawable(new TextureRegion(pixelTexture)).tint(Color.CYAN);
-        barStyle.knobBefore.setMinHeight(12);
 
-        xpBar = new ProgressBar(0f, 1f, 0.01f, false, barStyle);
+        xpBar = new ProgressBar(0f, 1f, 0.001f, false, barStyle);
         xpBar.setValue(0f);
 
         xpTextLabel = new Label("0 / 100 XP", skin);
-        xpTextLabel.setFontScale(0.7f);
         xpTextLabel.setColor(Color.LIGHT_GRAY);
 
-        centerTable.add(levelLabel).row();
-        centerTable.add(scoreLabel).padTop(2).row();
-        centerTable.add(xpBar).width(300).padTop(5).row();
-        centerTable.add(xpTextLabel).padTop(2);
+        center.add(levelLabel).padBottom(2).row();
+        center.add(scoreLabel).padBottom(4).row();
+        center.add(xpBar).width(260).height(10).row();
+        center.add(xpTextLabel).padTop(2);
 
-        topBar.add(centerTable).expandX().padTop(10).padBottom(10);
+        topBar.add(center).expandX().center();
 
-        // --- RIGHT SECTION: KEY & NOTIFICATIONS ---
-        Table rightTable = new Table();
-
-        keyLabel = new Label("KEY 🗝", skin, "title");
-        keyLabel.setFontScale(0.8f);
-        keyLabel.setColor(Color.DARK_GRAY);
+        // ---------------- RIGHT: Notification ----------------
+        Table right = new Table();
+        right.right();
 
         notificationLabel = new Label("", skin);
-        notificationLabel.setFontScale(1.0f);
-        notificationLabel.setColor(Color.YELLOW);
-        notificationLabel.setAlignment(Align.right);
         notificationLabel.setVisible(false);
+        notificationLabel.setAlignment(Align.right);
+        notificationLabel.setColor(Color.YELLOW);
 
-        rightTable.add(keyLabel).padRight(20).row();
-        rightTable.add(notificationLabel).padRight(20).padTop(10);
+        right.add(notificationLabel).right().padRight(8);
 
-        topBar.add(rightTable).right();
+        topBar.add(right).right();
 
-        // Finish Layout
-        rootTable.add(topBar).growX().row();
-        stage.addActor(rootTable);
-
-        // 3. NAVIGATION ARROW (Floating)
-        arrowTexture = new Texture("arrow.png");
+        // ---------------- Arrow pinned inside top-right ----------------
         arrow = new Image(arrowTexture);
-        arrow.setSize(48, 48);
-        arrow.setOrigin(24, 24);
-        arrow.setPosition(
-                viewport.getWorldWidth() - 60,
-                viewport.getWorldHeight() - 150
-        );
-        stage.addActor(arrow);
+        arrow.setSize(80, 80);
+        arrow.setOrigin(arrow.getWidth() / 2f, arrow.getHeight() / 2f);
+        arrow.setVisible(false);
 
-        // 4. DEV CONSOLE
+        Table arrowOverlay = new Table();
+        arrowOverlay.setFillParent(true);
+        arrowOverlay.top().right().pad(10);
+        arrowOverlay.add(arrow).size(80, 80);
+        stage.addActor(arrowOverlay);
+
+        // Console
         devConsole = new DevConsole(skin, (MazeRunnerGame) Gdx.app.getApplicationListener());
         stage.addActor(devConsole);
     }
@@ -167,47 +169,81 @@ public class Hud {
         // Hearts
         int lives = player.getLives();
         for (int i = 0; i < heartImages.length; i++) {
-            if (i < heartImages.length) {
-                heartImages[i].setVisible(i < lives);
-            }
+            heartImages[i].setVisible(i < lives);
         }
 
-        // Stats
+        // Key text
+        keyLabel.setText(player.hasKey() ? "Key: YES" : "Key: NO");
+
+        // ----- These require your Player to have these methods -----
+        // If your Player doesn't have score/xpNeeded methods, tell me your actual methods and I’ll adapt.
         scoreLabel.setText(String.format("%06d", player.getScore()));
         levelLabel.setText("LEVEL " + player.getPlayerLevel());
 
-        // XP
         float currentXp = player.getExperience();
-        float maxXp = player.getXpNeededForNextLevel();
-        if (maxXp > 0) xpBar.setValue(currentXp / maxXp);
-        else xpBar.setValue(0);
-        xpTextLabel.setText((int)currentXp + " / " + (int)maxXp + " XP");
+        float maxXp = player.getXpNeededForNextLevel(); // must exist in your Player
+        float ratio = (maxXp <= 0f) ? 0f : (currentXp / maxXp);
+        xpBar.setValue(MathUtils.clamp(ratio, 0f, 1f));
+        xpTextLabel.setText((int) currentXp + " / " + (int) maxXp + " XP");
 
-        // Key
-        if (player.hasKey()) {
-            keyLabel.setColor(Color.GOLD);
-            keyLabel.setText("KEY FOUND 🗝");
-        } else {
-            keyLabel.setColor(Color.DARK_GRAY);
-            keyLabel.setText("NO KEY 🗝");
-        }
+        // Arrow logic
+        boolean showArrow = player.hasKey() && hasExitTarget;
+        arrow.setVisible(showArrow);
 
-        // Arrow
-        if (hasExitTarget) {
+        if (showArrow) {
             float px = player.getX() + 16f;
-            float py = player.getY() + 32f;
+            float py = player.getY() + 16f;
+
             float dx = exitX - px;
             float dy = exitY - py;
+
             float angleDeg = (float) Math.toDegrees(Math.atan2(dy, dx));
+
+            // Your arrow.png points RIGHT by default -> offset 0
             arrow.setRotation(angleDeg);
         }
     }
 
+    public void updateHeatHint(Player player) {
+        if (!player.hasKey() || !hasExitTarget) {
+            hintLabel.setText("Hint: ???");
+            hintLabel.setColor(Color.SKY);
+            return;
+        }
+
+        float px = player.getX() + 16f;
+        float py = player.getY() + 16f;
+
+        float dx = exitX - px;
+        float dy = exitY - py;
+
+        float distWorld = (float) Math.sqrt(dx * dx + dy * dy);
+        float distTiles = distWorld / 32f;
+
+        String text;
+        if (distTiles > 30f) text = "Cold";
+        else if (distTiles > 18f) text = "Cool";
+        else if (distTiles > 10f) text = "Warm";
+        else if (distTiles > 5f) text = "Hot";
+        else text = "BOILING";
+
+        float maxTiles = 25f;
+        float t = 1f - MathUtils.clamp(distTiles / maxTiles, 0f, 1f); // 0=far(blue) -> 1=close(red)
+
+        float r = t;
+        float g = 0f;
+        float b = 1f - t;
+
+        hintLabel.setText("Hint: " + text);
+        hintLabel.setColor(r, g, b, 1f);
+    }
+
     public void act(float dt) {
         stage.act(dt);
-        if (messageTimer > 0) {
+
+        if (messageTimer > 0f) {
             messageTimer -= dt;
-            if (messageTimer <= 0) {
+            if (messageTimer <= 0f) {
                 notificationLabel.setVisible(false);
             }
         }
@@ -219,10 +255,17 @@ public class Hud {
 
     public void resize(int width, int height, boolean centerCamera) {
         stage.getViewport().update(width, height, centerCamera);
-        arrow.setPosition(
-                stage.getViewport().getWorldWidth() - 60,
-                stage.getViewport().getWorldHeight() - 150
-        );
+        // Arrow is in an overlay table, so it stays INSIDE automatically.
+    }
+
+    public void showNotification(String text) {
+        notificationLabel.setText(text);
+        notificationLabel.setVisible(true);
+        messageTimer = NOTIF_DURATION;
+    }
+
+    public void setFloorText(String text) {
+        floorLabel.setText(text);
     }
 
     public void setExitTarget(float x, float y) {
@@ -231,28 +274,23 @@ public class Hud {
         this.hasExitTarget = true;
     }
 
-    public void showNotification(String text) {
-        notificationLabel.setText(text);
-        notificationLabel.setVisible(true);
-        messageTimer = 3.0f;
-    }
-
-    public void setFloorText(String text) {
-        if (floorLabel != null) floorLabel.setText(text);
-    }
-
-    public DevConsole getDevConsole() {
-        return devConsole;
+    public void clearExitTarget() {
+        this.hasExitTarget = false;
+        arrow.setVisible(false);
     }
 
     public Stage getStage() {
         return stage;
     }
 
+    public DevConsole getDevConsole() {
+        return devConsole;
+    }
+
     public void dispose() {
         stage.dispose();
+        pixelTexture.dispose();
         heartTexture.dispose();
         arrowTexture.dispose();
-        pixelTexture.dispose();
     }
 }

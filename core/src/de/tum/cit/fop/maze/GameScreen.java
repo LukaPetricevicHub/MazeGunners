@@ -18,7 +18,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.utils.Timer;
-
 import de.tum.cit.fop.maze.camera.GameCamera;
 import de.tum.cit.fop.maze.camera.CameraInputController;
 import de.tum.cit.fop.maze.enemies.Enemy;
@@ -37,6 +36,9 @@ import de.tum.cit.fop.maze.world.*;
 import de.tum.cit.fop.maze.obstacles.PropType;
 import de.tum.cit.fop.maze.obstacles.Prop;
 import de.tum.cit.fop.maze.ui.PauseMenuWindow;
+import de.tum.cit.fop.maze.ui.GameOverWindow;
+
+
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -179,6 +181,11 @@ public class GameScreen implements Screen {
                 return;
             }
 
+            if (endlessMode && onExit && player.hasKey()) {
+                advanceToNextFloor();
+                return;
+            }
+
             gameStateController.update(delta, onExit, player.hasKey(), player.getLives());
 
             // Trigger Game Over Menu (Once)
@@ -235,8 +242,8 @@ public class GameScreen implements Screen {
                     }
                 }
             }
-
             hud.update(player);
+            hud.updateHeatHint(player);
             hud.act(delta);
 
             // Follow player
@@ -333,23 +340,25 @@ public class GameScreen implements Screen {
 
         playLevelMusic();
 
-        // 1. GENERATE MAZE & GRAPHICS FIRST (Need map to spawn player)
+        // 1) Maze & graphics first (camera needs maze size)
         initializeMaze(runSeed);
         initializeGraphics();
 
-        // 2. CREATE PLAYER (Must be done before UI)
+        // 2) Player now (some UI depends on player)
         initializePlayer();
 
-        // 3. CREATE UI (Now safe because player exists)
-        createPauseMenu(); // This creates SkillWindow which calls player.getSkillPoints()
+        // 3) UI now (skill window uses player)
+        createPauseMenu();
         createHud();
 
-        if (endlessMode) hud.setFloorText("Floor: " + floor);
-        else hud.setFloorText("Level: " + level);
+        // Correct label for each mode
+        if (endlessMode) hud.setFloorText("Round: " + floor);
+        else hud.setFloorText("Floor: " + level);
 
-        game.getAchievementManager().setHud(hud);
+        // Exit target for arrow/hints
+        updateHudExitTarget();
 
-        // 4. ENEMIES & EVENTS
+        // 4) Spawn enemies/items
         initializeEnemiesAndObstacles(runSeed);
         initializeEvents();
 
@@ -364,6 +373,7 @@ public class GameScreen implements Screen {
         fog = new FogOfWarRenderer();
         fog.setFogAlpha(0.95f);
     }
+
 
     private void initializePlayer() {
         Point entry = maze.getEntryCell();
@@ -585,14 +595,10 @@ public class GameScreen implements Screen {
                     skillWindow.refresh();
                     pauseWindow.setVisible(false);
                     skillWindow.setVisible(true);
-
-                    skillWindow.setPosition(
-                            (viewport.getWorldWidth() - skillWindow.getWidth()) / 2f,
-                            (viewport.getWorldHeight() - skillWindow.getHeight()) / 2f
-                    );
                 },
                 () -> { playClickSound(); game.goToMenu(); }
         );
+
 
         TextButton saveButton = new TextButton("Save Game", game.getSkin());
         saveButton.addListener(new ChangeListener() {
@@ -637,7 +643,8 @@ public class GameScreen implements Screen {
         if (pauseWindow != null) pauseWindow.setVisible(false);
         if (settingsWindow != null) settingsWindow.setVisible(false);
 
-        de.tum.cit.fop.maze.GameOverWindow window = new de.tum.cit.fop.maze.GameOverWindow(
+        // FIX: Remove "de.tum.cit.fop.maze." prefix so it uses the import
+        GameOverWindow window = new GameOverWindow(
                 game.getSkin(),
                 game,
                 level,
@@ -726,13 +733,14 @@ public class GameScreen implements Screen {
 
     private void advanceToNextFloor() {
         floor++;
-        hud.showNotification("FLOOR " + floor);
-        hud.setFloorText("Floor: " + floor);
+        hud.showNotification("ROUND " + floor);
+        hud.setFloorText("Round: " + floor);
 
         long seed = System.nanoTime();
         runSeed = seed;
 
         initializeMaze(seed);
+        updateHudExitTarget();
 
         gameCamera = new GameCamera(
                 viewport.getWorldWidth(),
@@ -758,6 +766,7 @@ public class GameScreen implements Screen {
 
         isGameOverShown = false;
     }
+
 
     private Point findSafeSpawnPosition(Point entryCell, Maze maze) {
         int maxRadius = 10;
@@ -834,6 +843,20 @@ public class GameScreen implements Screen {
         propTextures.clear();
         propSprites.clear();
     }
+
+    private void updateHudExitTarget() {
+        Point exit = maze.getExitCell();
+        if (exit == null) {
+            hud.clearExitTarget();
+            return;
+        }
+
+        hud.setExitTarget(
+                exit.x * TILE_SIZE + TILE_SIZE / 2f,
+                exit.y * TILE_SIZE + TILE_SIZE / 2f
+        );
+    }
+
 
     private FileHandle getLevelTargetFile(int level) {
         FileHandle dir = Gdx.files.local("maps");
