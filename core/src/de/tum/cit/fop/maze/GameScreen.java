@@ -18,6 +18,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.utils.Timer;
+
 import de.tum.cit.fop.maze.camera.GameCamera;
 import de.tum.cit.fop.maze.camera.CameraInputController;
 import de.tum.cit.fop.maze.enemies.Enemy;
@@ -37,8 +38,6 @@ import de.tum.cit.fop.maze.obstacles.PropType;
 import de.tum.cit.fop.maze.obstacles.Prop;
 import de.tum.cit.fop.maze.ui.PauseMenuWindow;
 import de.tum.cit.fop.maze.ui.GameOverWindow;
-
-
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -181,11 +180,6 @@ public class GameScreen implements Screen {
                 return;
             }
 
-            if (endlessMode && onExit && player.hasKey()) {
-                advanceToNextFloor();
-                return;
-            }
-
             gameStateController.update(delta, onExit, player.hasKey(), player.getLives());
 
             // Trigger Game Over Menu (Once)
@@ -242,8 +236,8 @@ public class GameScreen implements Screen {
                     }
                 }
             }
+
             hud.update(player);
-            hud.updateHeatHint(player);
             hud.act(delta);
 
             // Follow player
@@ -595,10 +589,14 @@ public class GameScreen implements Screen {
                     skillWindow.refresh();
                     pauseWindow.setVisible(false);
                     skillWindow.setVisible(true);
+
+                    skillWindow.setPosition(
+                            (viewport.getWorldWidth() - skillWindow.getWidth()) / 2f,
+                            (viewport.getWorldHeight() - skillWindow.getHeight()) / 2f
+                    );
                 },
                 () -> { playClickSound(); game.goToMenu(); }
         );
-
 
         TextButton saveButton = new TextButton("Save Game", game.getSkin());
         saveButton.addListener(new ChangeListener() {
@@ -766,7 +764,6 @@ public class GameScreen implements Screen {
 
         isGameOverShown = false;
     }
-
 
     private Point findSafeSpawnPosition(Point entryCell, Maze maze) {
         int maxRadius = 10;
