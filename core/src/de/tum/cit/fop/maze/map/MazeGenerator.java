@@ -36,8 +36,8 @@ public class MazeGenerator {
     private static final int HALL_WIDTH = 2;
 
     // Level sizes for level=1..5 (index 0 unused)
-    private static final int[] LEVEL_W = {0, 80, 80, 90, 90, 100};
-    private static final int[] LEVEL_H = {0, 80, 80, 90, 90, 100};
+    private static final int[] LEVEL_W = {0, 60, 80, 90, 90, 100};
+    private static final int[] LEVEL_H = {0, 60, 80, 90, 90, 100};
 
     // Target number of rooms per level (min, max)
     private static final int[][] LEVEL_ROOMS = {
@@ -538,7 +538,9 @@ public class MazeGenerator {
             int ny = y + dy;
             if (!maze.inBounds(x, ny)) continue;
             if (maze.getTile(x, ny) == Tiles.WALL) maze.setTile(x, ny, Tiles.FLOOR);
-            maze.setRoomCell(x, ny, false);
+            if (!maze.isRoomCell(x, ny)) {
+                maze.setRoomCell(x, ny, false);
+            }
 
         }
 
@@ -552,7 +554,9 @@ public class MazeGenerator {
             int nx = x + dx;
             if (!maze.inBounds(nx, y)) continue;
             if (maze.getTile(nx, y) == Tiles.WALL) maze.setTile(nx, y, Tiles.FLOOR);
-            maze.setRoomCell(nx, y, false);
+            if (!maze.isRoomCell(nx, y)) {
+                maze.setRoomCell(nx, y, false);
+            }
         }
     }
 
@@ -590,9 +594,6 @@ public class MazeGenerator {
 
         int doorX = isLeftRoom ? (room.x() + room.w()) : (room.x() - 1);
 
-        for (int dy = lo; dy <= hi; dy++) {
-            setDoorIfPossible(maze, doorX, y + dy);
-        }
     }
 
     private void placeDoorBandUDAligned(Maze maze, Room room, int x, int hallWidth, boolean isTopRoom) {
@@ -601,17 +602,9 @@ public class MazeGenerator {
 
         int doorY = isTopRoom ? (room.y() + room.h()) : (room.y() - 1);
 
-        for (int dx = lo; dx <= hi; dx++) {
-            setDoorIfPossible(maze, x + dx, doorY);
-        }
     }
 
-    private void setDoorIfPossible(Maze maze, int x, int y) {
-        if (!maze.inBounds(x, y)) return;
-        Tiles t = maze.getTile(x, y);
-        if (t == Tiles.SPAWN || t == Tiles.KEY || t == Tiles.EXIT) return;
-        if (t == Tiles.FLOOR) maze.setTile(x, y, Tiles.DOOR);
-    }
+
 
 
     private void snapRooms(List<Room> rooms, int snap, Maze maze) {

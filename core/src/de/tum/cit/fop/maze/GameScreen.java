@@ -674,7 +674,7 @@ public class GameScreen implements Screen {
         gameCamera.setZoom(0.25f);
         cameraInput = new CameraInputController(gameCamera);
 
-        Texture tileset = new Texture("TILESET2.png");
+        Texture tileset = new Texture("tileset1.png");
         mazeRenderer = new MazeRenderer(tileset);
 
         if (Gdx.files.internal("audio/pickup.mp3").exists()) {
