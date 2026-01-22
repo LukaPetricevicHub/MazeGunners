@@ -3,43 +3,48 @@ package de.tum.cit.fop.maze.player;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
+import de.tum.cit.fop.maze.enemies.Enemy;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Bullet {
+    private Vector2 position;
+    private Vector2 velocity;
+    private boolean active = true;
+    private static final float SPEED = 600f;
+    private static final float SIZE = 8f;
 
-    // Enum for direction
-    public enum Dir { LEFT, RIGHT, UP, DOWN }
+    // --- NEW: Track enemies we already pierced so we don't hit them twice ---
+    private List<Enemy> hitEnemies = new ArrayList<>();
 
-    private float x, y;
-    private final Dir dir;
-    private final float speed = 600f; // Speed of bullet
-    private float lifeTime = 2.0f;    // Bullet disappears after 2 seconds
-    private boolean alive = true;
-    private final float width = 10f;
-    private final float height = 10f;
-
-    public Bullet(float x, float y, Dir dir) {
-        this.x = x;
-        this.y = y;
-        this.dir = dir;
+    public Bullet(float startX, float startY, float targetX, float targetY) {
+        this.position = new Vector2(startX, startY);
+        this.velocity = new Vector2(targetX - startX, targetY - startY);
+        this.velocity.nor().scl(SPEED);
     }
 
     public void update(float dt) {
-        switch (dir) {
-            case LEFT -> x -= speed * dt;
-            case RIGHT -> x += speed * dt;
-            case UP -> y += speed * dt;
-            case DOWN -> y -= speed * dt;
-        }
-
-        lifeTime -= dt;
-        if (lifeTime <= 0) alive = false;
+        position.mulAdd(velocity, dt);
     }
 
-    public void draw(SpriteBatch batch, TextureRegion region) {
-        batch.draw(region, x, y, width, height);
+    public void draw(SpriteBatch batch, TextureRegion texture) {
+        batch.draw(texture, position.x, position.y, SIZE, SIZE);
     }
 
-    public boolean isAlive() { return alive; }
-    public Rectangle getBounds() { return new Rectangle(x, y, width, height); }
-    public void setDead() { this.alive = false; }
+    public Rectangle getBounds() {
+        return new Rectangle(position.x, position.y, SIZE, SIZE);
+    }
+
+    // --- NEW HELPERS FOR PIERCING ---
+    public boolean hasAlreadyHit(Enemy enemy) {
+        return hitEnemies.contains(enemy);
+    }
+
+    public void registerHit(Enemy enemy) {
+        hitEnemies.add(enemy);
+    }
+
+    public boolean isAlive() { return active; }
+    public void setDead() { active = false; }
 }

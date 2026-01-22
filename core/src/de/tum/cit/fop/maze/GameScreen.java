@@ -174,6 +174,18 @@ public class GameScreen implements Screen {
         if (gameStateController.isRunning() && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             togglePause();
         }
+        if (Gdx.input.isKeyJustPressed(Input.Keys.K)) {
+            // Calculate exactly how much XP is needed for the NEXT level
+            // (xpNeeded - currentXP) + 1 to ensure we cross the threshold
+            int needed = player.getXpNeededForNextLevel() - player.getExperience();
+
+            // Add exact amount
+            player.addExperience(Math.max(needed, 0));
+
+            // Notification is now accurate
+            hud.showNotification("CHEAT: FORCED LEVEL UP!");
+            if (pickupSound != null) pickupSound.play();
+        }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.GRAVE)) {
             hud.getDevConsole().toggle();
@@ -184,7 +196,7 @@ public class GameScreen implements Screen {
 
         // 3) Game logic
         if (!isPaused && gameStateController.isRunning()) {
-            player.update(delta, maze, game, this::collidesWithBlockingObstacle);
+            player.update(delta, maze, game, this::collidesWithBlockingObstacle, gameCamera.getCamera());
 
             if (player.getPlayerLevel() > trackedLevel) {
                 trackedLevel = player.getPlayerLevel();
@@ -331,6 +343,7 @@ public class GameScreen implements Screen {
         float py = player.getY() + PLAYER_HEIGHT / 2f;
 
         game.getSpriteBatch().end();
+
         fog.render(game.getSpriteBatch(), gameCamera.getCamera(), px, py);
 
         // 5) UI
@@ -343,7 +356,9 @@ public class GameScreen implements Screen {
             hud.act(delta);
             hud.draw();
         }
-        renderMinimap();
+        if (Gdx.input.isKeyPressed(Input.Keys.M)) {
+            renderMinimap();
+        }
     }
 
     @Override
@@ -360,6 +375,14 @@ public class GameScreen implements Screen {
         combatSystem = new CombatSystem();
 
         playLevelMusic();
+
+        if (game.getPendingSaveState() != null) {
+            // Use the seed that created the saved map
+            runSeed = game.getPendingSaveState().mazeSeed;
+        } else {
+            // New game: Random seed
+            runSeed = System.currentTimeMillis();
+        }
 
         // 1) Maze & graphics first (camera needs maze size)
         initializeMaze(runSeed);
@@ -425,6 +448,17 @@ public class GameScreen implements Screen {
             player.setExperience(savedState.experience);
             player.setSkillSpeedLevel(savedState.skillSpeedLevel);
             player.setSkillHealthLevel(savedState.skillHealthLevel);
+            player.setSkillPoints(savedState.skillPoints);
+
+            if (savedState.skillRapidFire) player.unlockRapidFire();
+            if (savedState.skillShotgun) player.unlockShotgun();
+            if (savedState.skillPiercing) player.unlockPiercing();
+
+            if (savedState.skillDash) player.unlockDash();
+            if (savedState.skillGhost) player.unlockGhost();
+
+            if (savedState.skillThorns) player.unlockThorns();
+            if (savedState.skillRepulse) player.unlockRepulse();
 
             if (savedState.hasGun) {
                 player.equipGun();
@@ -770,7 +804,7 @@ public class GameScreen implements Screen {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 playClickSound();
-                game.saveGame(player, level, enemies, items);
+                game.saveGame(player, level, enemies, items, endlessMode, floor, runSeed);
                 saveButton.setText("Saved!");
                 Timer.schedule(new Timer.Task() {
                     @Override
@@ -818,10 +852,9 @@ public class GameScreen implements Screen {
                 player.getScore(),
                 player
         );
-
         window.setPosition(
-                (viewport.getWorldWidth() - window.getWidth()) / 2f,
-                (viewport.getWorldHeight() - window.getHeight()) / 2f
+                (uiViewport.getWorldWidth() - window.getWidth()) / 2f,
+                (uiViewport.getWorldHeight() - window.getHeight()) / 2f
         );
 
         pauseStage.addActor(window);

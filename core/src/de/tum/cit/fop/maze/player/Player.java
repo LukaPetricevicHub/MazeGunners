@@ -2,11 +2,14 @@ package de.tum.cit.fop.maze.player;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.map.Maze;
 
@@ -76,7 +79,6 @@ public class Player {
     // --- COMBAT & WEAPONS ---
     private boolean hasGun = false;
 
-    // >> MISSING MELEE VARIABLES RESTORED HERE <<
     private boolean isAttacking = false;
     private float attackTimer = 0f;
     private static final float ATTACK_DURATION = 0.25f;
@@ -86,11 +88,44 @@ public class Player {
 
     // Direction Logic
     private Vector2 facingDirection = new Vector2(0, -1);
-    private Bullet.Dir facingEnum = Bullet.Dir.DOWN;
+
+    // Repulse Skill
+    private boolean isRepulsing = false; // Flag to tell CombatSystem to push
+    private float repulseCooldownTimer = 0f;
+
+
+    private enum Facing { UP, DOWN, LEFT, RIGHT }
+    private Facing currentFacing = Facing.DOWN;
 
     // Bullet Logic
     private final List<Bullet> bullets = new ArrayList<>();
     private final TextureRegion bulletRegion;
+
+    // --- SKILL FLAGS ---
+    // Path 1: Gunner
+    private boolean skillRapidFire = false;
+    private boolean skillShotgun = false;
+    private boolean skillPiercing = false;
+
+    // Path 2: Speedster
+    private boolean skillDash = false;
+    private boolean skillGhost = false;
+
+    // Path 3: Tank
+    private boolean skillThorns = false;
+    private boolean skillRepulse = false;
+
+    // Dash Logic variables
+    private boolean isDashing = false;
+    private float dashTimer = 0f;
+    private float dashCooldown = 0f;
+    private Vector2 dashDirection = new Vector2();
+    private static final float DASH_DURATION = 0.15f;
+    private static final float DASH_SPEED = 1200f;
+    private static final float DASH_COOLDOWN_MAX = 1.0f;
+
+    // Shooting Cooldown
+    private float shootTimer = 0f;
 
     @FunctionalInterface
     public interface BlockChecker {
@@ -105,14 +140,12 @@ public class Player {
         this.x = startX;
         this.y = startY;
 
-        // Walk Anims
         this.animDown = down;
         this.animUp = up;
         this.animLeft = left;
         this.animRight = right;
         this.currentAnimation = down;
 
-        // Shoot Anims
         this.shootLeftAnim = game.getShootLeftAnim();
         this.shootRightAnim = game.getShootRightAnim();
         this.shootUpAnim = game.getShootUpAnim();
@@ -125,55 +158,96 @@ public class Player {
 
 
     // --- MAIN UPDATE LOOP ---
-    public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker) {
-        // 1. Timers
+    public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker, Camera camera) {
+        // 1. Timers & Cooldowns
         updateTimers(dt);
+        if (attackCooldownTimer > 0) attackCooldownTimer -= dt;
+        if (dashCooldown > 0) dashCooldown -= dt;
+        if (shootTimer > 0) shootTimer -= dt;
+
+        // --- DASH LOGIC ---
+        if (isDashing) {
+            dashTimer -= dt;
+            attemptMove(dashDirection.x * DASH_SPEED * dt, dashDirection.y * DASH_SPEED * dt, maze, game, null);
+            if (dashTimer <= 0) isDashing = false;
+            return;
+        }
+        if (repulseCooldownTimer > 0) repulseCooldownTimer -= dt;
+        isRepulsing = false;
 
         // 2. Input Reading
         MovementInput input = readMovementInput(dt, game);
         boolean moving = (input.dx != 0f || input.dy != 0f);
 
-        // 3. Update Direction
-        updateFacingDirection(game);
+        // 3. Facing Direction
+        if (hasGun) updateFacingToMouse(camera);
+        else updateFacingDirection(game);
 
-        // 4. Melee Combat Timers (The variables used here are now defined above)
-        if (attackCooldownTimer > 0) attackCooldownTimer -= dt;
-        if (isAttacking) {
-            attackTimer -= dt;
-            if (attackTimer <= 0) isAttacking = false;
+        // 4. Skills Input (Dash)
+        if (skillDash && Gdx.input.isKeyJustPressed(Input.Keys.E) && dashCooldown <= 0 && moving) {
+            startDash(input.dx, input.dy);
         }
-        updateAttackHitbox(); // Keeps hitbox attached to player
 
-        // 5. Melee Input (Space)
+        if (skillRepulse && Gdx.input.isKeyJustPressed(Input.Keys.Q) && repulseCooldownTimer <= 0) {
+            isRepulsing = true;
+            repulseCooldownTimer = 5.0f; // 5 Seconds Cooldown
+        }
+
+        // --- FIX: RESTORE MELEE INPUT HERE ---
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             attack();
         }
+        // -------------------------------------
 
-        // 6. Shooting Logic (Press S)
-        if (Gdx.input.isKeyPressed(Input.Keys.S) && hasGun) {
-            shooting = true;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.S)) {
-                spawnBullet();
+        // 5. Shooting Input
+        if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && hasGun) {
+            if (shootTimer <= 0) {
+                spawnBullet(camera);
+                shootTimer = skillRapidFire ? 0.2f : 0.4f;
+                shooting = true;
             }
         } else {
             shooting = false;
         }
 
-        // 7. Animation Selection
+        // 6. Animation Selection
         if (shooting) {
             selectShootingAnimation();
         } else {
             selectWalkAnimation(moving);
         }
 
-        if (moving || shooting) animTime += dt;
-        else animTime = 0f;
+        if (moving || shooting) {
+            animTime += dt;
+        } else {
+            animTime = 0f;
+        }
 
-        // 8. Movement Physics
-        attemptMove(input.dx, input.dy, maze, game, blockChecker);
-
-        // 9. Update Bullets
+        // 7. Movement & Bullets
+        if (!isDashing) {
+            attemptMove(input.dx, input.dy, maze, game, blockChecker);
+        }
         updateBullets(dt);
+
+        // 8. Melee Hitbox Update
+        if (isAttacking) {
+            attackTimer -= dt;
+            if (attackTimer <= 0) isAttacking = false;
+        }
+        updateAttackHitbox();
+    }
+
+    private void startDash(float moveDx, float moveDy) {
+        isDashing = true;
+        dashTimer = DASH_DURATION;
+        dashCooldown = DASH_COOLDOWN_MAX;
+
+        dashDirection.set(moveDx, moveDy).nor();
+
+        if (dashDirection.isZero()) {
+            dashDirection.set(1, 0);
+        }
+        System.out.println("DASH!");
     }
 
     private void updateTimers(float dt) {
@@ -195,7 +269,6 @@ public class Player {
         }
     }
 
-    // --- MOVEMENT & DIRECTION ---
     private record MovementInput(float dx, float dy) {}
 
     private MovementInput readMovementInput(float dt, MazeRunnerGame game) {
@@ -228,17 +301,41 @@ public class Player {
 
         if (Gdx.input.isKeyPressed(keyLeft)) {
             facingDirection.set(-1, 0);
-            facingEnum = Bullet.Dir.LEFT;
+            currentFacing = Facing.LEFT;
         } else if (Gdx.input.isKeyPressed(keyRight)) {
             facingDirection.set(1, 0);
-            facingEnum = Bullet.Dir.RIGHT;
+            currentFacing = Facing.RIGHT;
         } else if (Gdx.input.isKeyPressed(keyUp)) {
             facingDirection.set(0, 1);
-            facingEnum = Bullet.Dir.UP;
+            currentFacing = Facing.UP;
         } else if (Gdx.input.isKeyPressed(keyDown)) {
             facingDirection.set(0, -1);
-            facingEnum = Bullet.Dir.DOWN;
+            currentFacing = Facing.DOWN;
         }
+    }
+
+    public boolean spendSkillPoint() {
+        if (skillPoints > 0) {
+            skillPoints--;
+            return true;
+        }
+        return false;
+    }
+
+    private void updateFacingToMouse(Camera camera) {
+        Vector3 mousePos = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+        camera.unproject(mousePos);
+
+        float diffX = mousePos.x - (x + WIDTH/2f);
+        float diffY = mousePos.y - (y + HEIGHT/2f);
+
+        float angle = MathUtils.atan2(diffY, diffX) * MathUtils.radiansToDegrees;
+        if (angle < 0) angle += 360f;
+
+        if (angle >= 45 && angle < 135) currentFacing = Facing.UP;
+        else if (angle >= 135 && angle < 225) currentFacing = Facing.LEFT;
+        else if (angle >= 225 && angle < 315) currentFacing = Facing.DOWN;
+        else currentFacing = Facing.RIGHT;
     }
 
     private void attemptMove(float dx, float dy, Maze maze, MazeRunnerGame game, BlockChecker blockChecker) {
@@ -283,10 +380,9 @@ public class Player {
         return new Rectangle(px, py, WIDTH, HEIGHT);
     }
 
-    // --- MELEE COMBAT METHODS (RESTORED) ---
-
     public boolean attack() {
         if (attackCooldownTimer <= 0 && !isAttacking) {
+            System.out.println("Melee Attack Triggered!");
             isAttacking = true;
             attackTimer = ATTACK_DURATION;
             attackCooldownTimer = ATTACK_COOLDOWN;
@@ -305,22 +401,26 @@ public class Player {
     public Rectangle getAttackHitbox() { return attackHitbox; }
     public Vector2 getFacingDirection() { return facingDirection; }
 
-
-    // --- BULLET LOGIC ---
-
-    private void spawnBullet() {
+    private void spawnBullet(Camera camera) {
+        if (!hasGun) return;
         float cx = x + WIDTH / 2f;
         float cy = y + HEIGHT / 2f;
-        float offset = 18f;
-        float bx = cx, by = cy;
 
-        switch (facingEnum) {
-            case LEFT -> bx -= offset;
-            case RIGHT -> bx += offset;
-            case UP -> by += offset;
-            case DOWN -> by -= offset;
+        Vector3 mousePos = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+        camera.unproject(mousePos);
+
+        Vector2 target = new Vector2(mousePos.x, mousePos.y);
+
+        bullets.add(new Bullet(cx, cy, target.x, target.y));
+
+        if (skillShotgun) {
+            Vector2 aimVector = new Vector2(target.x - cx, target.y - cy);
+            Vector2 leftShot = aimVector.cpy().rotateDeg(15).add(cx, cy);
+            Vector2 rightShot = aimVector.cpy().rotateDeg(-15).add(cx, cy);
+
+            bullets.add(new Bullet(cx, cy, leftShot.x, leftShot.y));
+            bullets.add(new Bullet(cx, cy, rightShot.x, rightShot.y));
         }
-        bullets.add(new Bullet(bx, by, facingEnum));
     }
 
     private void updateBullets(float dt) {
@@ -334,11 +434,9 @@ public class Player {
 
     public List<Bullet> getBullets() { return bullets; }
 
-
-    // --- ANIMATIONS ---
     private void selectShootingAnimation() {
         Animation<TextureRegion> next = currentAnimation;
-        switch (facingEnum) {
+        switch (currentFacing) {
             case LEFT -> next = shootLeftAnim;
             case RIGHT -> next = shootRightAnim;
             case UP -> next = shootUpAnim;
@@ -352,21 +450,17 @@ public class Player {
 
     private void selectWalkAnimation(boolean moving) {
         Animation<TextureRegion> next = currentAnimation;
-
-        switch (facingEnum) {
+        switch (currentFacing) {
             case LEFT -> next = animLeft;
             case RIGHT -> next = animRight;
             case UP -> next = animUp;
             case DOWN -> next = animDown;
         }
-
         if (next != currentAnimation) {
             currentAnimation = next;
             animTime = 0f;
         }
     }
-
-    // --- RPG & SKILLS SYSTEM ---
 
     public void addExperience(int amount) {
         this.experience += amount;
@@ -417,9 +511,7 @@ public class Player {
         if (lives < getMaxLives()) lives++;
     }
 
-    // --- DRAWING ---
     public void draw(SpriteBatch batch) {
-        // Draw Bullets first
         for (Bullet b : bullets) {
             b.draw(batch, bulletRegion);
         }
@@ -427,17 +519,21 @@ public class Player {
         TextureRegion frame = currentAnimation.getKeyFrame(animTime, true);
         com.badlogic.gdx.graphics.Color oldColor = batch.getColor();
 
-        if (isShielded) batch.setColor(0.5f, 0.5f, 1f, 1f);
-        else if (damageFlash) batch.setColor(1f, 0f, 0f, 1f);
+        if (isShielded) {
+            batch.setColor(0.5f, 0.5f, 1f, 1f);
+        }
+        else if (damageFlash) {
+            batch.setColor(1f, 0f, 0f, 1f);
+        }
+        else if (isAttacking) {
+            batch.setColor(1f, 1f, 0f, 1f); // YELLOW/ORANGE for Melee Attack
+        }
 
-        // Draw Player (Size 52x52 to match your visual preference)
         batch.draw(frame, x, y, 52f, 52f);
-
         batch.setColor(oldColor);
     }
 
     // --- GETTERS & SETTERS ---
-
     public void setPlayerLevel(int level) { this.playerLevel = level; }
     public int getPlayerLevel() { return playerLevel; }
 
@@ -484,7 +580,6 @@ public class Player {
     public void setSpeedMultiplier(float m) { this.speedMultiplier = m; }
     public void resetSpeedMultiplier() { this.speedMultiplier = 1f; }
 
-    // Powerups
     public void activateSpeedBoost(float duration, float multiplier) {
         this.speedTimer = duration;
         this.speedMultiplier = multiplier;
@@ -493,4 +588,24 @@ public class Player {
         this.shieldTimer = duration;
         this.isShielded = true;
     }
+    public void unlockRapidFire() { skillRapidFire = true; }
+    public void unlockShotgun() { skillShotgun = true; }
+    public void unlockPiercing() { skillPiercing = true; }
+
+    public void unlockDash() { skillDash = true; }
+    public void unlockGhost() { skillGhost = true; }
+
+    public void unlockThorns() { skillThorns = true; }
+    public void unlockRepulse() { skillRepulse = true; }
+    public boolean isRepulseActive() { return isRepulsing; }
+
+    public void setSkillPoints(int points) { this.skillPoints = points; }
+
+    public boolean hasRapidFire() { return skillRapidFire; }
+    public boolean hasShotgun() { return skillShotgun; }
+    public boolean hasPiercing() { return skillPiercing; }
+    public boolean hasDash() { return skillDash; }
+    public boolean hasGhost() { return skillGhost; }
+    public boolean hasThorns() { return skillThorns; }
+    public boolean hasRepulse() { return skillRepulse; }
 }

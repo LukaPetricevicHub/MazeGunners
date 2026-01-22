@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.world;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.camera.GameCamera;
 import de.tum.cit.fop.maze.enemies.Enemy;
@@ -37,10 +38,28 @@ public class CombatSystem {
                 // Check Enemy Collision
                 for (Enemy e : enemies) {
                     if (b.getBounds().overlaps(e.getCollisionBox())) {
-                        e.takeDamage(1); // Bullet damage
+                        e.takeDamage(5); // Bullet damage
                         b.setDead();
                         break; // Bullet hits one enemy and vanishes
                     }
+                }
+            }
+        }
+        if (player.isRepulseActive()) {
+            float repulseRange = 200f; // Range in pixels
+            float pushForce = 300f;   // How far they fly
+
+            for (Enemy e : enemies) {
+                Vector2 enemyPos = e.getPosition();
+                Vector2 playerPos = new Vector2(player.getX(), player.getY());
+
+                if (playerPos.dst(enemyPos) < repulseRange) {
+                    // Calculate direction away from player
+                    Vector2 push = enemyPos.cpy().sub(playerPos).nor().scl(pushForce);
+                    // Apply push (simple teleport for now, or add velocity if enemies support it)
+                    // For simple logic, we just bump them back:
+                    e.getPosition().add(push.x * deltaTime * 5, push.y * deltaTime * 5);
+                    e.takeDamage(2); // Minor damage from the blast
                 }
             }
         }
@@ -93,23 +112,34 @@ public class CombatSystem {
             }
         }
 
-        // --- 3. OBSTACLE LOGIC ---
+// --- 4. OBSTACLE LOGIC (Corrected) ---
         float speedModifier = 1f;
         float visibilityFactor = 1f;
 
         for (Obstacle obs : obstacles) {
             obs.updateCooldown(deltaTime);
 
+            // Check if player stepped on it
             if (obs.tryActivate(playerHitbox)) {
-                obs.onActivate();
 
-                if (obs instanceof SpikeTrap spike) {
-                    player.takeDamage(1);
-                } else {
-                    player.takeDamage(obs.getDamageToPlayer());
+                // --- GHOST WALKER CHECK ---
+                boolean isTrap = (obs instanceof SpikeTrap || obs instanceof SlimeTrap);
+
+                // Only activate if:
+                // 1. It is NOT a trap (always activate)
+                // 2. OR It IS a trap but we DO NOT have the Ghost skill
+                if (!isTrap || !player.hasGhost()) {
+                    obs.onActivate();
+
+                    if (obs instanceof SpikeTrap) {
+                        player.takeDamage(1);
+                    } else {
+                        player.takeDamage(obs.getDamageToPlayer());
+                    }
                 }
             }
 
+            // --- UPDATE ANIMATIONS & EFFECTS ---
             if (obs instanceof SpikeTrap spike) {
                 spike.update(deltaTime);
             }
@@ -117,6 +147,7 @@ public class CombatSystem {
             if (obs instanceof SlimeTrap slime) {
                 slime.updateEffect(deltaTime);
                 if (slime.isEffectActive()) {
+                    // This will only run if onActivate() was actually called above
                     speedModifier = slime.getSlowMultiplier();
                     visibilityFactor = slime.getVisionMultiplier();
                 }
@@ -128,6 +159,9 @@ public class CombatSystem {
                     speedModifier = hazard.getSpeedBoost();
             }
         }
+
+        player.setSpeedMultiplier(speedModifier);
+        gameCamera.setZoomMultiplier(visibilityFactor);
 
         // Apply Status Effects
         player.setSpeedMultiplier(speedModifier);

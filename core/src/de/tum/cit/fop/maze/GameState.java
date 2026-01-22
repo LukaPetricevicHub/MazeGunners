@@ -4,9 +4,14 @@ import java.util.ArrayList;
 
 public class GameState {
 
+    public boolean isEndless;
+    public int currentFloor;
+
+
     // --- Global Progress ---
     public int level;
     public int score;
+    public long mazeSeed;
 
     // --- Player Stats ---
     public int lives;
@@ -25,6 +30,17 @@ public class GameState {
     // if the maze regenerates randomly)
     public float playerX;
     public float playerY;
+
+    public int skillPoints;
+    public boolean skillRapidFire;
+    public boolean skillShotgun;
+    public boolean skillPiercing;
+
+    public boolean skillDash;
+    public boolean skillGhost;
+
+    public boolean skillThorns;
+    public boolean skillRepulse;
 
     public ArrayList<EnemyState> enemies = new ArrayList<>();
     public ArrayList<ItemState> items = new ArrayList<>();

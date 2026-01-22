@@ -149,9 +149,24 @@ public class MazeRunnerGame extends Game {
     /**
      * SAVES the game, including Player stats, Enemies, and Items.
      */
-    public void saveGame(Player player, int currentLevel, List<Enemy> enemies, List<AbstractCollectable> items) {
+    public void saveGame(Player player, int currentLevel, List<Enemy> enemies, List<AbstractCollectable> items, boolean endlessMode, int floor, long currentSeed) {
         Json json = new Json();
         GameState state = new GameState();
+        state.skillPoints = player.getSkillPoints();
+
+        state.skillRapidFire = player.hasRapidFire();
+        state.skillShotgun = player.hasShotgun();
+        state.skillPiercing = player.hasPiercing();
+
+        state.skillDash = player.hasDash();
+        state.skillGhost = player.hasGhost();
+
+        state.skillThorns = player.hasThorns();
+        state.skillRepulse = player.hasRepulse();
+
+        state.isEndless = endlessMode; // Save this!
+        state.currentFloor = floor;
+        state.mazeSeed = currentSeed;
 
         // 1. Save Player Data
         state.level = currentLevel;
@@ -215,18 +230,32 @@ public class MazeRunnerGame extends Game {
      * LOADS the game state from "save.json".
      */
     public boolean loadGame() {
-        if (!Gdx.files.local("saves/save.json").exists()) {
+        FileHandle file = Gdx.files.local("saves/save.json");
+        if (!file.exists()) {
             System.out.println("No save file found!");
             return false;
         }
 
         try {
             Json json = new Json();
-            String text = Gdx.files.local("saves/save.json").readString();
+            // Read the file exactly once
+            GameState state = json.fromJson(GameState.class, file.readString());
+            this.pendingSaveState = state;
 
-            this.pendingSaveState = json.fromJson(GameState.class, text);
-            getPreferences().setMaxLevel(Math.max(getPreferences().getMaxLevel(), pendingSaveState.level));
-            goToLevel(pendingSaveState.level);
+            // Update preferences, but DO NOT start the level yet
+            getPreferences().setMaxLevel(Math.max(getPreferences().getMaxLevel(), state.level));
+
+            // --- REMOVED THIS LINE: goToLevel(pendingSaveState.level); ---
+            // This line was "stealing" the save data before the real screen could use it.
+
+            if (state.isEndless) {
+                // Now we create the CORRECT screen with the saved Floor
+                setScreen(new GameScreen(this, 1, null, true, state.currentFloor));
+            } else {
+                // Story Mode
+                String mapFile = "maps/level-" + state.level + ".properties";
+                setScreen(new GameScreen(this, mapFile));
+            }
 
             return true;
         } catch (Exception e) {
