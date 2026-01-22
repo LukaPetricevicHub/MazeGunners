@@ -275,7 +275,7 @@ public class GameScreen implements Screen {
             else if (enemy instanceof FlyingDrone fd) frame = fd.getCurrentFrame();
 
             if (frame != null) {
-                game.getSpriteBatch().draw(frame, enemy.getPosition().x, enemy.getPosition().y, 32, 32);
+                game.getSpriteBatch().draw(frame, enemy.getPosition().x, enemy.getPosition().y, enemy.getRenderWidth(), enemy.getRenderHeight());
             }
         }
 

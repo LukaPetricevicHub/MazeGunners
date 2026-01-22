@@ -25,6 +25,14 @@ public class FlyingDrone extends Enemy {
 
     private static final float[] HOVER_Y_OFFSETS = {0f, 4f, 8f, 4f, 0f};
 
+    private static final float ATTACK_RADIUS = 80f;
+    private static final float MIN_SAFE_RADIUS = 60f;
+
+
+    private boolean attacking = false;
+    private float attackTimer = 0f;
+
+
     private enum Direction {
         DOWN, LEFT, RIGHT, UP
     }
@@ -32,10 +40,12 @@ public class FlyingDrone extends Enemy {
     private Direction currentDirection = Direction.DOWN;
     private final Array<Vector2> patrolPoints;
 
-    private static Animation<TextureRegion> flyDown;
+    private static Animation<TextureRegion> idle;
+    private static Animation<TextureRegion> patrolScan;
     private static Animation<TextureRegion> flyLeft;
     private static Animation<TextureRegion> flyRight;
-    private static Animation<TextureRegion> flyUp;
+    private static Animation<TextureRegion> scan;
+
 
     private float animationTimer = 0f;
 
@@ -54,7 +64,7 @@ public class FlyingDrone extends Enemy {
     ) {
         super(startWorldPosition, movementSpeed, new PatrolBehavior(patrolWorldPositions), targetPlayer);
         this.patrolPoints = new Array<>(patrolWorldPositions);
-        this.chaseRadius = 160f;
+        this.chaseRadius = 200f;
 
 
         lastPosition.set(startWorldPosition);
@@ -62,23 +72,27 @@ public class FlyingDrone extends Enemy {
     }
 
     private static void ensureAnimationsLoaded() {
-        if (flyDown != null) return;
+        if (idle != null) return;
 
-        Texture downTex  = new Texture("Enemies/FlyingDroneDOWN.png");
-        Texture leftTex  = new Texture("Enemies/FlyingDroneLEFT.png");
-        Texture rightTex = new Texture("Enemies/FlyingDroneRIGHT.png");
-        Texture upTex    = new Texture("Enemies/FlyingDroneUP.png");
+        Texture idleTex = new Texture("Enemies/FlyingDrone/FlyingDroneIdle.png");
+        Texture patrolScanTex = new Texture("Enemies/FlyingDrone/FlyingDronePatrolScan.png");
+        Texture leftTex = new Texture("Enemies/FlyingDrone/FlyingDroneLeft.png");
+        Texture rightTex = new Texture("Enemies/FlyingDrone/FlyingDroneRight.png");
+        Texture scanTex = new Texture("Enemies/FlyingDrone/FlyingDroneScan.png");
 
-        setNearest(downTex);
+        setNearest(idleTex);
+        setNearest(patrolScanTex);
         setNearest(leftTex);
         setNearest(rightTex);
-        setNearest(upTex);
+        setNearest(scanTex);
 
-        flyDown  = buildStripAnim(downTex,  FLY_FRAMES, FLY_FRAME_DURATION);
-        flyLeft  = buildStripAnim(leftTex,  FLY_FRAMES, FLY_FRAME_DURATION);
-        flyRight = buildStripAnim(rightTex, FLY_FRAMES, FLY_FRAME_DURATION);
-        flyUp    = buildStripAnim(upTex,    FLY_FRAMES, FLY_FRAME_DURATION);
+        idle = buildStripAnim(idleTex,4, FLY_FRAME_DURATION);
+        flyLeft = buildStripAnim(leftTex,4, FLY_FRAME_DURATION);
+        flyRight = buildStripAnim(rightTex,4, FLY_FRAME_DURATION);
+        patrolScan = buildStripAnim(patrolScanTex,8, FLY_FRAME_DURATION);
+        scan  = buildStripAnim(scanTex,8, FLY_FRAME_DURATION);
     }
+
 
     private static void setNearest(Texture t) {
         t.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
@@ -160,11 +174,32 @@ public class FlyingDrone extends Enemy {
 
 
         animationTimer += deltaTime;
+
+        if (isPlayerInAttackRange()) {
+            float dist2 = getPosition().dst2(getPlayerPosition());
+
+            if (dist2 <= ATTACK_RADIUS * ATTACK_RADIUS) {
+
+                attacking = true;
+                attackTimer += deltaTime;
+
+                if (dist2 < MIN_SAFE_RADIUS * MIN_SAFE_RADIUS) {
+                    moveAwayFromPlayer(deltaTime, maze);
+                    updateDirectionFromMovement();
+                }
+
+                return;
+            }
+
+        }
+
+        attacking = false;
+        attackTimer = 0f;
+
         super.updateBehavior(deltaTime, maze);
         updateDirectionFromMovement();
+
     }
-
-
 
 
     private void updateDirectionFromMovement() {
@@ -185,18 +220,31 @@ public class FlyingDrone extends Enemy {
     }
 
     public TextureRegion getCurrentFrame() {
-        return switch (currentDirection) {
-            case LEFT  -> flyLeft.getKeyFrame(animationTimer, true);
-            case RIGHT -> flyRight.getKeyFrame(animationTimer, true);
-            case UP    -> flyUp.getKeyFrame(animationTimer, true);
-            case DOWN  -> flyDown.getKeyFrame(animationTimer, true);
-        };
+
+        boolean isChasing = activeBehavior.getType() == BehaviorStateType.CHASE;
+
+        if (attacking) {
+            return scan.getKeyFrame(attackTimer, true);
+        }
+
+        if (isChasing) {
+            return switch (currentDirection) {
+                case LEFT  -> flyLeft.getKeyFrame(animationTimer, true);
+                case RIGHT -> flyRight.getKeyFrame(animationTimer, true);
+                default    -> idle.getKeyFrame(animationTimer, true);
+            };
+        }
+
+        return patrolScan.getKeyFrame(animationTimer, true);
     }
 
+
+
     public float getHoverYOffset() {
-        int frameIndex = flyDown.getKeyFrameIndex(animationTimer);
-        return HOVER_Y_OFFSETS[frameIndex];
+        int frameIndex = patrolScan.getKeyFrameIndex(animationTimer);
+        return HOVER_Y_OFFSETS[frameIndex % HOVER_Y_OFFSETS.length];
     }
+
 
     public Vector2 getClosestPatrolPoint() {
         Vector2 pos = getPosition();
@@ -217,6 +265,31 @@ public class FlyingDrone extends Enemy {
         return new PatrolBehavior(patrolPoints);
     }
 
+    private boolean isPlayerInAttackRange() {
+        if (targetPlayer == null) return false;
+
+        float dist2 = getPosition().dst2(getPlayerPosition());
+        return dist2 <= ATTACK_RADIUS * ATTACK_RADIUS;
+    }
+
+    private void moveAwayFromPlayer(float deltaTime, Maze maze) {
+        Vector2 pos = getPosition();
+        Vector2 playerPos = getPlayerPosition();
+
+        Vector2 awayDir = pos.cpy().sub(playerPos);
+        if (awayDir.len2() < 0.001f) return;
+
+        awayDir.nor().scl(getSpeed());
+
+        getCollisionHandler().move(
+                pos,
+                awayDir,
+                deltaTime,
+                maze
+        );
+    }
+
+
 
     @Override
     protected boolean shouldResetPatrolOnReturn() {
@@ -228,6 +301,20 @@ public class FlyingDrone extends Enemy {
         return 1;
     }
 
+    @Override
+    public float getRenderWidth() {
+        return 28f;
+    }
+
+    @Override
+    public float getRenderHeight() {
+        return 28f;
+    }
+
+    @Override
+    public float getAttackRadius() {
+        return ATTACK_RADIUS;
+    }
 
 }
 

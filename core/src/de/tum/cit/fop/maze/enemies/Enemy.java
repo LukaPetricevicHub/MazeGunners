@@ -182,6 +182,17 @@ public abstract class Enemy {
         return 2;
     }
 
+    public float getRenderWidth() {
+        return 32f;
+    }
+
+    public float getRenderHeight() {
+        return 32f;
+    }
+
+    public float getAttackRadius() {
+        return 0f;
+    }
 
 }
 

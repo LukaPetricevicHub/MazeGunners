@@ -12,64 +12,50 @@ import de.tum.cit.fop.maze.player.Player;
 
 public class MutantWorker extends Enemy {
 
-    // ---------------- Render size ----------------
-    public static final float RENDER_WIDTH  = 32f;
-    public static final float RENDER_HEIGHT = 32f;
-
-    // ---------------- Animation config ----------------
-    private static final int WALK_FRAMES   = 5;
-    private static final int ATTACK_FRAMES = 5;
-
     private static final float WALK_FRAME_DURATION   = 0.12f;
     private static final float ATTACK_FRAME_DURATION = 0.10f;
 
-    // ---------------- Direction ----------------
+    private static final float ATTACK_RADIUS = 24f;
+    private static final float MIN_SAFE_RADIUS = 20f;
+
+    private static final float ATTACK_COOLDOWN = 0.6f; // tune per enemy
+    private float attackCooldownTimer = 0f;
+    private float attackTimer = 0f;
+
+
     private enum Direction { DOWN, LEFT, RIGHT, UP }
     private Direction currentDirection = Direction.DOWN;
 
-    // ---------------- State ----------------
     private boolean attacking = false;
-    private float attackCooldown = 0f;
-    private static final float ATTACK_COOLDOWN_TIME = 0.4f;
-
-    // ---------------- Animations ----------------
-    private static Animation<TextureRegion> walkDown, walkLeft, walkRight, walkUp;
-    private static Animation<TextureRegion> atkDown,  atkLeft,  atkRight,  atkUp;
-
     private float animTimer = 0f;
 
-    // Movement tracking
+    private static Animation<TextureRegion> walkDown, walkLeft, walkRight, walkUp;
+    private static Animation<TextureRegion> atkDown, atkLeft, atkRight, atkUp;
+
     private final Vector2 lastPosition = new Vector2();
 
-    // ---------------- Constructor ----------------
     public MutantWorker(Vector2 startWorldPosition, float movementSpeed, Player targetPlayer) {
         super(startWorldPosition, movementSpeed, new ChaseBehavior(), targetPlayer);
         this.chaseRadius = 250f;
-
         lastPosition.set(startWorldPosition);
         ensureAnimationsLoaded();
     }
 
-    // ---------------- Animation loading ----------------
     private static void ensureAnimationsLoaded() {
         if (walkDown != null) return;
 
-        // WALK
-        walkDown  = loadStrip("Enemies/MutantWorkerDOWN.png",  WALK_FRAMES, WALK_FRAME_DURATION, true);
-        walkLeft  = loadStrip("Enemies/MutantWorkerLEFT.png",  WALK_FRAMES, WALK_FRAME_DURATION, true);
-        walkRight = loadStrip("Enemies/MutantWorkerRIGHT.png", WALK_FRAMES, WALK_FRAME_DURATION, true);
-        walkUp    = loadStrip("Enemies/MutantWorkerUP.png",    WALK_FRAMES, WALK_FRAME_DURATION, true);
+        walkDown  = loadStrip("Enemies/MutantWorker/MutantWorkerDown.png", 8, WALK_FRAME_DURATION, true);
+        walkLeft  = loadStrip("Enemies/MutantWorker/MutantWorkerLeft.png", 8, WALK_FRAME_DURATION, true);
+        walkRight = loadStrip("Enemies/MutantWorker/MutantWorkerRight.png",8, WALK_FRAME_DURATION, true);
+        walkUp    = loadStrip("Enemies/MutantWorker/MutantWorkerUp.png",   8, WALK_FRAME_DURATION, true);
 
-        // ATTACK
-        atkDown  = loadStrip("Enemies/MutantWorkerDOWNAttack.png",  ATTACK_FRAMES, ATTACK_FRAME_DURATION, false);
-        atkLeft  = loadStrip("Enemies/MutantWorkerLEFTAttack.png",  ATTACK_FRAMES, ATTACK_FRAME_DURATION, false);
-        atkRight = loadStrip("Enemies/MutantWorkerRIGHTAttack.png", ATTACK_FRAMES, ATTACK_FRAME_DURATION, false);
-        atkUp    = loadStrip("Enemies/MutantWorkerUPAttack.png",    ATTACK_FRAMES, ATTACK_FRAME_DURATION, false);
+        atkDown  = loadStrip("Enemies/MutantWorker/MutantWorkerDownAttack.png", 7, ATTACK_FRAME_DURATION, false);
+        atkLeft  = loadStrip("Enemies/MutantWorker/MutantWorkerLeftAttack.png", 7, ATTACK_FRAME_DURATION, false);
+        atkRight = loadStrip("Enemies/MutantWorker/MutantWorkerRightAttack.png",7, ATTACK_FRAME_DURATION, false);
+        atkUp    = loadStrip("Enemies/MutantWorker/MutantWorkerUpAttack.png",   7, ATTACK_FRAME_DURATION, false);
     }
 
-    private static Animation<TextureRegion> loadStrip(
-            String path, int frames, float duration, boolean loop
-    ) {
+    private static Animation<TextureRegion> loadStrip(String path, int frames, float duration, boolean loop) {
         Texture tex = new Texture(path);
         tex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
 
@@ -86,7 +72,6 @@ public class MutantWorker extends Enemy {
         return anim;
     }
 
-    // ---------------- Behavior hooks ----------------
     @Override
     protected BehaviorState createChaseBehavior() {
         return new ChaseBehavior();
@@ -102,48 +87,67 @@ public class MutantWorker extends Enemy {
         return true;
     }
 
-    // ---------------- Update ----------------
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
         animTimer += deltaTime;
-        attackCooldown = Math.max(0f, attackCooldown - deltaTime);
+        attackCooldownTimer -= deltaTime;
 
-        if (!attacking) {
-            updateDirectionFromMovement();
+        // ✅ PURE distance-based logic (same as FlyingDrone)
+        if (isPlayerInAttackRange()) {
+
+            updateDirectionFromPlayer();
+
+            // Start attack if cooldown allows
+            if (!attacking && attackCooldownTimer <= 0f) {
+                attacking = true;
+                attackTimer = 0f;
+                attackCooldownTimer = ATTACK_COOLDOWN;
+            }
+
+            // Play attack animation
+            if (attacking) {
+                attackTimer += deltaTime;
+                if (getAttackAnim().isAnimationFinished(attackTimer)) {
+                    attacking = false;
+                    attackTimer = 0f;
+                }
+            }
+
+            // ✅ distance-based kiting (THIS fixes "enemy above player")
+            float dist2 = getPosition().dst2(getPlayerPosition());
+            if (dist2 < MIN_SAFE_RADIUS * MIN_SAFE_RADIUS) {
+                moveAwayFromPlayer(deltaTime, maze);
+            }
+
+            // ⛔ STOP ChaseBehavior from pulling forward
+            return;
         }
 
-        // Check collision with player → trigger attack
-        if (!attacking && attackCooldown <= 0f &&
-                getCollisionBox().overlaps(
-                        targetPlayer != null
-                                ? new com.badlogic.gdx.math.Rectangle(
-                                targetPlayer.getX(),
-                                targetPlayer.getY(),
-                                32f, 64f)
-                                : null
-                )) {
-            startAttack();
-        }
-
-        // End attack when animation finished
-        if (attacking && getAttackAnim().isAnimationFinished(animTimer)) {
-            attacking = false;
-            animTimer = 0f;
-            attackCooldown = ATTACK_COOLDOWN_TIME;
-        }
+        // Outside attack range → full chase resumes
+        attacking = false;
+        attackTimer = 0f;
 
         super.updateBehavior(deltaTime, maze);
+        updateDirectionFromMovement();
     }
 
-    private void startAttack() {
-        attacking = true;
-        animTimer = 0f;
+
+
+    private void updateDirectionFromPlayer() {
+        Vector2 pos = getPosition();
+        Vector2 p = getPlayerPosition();
+
+        float dx = p.x - pos.x;
+        float dy = p.y - pos.y;
+
+        if (Math.abs(dx) > Math.abs(dy))
+            currentDirection = dx > 0 ? Direction.RIGHT : Direction.LEFT;
+        else
+            currentDirection = dy > 0 ? Direction.UP : Direction.DOWN;
     }
 
-    // ---------------- Direction logic ----------------
     private void updateDirectionFromMovement() {
         Vector2 pos = getPosition();
-
         float dx = pos.x - lastPosition.x;
         float dy = pos.y - lastPosition.y;
 
@@ -158,7 +162,24 @@ public class MutantWorker extends Enemy {
         lastPosition.set(pos);
     }
 
-    // ---------------- Animation selection ----------------
+    private Direction getAttackDirection() {
+        Vector2 pos = getPosition();
+        Vector2 p = getPlayerPosition();
+
+        float dx = p.x - pos.x;
+        float dy = p.y - pos.y;
+
+        return Math.abs(dx) > Math.abs(dy)
+                ? (dx > 0 ? Direction.RIGHT : Direction.LEFT)
+                : (dy > 0 ? Direction.UP : Direction.DOWN);
+    }
+
+    public TextureRegion getCurrentFrame() {
+        return attacking
+                ? getAttackAnim().getKeyFrame(attackTimer, false)
+                : getWalkAnim().getKeyFrame(animTimer, true);
+    }
+
     private Animation<TextureRegion> getAttackAnim() {
         return switch (currentDirection) {
             case UP    -> atkUp;
@@ -177,41 +198,37 @@ public class MutantWorker extends Enemy {
         };
     }
 
-    // ---------------- Rendering hook ----------------
-    public TextureRegion getCurrentFrame() {
-        return attacking
-                ? getAttackAnim().getKeyFrame(animTimer)
-                : getWalkAnim().getKeyFrame(animTimer, true);
+    @Override
+    public float getRenderWidth() {
+        return 24f;
     }
 
     @Override
-    protected void onStuck(Maze maze) {
-        // Small perpendicular nudge to escape wall-lock
-        float nudge = 8f;
+    public float getRenderHeight() {
+        return 24f;
+    }
 
-        // Try perpendicular directions first
-        Vector2[] escapeDirs = {
-                new Vector2(0, nudge),
-                new Vector2(0, -nudge),
-                new Vector2(nudge, 0),
-                new Vector2(-nudge, 0)
-        };
+    private boolean isPlayerInAttackRange() {
+        float dist2 = getPosition().dst2(getPlayerPosition());
+        return dist2 <= ATTACK_RADIUS * ATTACK_RADIUS;
+    }
 
-        for (Vector2 dir : escapeDirs) {
-            float nx = worldPosition.x + dir.x;
-            float ny = worldPosition.y + dir.y;
+    private void moveAwayFromPlayer(float deltaTime, Maze maze) {
+        Vector2 pos = getPosition();
+        Vector2 playerPos = getPlayerPosition();
 
-            if (canMoveTo(nx, ny, maze)) {
-                worldPosition.set(nx, ny);
-                return;
-            }
-        }
+        Vector2 away = pos.cpy().sub(playerPos);
+        if (away.len2() < 0.001f) return;
 
-        // As last resort: random small jitter
-        worldPosition.add(
-                (float) (Math.random() - 0.5f) * nudge,
-                (float) (Math.random() - 0.5f) * nudge
-        );
+        away.nor().scl(getSpeed());
+        getCollisionHandler().move(pos, away, deltaTime, maze);
+    }
+
+
+    @Override
+    public float getAttackRadius() {
+        return ATTACK_RADIUS;
     }
 
 }
+
