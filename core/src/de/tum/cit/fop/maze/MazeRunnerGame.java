@@ -4,20 +4,29 @@ import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.Color; // Added
-import com.badlogic.gdx.graphics.Pixmap; // Added
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.scenes.scene2d.ui.Skin; // Keep Skin
+// REMOVED: import com.badlogic.gdx.scenes.scene2d.ui.List; <--- THIS WAS THE ERROR
+import java.util.List; // <--- ADDED CORRECT IMPORT
+
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Json;
+import de.tum.cit.fop.maze.enemies.Enemy;
+import de.tum.cit.fop.maze.enemies.FlyingDrone;
+import de.tum.cit.fop.maze.enemies.MutantWorker;
+import de.tum.cit.fop.maze.enemies.RobotGuard;
+import de.tum.cit.fop.maze.items.*;
 import de.tum.cit.fop.maze.util.AchievementManager;
 import games.spooky.gdx.nativefilechooser.NativeFileChooser;
 import de.tum.cit.fop.maze.util.AudioManager;
 import de.tum.cit.fop.maze.util.GamePreferences;
 import de.tum.cit.fop.maze.player.Player;
+import de.tum.cit.fop.maze.score.LeaderboardManager;
 
 /**
  * The MazeRunnerGame class represents the core of the Maze Runner game.
@@ -40,10 +49,10 @@ public class MazeRunnerGame extends Game {
     // Standard Walking Animations
     private Animation<TextureRegion> animDown, animUp, animLeft, animRight;
 
-    // --- NEW: Shooting Animations ---
+    // Shooting Animations
     private Animation<TextureRegion> shootDownAnim, shootUpAnim, shootLeftAnim, shootRightAnim;
 
-    // --- NEW: Bullet Texture ---
+    // Bullet Texture
     private TextureRegion bulletRegion;
 
     private Texture tileset;
@@ -56,6 +65,8 @@ public class MazeRunnerGame extends Game {
 
     // Variable to temporarily hold loaded data until GameScreen is ready
     private GameState pendingSaveState = null;
+    private LeaderboardManager leaderboardManager;
+
 
     /**
      * Constructor for MazeRunnerGame.
@@ -80,6 +91,7 @@ public class MazeRunnerGame extends Game {
         this.createBulletTexture();
 
         achievementManager = new AchievementManager();
+        leaderboardManager = new LeaderboardManager();
 
         goToMenu(); // Start at Main Menu
 
@@ -91,7 +103,7 @@ public class MazeRunnerGame extends Game {
     }
 
     private void createBulletTexture() {
-        // Generate a 4x4 yellow pixel texture for the bullet so we don't need an image file
+        // Generate a 4x4 yellow pixel texture
         Pixmap pixmap = new Pixmap(4, 4, Pixmap.Format.RGBA8888);
         pixmap.setColor(Color.YELLOW);
         pixmap.fill();
@@ -117,9 +129,6 @@ public class MazeRunnerGame extends Game {
         this.setScreen(new MenuScreen(this));
     }
 
-    /**
-     * Switches to the Level Selection Menu.
-     */
     public void goToGame() {
         this.setScreen(new LevelMenuScreen(this));
         if (menuScreen != null) {
@@ -128,30 +137,23 @@ public class MazeRunnerGame extends Game {
         }
     }
 
-    /**
-     * Directly launches a specific level file (Used by Load Game).
-     */
     public void goToLevel(int levelNumber) {
         String mapPath = "maps/level-" + levelNumber + ".properties";
-
         if (menuScreen != null) {
             menuScreen.dispose();
             menuScreen = null;
         }
-
-        // Launch GameScreen directly
         this.setScreen(new GameScreen(this, mapPath));
     }
 
-
     /**
-     * SAVES the current game state to "save.json".
+     * SAVES the game, including Player stats, Enemies, and Items.
      */
-    public void saveGame(Player player, int currentLevel) {
+    public void saveGame(Player player, int currentLevel, List<Enemy> enemies, List<AbstractCollectable> items) {
         Json json = new Json();
         GameState state = new GameState();
 
-        // 1. Copy data
+        // 1. Save Player Data
         state.level = currentLevel;
         state.playerLevel = player.getPlayerLevel();
         state.score = player.getScore();
@@ -164,18 +166,49 @@ public class MazeRunnerGame extends Game {
         state.noClip = player.isNoClip();
         state.playerX = player.getX();
         state.playerY = player.getY();
+        state.shouldRestorePosition = true;
 
-        // 2. Write to file
+        // 2. Save Enemies
+        if (enemies != null) {
+            for (Enemy e : enemies) {
+                GameState.EnemyState es = new GameState.EnemyState();
+                es.x = e.getPosition().x; // Fixed getX() issue
+                es.y = e.getPosition().y;
+
+                if (e instanceof MutantWorker) es.type = "slime";
+                else if (e instanceof RobotGuard) es.type = "robot";
+                else if (e instanceof FlyingDrone) es.type = "drone";
+                else es.type = "unknown";
+
+                state.enemies.add(es);
+            }
+        }
+
+        // 3. Save Items
+        if (items != null) {
+            for (AbstractCollectable i : items) {
+                if (!i.isActive()) continue;
+
+                GameState.ItemState is = new GameState.ItemState();
+                is.x = i.getBounds().x;
+                is.y = i.getBounds().y;
+
+                if (i instanceof GunCollectable) is.type = "gun";
+                else if (i instanceof HeartItem) is.type = "heart";
+                else if (i instanceof SpeedItem) is.type = "speed";
+                else if (i instanceof ShieldItem) is.type = "shield";
+
+                state.items.add(is);
+            }
+        }
+
+        // 4. Write to File
         String text = json.toJson(state);
-
-        // --- FIX: Create the directory if it doesn't exist ---
         FileHandle file = Gdx.files.local("saves/save.json");
-        file.parent().mkdirs(); // <--- THIS PREVENTS THE CRASH
-        // ----------------------------------------------------
-
+        file.parent().mkdirs();
         file.writeString(text, false);
 
-        System.out.println("GAME SAVED! (Level " + currentLevel + ")");
+        System.out.println("GAME SAVED! (Enemies: " + state.enemies.size() + ", Items: " + state.items.size() + ")");
     }
 
     /**
@@ -191,13 +224,8 @@ public class MazeRunnerGame extends Game {
             Json json = new Json();
             String text = Gdx.files.local("saves/save.json").readString();
 
-            // 1. Deserialize JSON
             this.pendingSaveState = json.fromJson(GameState.class, text);
-
-            // 2. Unlock the saved level so we are allowed to play it
             getPreferences().setMaxLevel(Math.max(getPreferences().getMaxLevel(), pendingSaveState.level));
-
-            // 3. LAUNCH THE SAVED LEVEL DIRECTLY
             goToLevel(pendingSaveState.level);
 
             return true;
@@ -209,8 +237,7 @@ public class MazeRunnerGame extends Game {
 
     public void handleLevelTransition(Player player) {
         GameState state = new GameState();
-
-        state.level = 0; // Irrelevant for transition
+        state.level = 0;
         state.score = player.getScore();
         state.lives = player.getLives();
         state.playerLevel = player.getPlayerLevel();
@@ -220,20 +247,12 @@ public class MazeRunnerGame extends Game {
         state.hasGun = player.hasGun();
         state.godMode = player.isGodMode();
         state.noClip = player.isNoClip();
-
         state.shouldRestorePosition = true;
-
         this.pendingSaveState = state;
     }
 
-    public GameState getPendingSaveState() {
-        return pendingSaveState;
-    }
-
-    public void clearPendingSaveState() {
-        pendingSaveState = null;
-    }
-
+    public GameState getPendingSaveState() { return pendingSaveState; }
+    public void clearPendingSaveState() { pendingSaveState = null; }
 
     private void loadCharacterAnimation() {
         Texture walkSheet = new Texture(Gdx.files.internal("Main_character.png"));
@@ -263,7 +282,6 @@ public class MazeRunnerGame extends Game {
         animLeft = new Animation<>(0.15f, framesLeft, Animation.PlayMode.LOOP);
 
         // --- SETUP SHOOTING ANIMATIONS ---
-        // (Currently mapping to walking animations to prevent errors if you don't have separate sprites)
         shootDownAnim = animDown;
         shootUpAnim = animUp;
         shootLeftAnim = animLeft;
@@ -292,6 +310,7 @@ public class MazeRunnerGame extends Game {
     public Animation<TextureRegion> getAnimUp() { return animUp; }
     public Animation<TextureRegion> getAnimLeft() { return animLeft; }
     public Animation<TextureRegion> getAnimRight() { return animRight; }
+    public LeaderboardManager getLeaderboardManager() { return leaderboardManager; }
 
     // --- NEW GETTERS FOR PLAYER CLASS ---
     public Animation<TextureRegion> getShootDownAnim() { return shootDownAnim; }

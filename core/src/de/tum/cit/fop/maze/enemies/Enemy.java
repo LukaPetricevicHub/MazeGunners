@@ -202,6 +202,13 @@ public abstract class Enemy {
     public int getPathfindingFootprint() {
         return 2;
     }
+    public float getX() {
+        return worldPosition.x;
+    }
+
+    public float getY() {
+        return worldPosition.y;
+    }
 
 
 }

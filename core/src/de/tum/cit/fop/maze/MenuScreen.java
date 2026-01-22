@@ -3,7 +3,6 @@ package de.tum.cit.fop.maze;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -11,41 +10,39 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.FitViewport; // Use FitViewport
 import com.badlogic.gdx.utils.viewport.Viewport;
 
-/**
- * The MenuScreen class is responsible for displaying the main menu of the game.
- * It extends the LibGDX Screen class and sets up the UI components for the menu.
- */
+import de.tum.cit.fop.maze.ui.LeaderboardScreen;
+import de.tum.cit.fop.maze.ui.AchievementScreen; // Assuming this is in UI package
+
 public class MenuScreen implements Screen {
 
     private final Stage stage;
     private final MazeRunnerGame game;
     private Texture background;
     private com.badlogic.gdx.audio.Sound clickSound;
+    private Viewport viewport;
 
-    /**
-     * Constructor for MenuScreen. Sets up the camera, viewport, stage, and UI elements.
-     *
-     * @param game The main game class, used to access global resources and methods.
-     */
     public MenuScreen(MazeRunnerGame game) {
         this.game = game;
 
-        var camera = new OrthographicCamera();
-        camera.zoom = 1.0f; // Set camera zoom for a closer view
+        // --- FIX: Initialize the Class Viewport directly ---
+        // Use FitViewport (1280x720) so buttons stay the correct size on all screens
+        this.viewport = new FitViewport(1280, 720);
 
-        Viewport viewport = new ScreenViewport(camera); // Create a viewport with the camera
-        stage = new Stage(viewport, game.getSpriteBatch()); // Create a stage for UI elements
+        // --- FIX: Pass 'this.viewport' to the Stage ---
+        this.stage = new Stage(viewport, game.getSpriteBatch());
 
+        // Background
         background = new Texture(Gdx.files.internal("menu-background.png"));
 
-        Table table = new Table(); // Create a table for layout
-        table.setFillParent(true); // Make the table fill the stage
-        stage.addActor(table); // Add the table to the stage
+        // Table Layout
+        Table table = new Table();
+        table.setFillParent(true);
+        stage.addActor(table);
 
-        // Add a label as a title
+        // Title
         Label title = new Label("THE MAZE RUNNER", game.getSkin(), "title");
         title.setFontScale(1.2f);
         table.add(title).padBottom(60).row();
@@ -57,18 +54,17 @@ public class MenuScreen implements Screen {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 playClickSound();
-                game.setScreen(new LevelMenuScreen(game)); // Open the level selection menu
+                game.setScreen(new LevelMenuScreen(game));
             }
         });
 
-        // --- 2. LOAD GAME BUTTON (THIS IS NEW) ---
+        // --- 2. LOAD GAME BUTTON ---
         TextButton loadButton = new TextButton("Load Game", game.getSkin());
         table.add(loadButton).width(300).padBottom(10).row();
         loadButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 playClickSound();
-                // Calls the load method in MazeRunnerGame
                 if (game.loadGame()) {
                     System.out.println("Save loaded successfully!");
                 } else {
@@ -82,12 +78,25 @@ public class MenuScreen implements Screen {
         achievementBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                game.setScreen(new de.tum.cit.fop.maze.ui.AchievementScreen(game));
+                playClickSound();
+                // Ensure AchievementScreen exists in your project
+                game.setScreen(new AchievementScreen(game));
             }
         });
         table.add(achievementBtn).width(300).padBottom(10).row();
 
-        // --- 4. SETTINGS BUTTON ---
+        // --- 4. LEADERBOARD BUTTON ---
+        TextButton leaderboardBtn = new TextButton("Leaderboard", game.getSkin());
+        leaderboardBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                playClickSound();
+                game.setScreen(new LeaderboardScreen(game));
+            }
+        });
+        table.add(leaderboardBtn).width(300).padBottom(20).row();
+
+        // --- 5. SETTINGS BUTTON ---
         TextButton settingsButton = new TextButton("Settings", game.getSkin());
         table.add(settingsButton).width(300).padBottom(10).row();
         settingsButton.addListener(new ChangeListener() {
@@ -98,7 +107,7 @@ public class MenuScreen implements Screen {
             }
         });
 
-        // --- 5. EXIT BUTTON ---
+        // --- 6. EXIT BUTTON ---
         TextButton exitButton = new TextButton("Exit", game.getSkin());
         table.add(exitButton).width(300).row();
         exitButton.addListener(new ChangeListener() {
@@ -119,13 +128,12 @@ public class MenuScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT); // Clear the screen
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         if (background != null) {
             game.getSpriteBatch().setProjectionMatrix(stage.getCamera().combined);
-
             game.getSpriteBatch().begin();
-
+            // Draw background to fill the virtual width/height
             game.getSpriteBatch().draw(background, 0, 0, stage.getWidth(), stage.getHeight());
             game.getSpriteBatch().end();
         }
@@ -136,19 +144,20 @@ public class MenuScreen implements Screen {
 
     @Override
     public void resize(int width, int height) {
-        stage.getViewport().update(width, height, true); // Update the stage viewport on resize
+        // This ensures the HUD scales correctly and stays centered
+        stage.getViewport().update(width, height, true);
     }
 
     @Override
     public void dispose() {
-        // Dispose of the stage when screen is disposed
         stage.dispose();
     }
 
     @Override
     public void show() {
-        // Set the input processor so the stage can receive input events
         Gdx.input.setInputProcessor(stage);
+
+        // Load sounds safely
         if (Gdx.files.internal("audio/click.mp3").exists()) {
             clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/click.mp3"));
         } else if (Gdx.files.internal("audio/pickup.mp3").exists()) {

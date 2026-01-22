@@ -6,10 +6,15 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
@@ -19,6 +24,7 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.utils.Timer;
 
+
 import de.tum.cit.fop.maze.camera.GameCamera;
 import de.tum.cit.fop.maze.camera.CameraInputController;
 import de.tum.cit.fop.maze.enemies.Enemy;
@@ -26,8 +32,7 @@ import de.tum.cit.fop.maze.enemies.FlyingDrone;
 import de.tum.cit.fop.maze.enemies.MutantWorker;
 import de.tum.cit.fop.maze.enemies.RobotGuard;
 import de.tum.cit.fop.maze.hud.Hud;
-import de.tum.cit.fop.maze.items.ItemSpawner;
-import de.tum.cit.fop.maze.items.AbstractCollectable; // Added import
+import de.tum.cit.fop.maze.items.*;
 import de.tum.cit.fop.maze.map.*;
 import de.tum.cit.fop.maze.obstacles.*;
 import de.tum.cit.fop.maze.player.Player;
@@ -39,6 +44,8 @@ import de.tum.cit.fop.maze.obstacles.Prop;
 import de.tum.cit.fop.maze.ui.PauseMenuWindow;
 import de.tum.cit.fop.maze.ui.GameOverWindow;
 
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,8 +53,11 @@ import java.util.List;
 import java.util.Map;
 
 public class GameScreen implements Screen {
-
     // Attributes
+    private ShapeRenderer shapeRenderer; // Tool to draw simple shapes
+    private float minimapZoom = 6.0f;    // How "zoomed out" the map is
+    private float minimapSize = 200f;    // Size of the box in pixels (200x200)
+
     private final MazeRunnerGame game;
     private final FileHandle levelFile;
 
@@ -99,6 +109,7 @@ public class GameScreen implements Screen {
     private final boolean endlessMode;
     private int floor;
     private long runSeed;
+    private Viewport uiViewport;
 
     // --- CONSTRUCTORS ---
 
@@ -110,18 +121,31 @@ public class GameScreen implements Screen {
         this(game, level, null, false, level);
     }
 
+    // This is the one "Floor 1" uses:
     public GameScreen(MazeRunnerGame game, int level, FileHandle levelFile, boolean endlessMode, int startFloor) {
         this.game = game;
         this.levelFile = levelFile;
         this.level = level;
-        this.viewport = new ScreenViewport();
         this.endlessMode = endlessMode;
         this.floor = startFloor;
+
+        // --- FIX: INITIALIZE VIEWPORTS HERE TOO ---
+        this.viewport = new ScreenViewport();
+        this.uiViewport = new com.badlogic.gdx.utils.viewport.FitViewport(1280, 720);
+        // ------------------------------------------
+
+        // Initialize viewport for the HUD specifically if needed early (usually done in show(), but safe here)
+        this.viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
     }
 
+    // This is the one "Load Game" uses:
     public GameScreen(MazeRunnerGame game, String mapPath) {
         this.game = game;
+
+        // --- FIX: INITIALIZE BOTH VIEWPORTS HERE ---
         this.viewport = new ScreenViewport();
+        this.uiViewport = new com.badlogic.gdx.utils.viewport.FitViewport(1280, 720);
+        // ------------------------------------------
 
         FileHandle localHandle = Gdx.files.local(mapPath);
         if (localHandle.exists()) {
@@ -319,12 +343,15 @@ public class GameScreen implements Screen {
             hud.act(delta);
             hud.draw();
         }
+        renderMinimap();
     }
 
     @Override
     public void show() {
         Gdx.app.log("MAZE", "GameScreen level=" + level);
         runSeed = System.currentTimeMillis();
+
+        shapeRenderer = new ShapeRenderer();
 
         viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
 
@@ -366,6 +393,8 @@ public class GameScreen implements Screen {
 
         fog = new FogOfWarRenderer();
         fog.setFogAlpha(0.95f);
+
+        game.clearPendingSaveState();
     }
 
 
@@ -414,46 +443,169 @@ public class GameScreen implements Screen {
                     System.out.println("Saved position invalid (wall). Using default spawn.");
                 }
             }
-            game.clearPendingSaveState();
         }
     }
 
     private void initializeEnemiesAndObstacles(long seed) {
+        // 1. Obstacles (Traps) - These are static, so we can always regenerate them
         obstacles = new ObstaclePlacer().placeObstacles(maze, 40, seed);
 
+        // Add Props
         int effectiveLevel = endlessMode ? floor : level;
-
-        int propCount = (effectiveLevel <= 5)
-                ? switch (effectiveLevel) {
-            case 1 -> 10;
-            case 2 -> 18;
-            case 3 -> 28;
-            case 4 -> 40;
-            case 5 -> 55;
-            default -> 20;
-        }
-                : 55 + (effectiveLevel - 5) * 8;
-
         PropPlacer propPlacer = new PropPlacer();
-        var placedProps = propPlacer.placeProps(maze, propCount, seed, Math.min(effectiveLevel, 5), propSprites);
+        var placedProps = propPlacer.placeProps(maze, 20, seed, Math.min(effectiveLevel, 5), propSprites);
         obstacles.addAll(placedProps);
 
-        int baseEnemies = 28;
-        int enemyCount = endlessMode ? (baseEnemies + (floor - 1) * 6) : baseEnemies;
+        // 2. CHECK FOR SAVE DATA
+        GameState savedState = game.getPendingSaveState();
 
-        enemies = new EnemySpawner().spawnEnemies(maze, rooms, player, enemyCount, seed);
+        // --- RESTORE ENEMIES ---
+        if (savedState != null && savedState.enemies != null && !savedState.enemies.isEmpty()) {
+            System.out.println("Restoring " + savedState.enemies.size() + " enemies from save...");
+            enemies = new ArrayList<>();
 
-        int itemCount = endlessMode ? (10 + floor / 2) : 10;
-        items = new ItemSpawner().spawnItems(maze, itemCount); // Fixed item count usage
+            for (GameState.EnemyState es : savedState.enemies) {
+                Vector2 pos = new Vector2(es.x, es.y);
+
+                if (es.type.equals("slime")) {
+                    // MutantWorker: Position, Speed (approx 50), Player
+                    enemies.add(new MutantWorker(pos, 50f, player));
+
+                } else if (es.type.equals("robot")) {
+                    // RobotGuard: Position, Speed (approx 70), Patrol Path, Player
+                    // We create a "dummy" path so it stays in the saved spot
+                    Array<Vector2> dummyPath = new Array<>();
+                    dummyPath.add(pos);
+                    enemies.add(new RobotGuard(pos, 70f, dummyPath, player));
+
+                } else if (es.type.equals("drone")) {
+                    // FlyingDrone: Position, Speed (approx 90), Patrol Path, Player
+                    Array<Vector2> dummyPath = new Array<>();
+                    dummyPath.add(pos);
+                    enemies.add(new FlyingDrone(pos, 90f, dummyPath, player));
+                }
+            }
+        } else {
+            // No save data? Spawn fresh enemies normally
+            int baseEnemies = 28;
+            int enemyCount = endlessMode ? (baseEnemies + (floor - 1) * 6) : baseEnemies;
+            enemies = new EnemySpawner().spawnEnemies(maze, rooms, player, enemyCount, seed);
+        }
+
+        // --- RESTORE ITEMS ---
+        if (savedState != null && savedState.items != null && !savedState.items.isEmpty()) {
+            System.out.println("Restoring " + savedState.items.size() + " items from save...");
+            items = new ArrayList<>();
+            for (GameState.ItemState is : savedState.items) {
+                if (is.type.equals("gun")) items.add(new GunCollectable(is.x, is.y));
+                else if (is.type.equals("heart")) items.add(new HeartItem(is.x, is.y));
+                else if (is.type.equals("speed")) items.add(new SpeedItem(is.x, is.y));
+                else if (is.type.equals("shield")) items.add(new ShieldItem(is.x, is.y));
+            }
+        } else {
+            // No save data? Spawn fresh items normally
+            int itemCount = endlessMode ? (10 + floor / 2) : 10;
+            items = new ItemSpawner().spawnItems(maze, itemCount);
+        }
     }
 
     private void initializeEvents() {
         // Placeholder for event logic
     }
 
+    private void renderMinimap() {
+        // 1. SAFETY CHECK: Ensure ShapeRenderer and UI Viewport exist
+        if (shapeRenderer == null || uiViewport == null) return;
+
+        // 2. COORDINATE FIX: Use the Virtual Viewport size, NOT the Window size
+        float worldW = uiViewport.getWorldWidth();
+        float worldH = uiViewport.getWorldHeight();
+
+        // Position: Top-Right corner with padding
+        float mapX = worldW - minimapSize - 20;
+        float mapY = worldH - minimapSize - 20;
+
+        // 3. ENABLE BLENDING (So the black background is transparent)
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+
+        // 4. DRAW BACKGROUND
+        shapeRenderer.setProjectionMatrix(uiViewport.getCamera().combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        shapeRenderer.setColor(0, 0, 0, 0.5f); // 50% Transparent Black
+        shapeRenderer.rect(mapX, mapY, minimapSize, minimapSize);
+
+        // 5. CALCULATE SCALE
+        // Show a 30-tile range (15 left, 15 right)
+        float viewRange = 15 * TILE_SIZE;
+        float scale = minimapSize / (viewRange * 2);
+
+        float playerX = player.getX();
+        float playerY = player.getY();
+        float centerX = mapX + minimapSize / 2;
+        float centerY = mapY + minimapSize / 2;
+
+        // 6. DRAW WALLS
+        shapeRenderer.setColor(Color.LIGHT_GRAY);
+
+        // Optimization: Only loop through tiles near the player
+        int radius = 20;
+        int startCol = (int)(playerX / TILE_SIZE) - radius;
+        int endCol = (int)(playerX / TILE_SIZE) + radius;
+        int startRow = (int)(playerY / TILE_SIZE) - radius;
+        int endRow = (int)(playerY / TILE_SIZE) + radius;
+
+        for (int row = startRow; row <= endRow; row++) {
+            for (int col = startCol; col <= endCol; col++) {
+                // Check map boundaries (using col for width, row for height)
+                if (col < 0 || row < 0 || col >= maze.getWidth() || row >= maze.getHeight()) continue;
+
+                // --- FIX IS HERE: Swap row/col to match (x, y) ---
+                if (maze.getTile(col, row).isWall()) {
+
+                    float relX = (col * TILE_SIZE - playerX) * scale;
+                    float relY = (row * TILE_SIZE - playerY) * scale;
+
+                    // Simple clipping check
+                    if (Math.abs(relX) < minimapSize/2 && Math.abs(relY) < minimapSize/2) {
+                        shapeRenderer.rect(centerX + relX, centerY + relY, TILE_SIZE * scale, TILE_SIZE * scale);
+                    }
+                }
+            }
+        }
+
+        // 7. DRAW ENEMIES (Red Dots)
+        shapeRenderer.setColor(Color.RED);
+        if (enemies != null) {
+            for (Enemy enemy : enemies) {
+                float relX = (enemy.getX() - playerX) * scale;
+                float relY = (enemy.getY() - playerY) * scale;
+
+                if (Math.abs(relX) < minimapSize/2 && Math.abs(relY) < minimapSize/2) {
+                    shapeRenderer.circle(centerX + relX, centerY + relY, 4);
+                }
+            }
+        }
+
+        // 8. DRAW PLAYER (Green Dot)
+        shapeRenderer.setColor(Color.GREEN);
+        shapeRenderer.circle(centerX, centerY, 5);
+
+        shapeRenderer.end();
+
+        // 9. DRAW BORDER (White Line)
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(Color.WHITE);
+        shapeRenderer.rect(mapX, mapY, minimapSize, minimapSize);
+        shapeRenderer.end();
+
+        // Clean up
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
     private void createHud() {
-        Viewport hudViewport = new ScreenViewport();
-        hud = new Hud(hudViewport, game.getSpriteBatch(), game.getSkin());
+        hud = new Hud(uiViewport, game.getSpriteBatch(), game.getSkin());
     }
 
     private void playLevelMusic() {
@@ -571,8 +723,21 @@ public class GameScreen implements Screen {
     }
 
     private void createPauseMenu() {
-        pauseStage = new Stage(viewport, game.getSpriteBatch());
+        pauseStage = new Stage(uiViewport, game.getSpriteBatch());
 
+        // 1. Create a dark semi-transparent background texture
+        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pixmap.setColor(0, 0, 0, 0.6f); // Black with 60% opacity
+        pixmap.fill();
+        TextureRegionDrawable darkBg = new TextureRegionDrawable(new TextureRegion(new Texture(pixmap)));
+        pixmap.dispose();
+
+        // 2. Create a Root Table that fills the screen
+        Table rootTable = new Table();
+        rootTable.setFillParent(true);
+        rootTable.setBackground(darkBg);
+
+        // 3. Create the Skill Window (hidden by default)
         skillWindow = new SkillWindow(game.getSkin(), player, () -> {
             playClickSound();
             skillWindow.setVisible(false);
@@ -580,6 +745,7 @@ public class GameScreen implements Screen {
         });
         skillWindow.setVisible(false);
 
+        // 4. Create the Pause Window
         pauseWindow = new PauseMenuWindow(
                 game.getSkin(),
                 () -> { playClickSound(); togglePause(); },
@@ -590,9 +756,10 @@ public class GameScreen implements Screen {
                     pauseWindow.setVisible(false);
                     skillWindow.setVisible(true);
 
+                    // Center skill window
                     skillWindow.setPosition(
-                            (viewport.getWorldWidth() - skillWindow.getWidth()) / 2f,
-                            (viewport.getWorldHeight() - skillWindow.getHeight()) / 2f
+                            (uiViewport.getWorldWidth() - skillWindow.getWidth()) / 2f,
+                            (uiViewport.getWorldHeight() - skillWindow.getHeight()) / 2f
                     );
                 },
                 () -> { playClickSound(); game.goToMenu(); }
@@ -603,7 +770,7 @@ public class GameScreen implements Screen {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 playClickSound();
-                game.saveGame(player, level);
+                game.saveGame(player, level, enemies, items);
                 saveButton.setText("Saved!");
                 Timer.schedule(new Timer.Task() {
                     @Override
@@ -613,23 +780,23 @@ public class GameScreen implements Screen {
                 }, 1f);
             }
         });
+
         pauseWindow.add(saveButton).fillX().pad(10).row();
         pauseWindow.pack();
 
-        pauseWindow.setPosition(
-                (viewport.getWorldWidth() - pauseWindow.getWidth()) / 2f,
-                (viewport.getWorldHeight() - pauseWindow.getHeight()) / 2f
-        );
+        // 5. Add the Pause Window to the Root Table (Centered)
+        rootTable.add(pauseWindow);
 
+        // 6. Create Settings Window (hidden)
         createSettingsWindow();
 
-        pauseStage.addActor(pauseWindow);
-        pauseStage.addActor(settingsWindow);
-        pauseStage.addActor(skillWindow);
+        // 7. Add everything to the Stage
+        pauseStage.addActor(rootTable);      // The dark background + pause menu
+        pauseStage.addActor(settingsWindow); // Popups on top
+        pauseStage.addActor(skillWindow);    // Popups on top
 
         settingsWindow.setVisible(false);
         skillWindow.setVisible(false);
-        pauseWindow.setVisible(true);
     }
 
     private void showGameOverMenu(boolean won) {
@@ -723,8 +890,10 @@ public class GameScreen implements Screen {
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height, true);
+        uiViewport.update(width, height, true);
+
         hud.resize(width, height, true);
-        pauseStage.getViewport().update(width, height, true);
+
         gameCamera.resize(viewport.getWorldWidth(), viewport.getWorldHeight());
         fog.resize(width, height);
     }

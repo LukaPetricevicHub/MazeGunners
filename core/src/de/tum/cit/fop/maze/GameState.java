@@ -1,4 +1,7 @@
 package de.tum.cit.fop.maze;
+
+import java.util.ArrayList;
+
 public class GameState {
 
     // --- Global Progress ---
@@ -22,6 +25,20 @@ public class GameState {
     // if the maze regenerates randomly)
     public float playerX;
     public float playerY;
+
+    public ArrayList<EnemyState> enemies = new ArrayList<>();
+    public ArrayList<ItemState> items = new ArrayList<>();
+
+    public static class EnemyState {
+        public float x, y;
+        public String type; // "robot", "slime", "drone"
+        public int health; // Optional, if you want to save enemy HP
+    }
+
+    public static class ItemState {
+        public float x, y;
+        public String type; // "gun", "heart", "speed", "shield"
+    }
 
     public boolean shouldRestorePosition = true;
 
