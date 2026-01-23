@@ -110,6 +110,19 @@ public class GameScreen implements Screen {
     private int floor;
     private long runSeed;
     private Viewport uiViewport;
+    private int enemyCount;
+    private int trapCount;
+    private int itemCount;
+    private int propCount;
+
+
+    private static final int[] ENEMIES_PER_LEVEL = {0, 18, 22, 26, 30, 34};
+    private static final int[] TRAPS_PER_LEVEL   = {0, 20, 26, 32, 38, 45};
+    private static final int[] ITEMS_PER_LEVEL   = {0, 10, 10, 11, 11, 12};
+    private static final int[] PROPS_PER_LEVEL   = {0, 15, 18, 20, 22, 24};
+
+    private int clampLevel(int lv) { return Math.max(1, Math.min(5, lv)); }
+
 
     // --- CONSTRUCTORS ---
 
@@ -387,13 +400,13 @@ public class GameScreen implements Screen {
         // 1) Maze & graphics first (camera needs maze size)
         initializeMaze(runSeed);
         initializeGraphics();
-
         // 2) Player now (some UI depends on player)
         initializePlayer();
-
         // 3) UI now (skill window uses player)
         createPauseMenu();
         createHud();
+
+
 
         // Correct label for each mode
         if (endlessMode) hud.setFloorText("Round: " + floor);
@@ -402,9 +415,26 @@ public class GameScreen implements Screen {
         // Exit target for arrow/hints
         updateHudExitTarget();
 
+        int lv = clampLevel(endlessMode ? floor : level);
+
+        enemyCount = ENEMIES_PER_LEVEL[lv];
+        trapCount  = TRAPS_PER_LEVEL[lv];
+        itemCount  = ITEMS_PER_LEVEL[lv];
+        propCount  = PROPS_PER_LEVEL[lv];
+
+        Gdx.app.log("SPAWN", "counts: enemies=" + enemyCount
+                + " traps=" + trapCount
+                + " items=" + itemCount
+                + " props=" + propCount);
         // 4) Spawn enemies/items
+
         initializeEnemiesAndObstacles(runSeed);
         initializeEvents();
+
+
+        Gdx.app.log("SPAWN", "rooms=" + (rooms == null ? 0 : rooms.size())
+                + " enemies=" + (enemies == null ? 0 : enemies.size()));
+
 
         trackedLevel = player.getPlayerLevel();
         hud.getDevConsole().setPlayer(player);
@@ -481,54 +511,43 @@ public class GameScreen implements Screen {
     }
 
     private void initializeEnemiesAndObstacles(long seed) {
-        // 1. Obstacles (Traps) - These are static, so we can always regenerate them
-        obstacles = new ObstaclePlacer().placeObstacles(maze, 40, seed);
+        Room spawnRoom = findSpawnRoom();
 
-        // Add Props
+        // 1) Traps (NOT in spawn room)
+        obstacles = new ObstaclePlacer().placeObstacles(maze, trapCount, seed, spawnRoom);
+
+        // 2) Props (ALLOWED in spawn room) - use propCount instead of 20
         int effectiveLevel = endlessMode ? floor : level;
         PropPlacer propPlacer = new PropPlacer();
-        var placedProps = propPlacer.placeProps(maze, 20, seed, Math.min(effectiveLevel, 5), propSprites);
+        var placedProps = propPlacer.placeProps(maze, propCount, seed, Math.min(effectiveLevel, 5), propSprites);
         obstacles.addAll(placedProps);
 
-        // 2. CHECK FOR SAVE DATA
         GameState savedState = game.getPendingSaveState();
 
-        // --- RESTORE ENEMIES ---
+        // 3) Enemies (NOT in spawn room)
         if (savedState != null && savedState.enemies != null && !savedState.enemies.isEmpty()) {
-            System.out.println("Restoring " + savedState.enemies.size() + " enemies from save...");
+            // restore enemies
             enemies = new ArrayList<>();
-
             for (GameState.EnemyState es : savedState.enemies) {
                 Vector2 pos = new Vector2(es.x, es.y);
-
-                if (es.type.equals("slime")) {
-                    // MutantWorker: Position, Speed (approx 50), Player
-                    enemies.add(new MutantWorker(pos, 50f, player));
-
-                } else if (es.type.equals("robot")) {
-                    // RobotGuard: Position, Speed (approx 70), Patrol Path, Player
-                    // We create a "dummy" path so it stays in the saved spot
+                if (es.type.equals("slime")) enemies.add(new MutantWorker(pos, 50f, player));
+                else if (es.type.equals("robot")) {
                     Array<Vector2> dummyPath = new Array<>();
                     dummyPath.add(pos);
                     enemies.add(new RobotGuard(pos, 70f, dummyPath, player));
-
                 } else if (es.type.equals("drone")) {
-                    // FlyingDrone: Position, Speed (approx 90), Patrol Path, Player
                     Array<Vector2> dummyPath = new Array<>();
                     dummyPath.add(pos);
                     enemies.add(new FlyingDrone(pos, 90f, dummyPath, player));
                 }
             }
         } else {
-            // No save data? Spawn fresh enemies normally
-            int baseEnemies = 28;
-            int enemyCount = endlessMode ? (baseEnemies + (floor - 1) * 6) : baseEnemies;
-            enemies = new EnemySpawner().spawnEnemies(maze, rooms, player, enemyCount, seed);
+            // fresh spawn using per-level enemyCount (NOT baseEnemies)
+            enemies = new EnemySpawner().spawnEnemies(maze, rooms, spawnRoom, player, enemyCount, seed);
         }
 
-        // --- RESTORE ITEMS ---
+        // 4) Items / powerups (ALLOWED in spawn room)
         if (savedState != null && savedState.items != null && !savedState.items.isEmpty()) {
-            System.out.println("Restoring " + savedState.items.size() + " items from save...");
             items = new ArrayList<>();
             for (GameState.ItemState is : savedState.items) {
                 if (is.type.equals("gun")) items.add(new GunCollectable(is.x, is.y));
@@ -537,11 +556,10 @@ public class GameScreen implements Screen {
                 else if (is.type.equals("shield")) items.add(new ShieldItem(is.x, is.y));
             }
         } else {
-            // No save data? Spawn fresh items normally
-            int itemCount = endlessMode ? (10 + floor / 2) : 10;
-            items = new ItemSpawner().spawnItems(maze, itemCount);
+            items = new ItemSpawner().spawnItems(maze, itemCount); // use per-level
         }
     }
+
 
     private void initializeEvents() {
         // Placeholder for event logic
@@ -667,11 +685,12 @@ public class GameScreen implements Screen {
                 activeLevelFile = levelFile;
                 maze = loader.loadMazeFromProperties(levelFile, TILE_SIZE);
 
-                // --- FIX: Initialize rooms list to prevent EnemySpawner crash ---
-                this.rooms = new ArrayList<>();
-                // ------------------------------------------------------------
+                // FIX: Rebuild rooms from loaded tiles (so EnemySpawner can use them)
+                this.rooms = RoomDetector.detectRooms(maze);
+                maze.setRooms(this.rooms);
 
-                Gdx.app.log("MAZE", "Loaded existing map -> " + levelFile.path());
+                Gdx.app.log("MAZE", "Loaded existing map -> " + levelFile.path()
+                        + " | detected rooms=" + (rooms == null ? 0 : rooms.size()));
                 return;
             } catch (Exception e) {
                 Gdx.app.error("MAZE", "Failed to load map, generating new one.", e);
@@ -687,15 +706,25 @@ public class GameScreen implements Screen {
 
         GeneratedMaze generated = generator.generateWithRooms(spec, TILE_SIZE, seed, effectiveLevel);
 
-        this.maze = generated.getMaze();
+        // Keep rooms from the generated maze
         this.rooms = generated.getRooms();
 
         // Save generated maze
-        MazeExporter.saveToProperties(this.maze, target);
+        MazeExporter.saveToProperties(generated.getMaze(), target);
 
+        // Reload maze from disk (your original behavior)
         activeLevelFile = target;
-        this.maze = loader.loadMazeFromProperties(target, TILE_SIZE);
+        Maze loaded = loader.loadMazeFromProperties(target, TILE_SIZE);
+
+        //  FIX: Reattach rooms to the loaded maze object
+        loaded.setRooms(this.rooms);
+
+        this.maze = loaded;
+
+        Gdx.app.log("MAZE", "Generated + saved + reloaded -> " + target.path()
+                + " | rooms=" + (rooms == null ? 0 : rooms.size()));
     }
+
 
     private void initializeGraphics() {
         gameCamera = new GameCamera(
@@ -936,11 +965,20 @@ public class GameScreen implements Screen {
         hud.showNotification("ROUND " + floor);
         hud.setFloorText("Round: " + floor);
 
+
+
         long seed = System.nanoTime();
         runSeed = seed;
 
         initializeMaze(seed);
         updateHudExitTarget();
+
+        int lv = clampLevel(floor);  // endless floors clamp to 1..5 for scaling
+        enemyCount = ENEMIES_PER_LEVEL[lv];
+        trapCount  = TRAPS_PER_LEVEL[lv];
+        itemCount  = ITEMS_PER_LEVEL[lv];
+        propCount  = PROPS_PER_LEVEL[lv];
+
 
         gameCamera = new GameCamera(
                 viewport.getWorldWidth(),
@@ -1016,6 +1054,15 @@ public class GameScreen implements Screen {
         }
         return false;
     }
+
+    private Room findSpawnRoom() {
+        if (rooms == null) return null;
+        for (Room r : rooms) {
+            if (r.getType() == RoomType.SPAWN) return r;
+        }
+        return null;
+    }
+
 
     @Override public void pause() {}
     @Override public void resume() {}

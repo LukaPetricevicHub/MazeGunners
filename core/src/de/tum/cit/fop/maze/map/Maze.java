@@ -6,8 +6,6 @@ import de.tum.cit.fop.maze.util.GridUtils;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
-import com.badlogic.gdx.math.MathUtils;
-
 
 public class Maze {
 
@@ -27,7 +25,6 @@ public class Maze {
         this.height = height;
         this.tileSize = tileSize;
         this.roomMask = new boolean[width][height];
-
 
         grid = new Tiles[width][height];
         for (int x = 0; x < width; x++)
@@ -111,7 +108,7 @@ public class Maze {
         return getTile(x, y) == Tiles.EXIT && !hasKey;
     }
 
-    // Explicit setters (useful when generator wants to clear tracked cells)
+    // Explicit setters
     public void setEntryCell(Point p) {
         entryCell = (p == null) ? null : new Point(p);
     }
@@ -125,6 +122,10 @@ public class Maze {
 
     public void setRooms(List<Room> rooms) {
         this.rooms = rooms != null ? rooms : List.of();
+    }
+
+    public List<Room> getRooms() {
+        return List.copyOf(rooms);
     }
 
     public boolean isRoomTile(int x, int y) {
@@ -154,5 +155,4 @@ public class Maze {
         if (!inBounds(x, y)) return false;
         return roomMask[x][y];
     }
-
 }
