@@ -799,6 +799,14 @@ public class MazeGenerator {
         exitRoom.setType(RoomType.EXIT);
         keyRoom.setType(RoomType.KEY);
 
+        boolean isFinalLevel = (clampLevel(level) == 5);
+        if (isFinalLevel) {
+            Room bossRoom = pickBossRoomNearExitFarFromSpawn(rooms, spawnRoom, exitRoom, rng);
+            if (bossRoom != null && bossRoom.getType() == RoomType.NORMAL) {
+                bossRoom.setType(RoomType.BOSS);
+            }
+        }
+
         BorderEntryPlan entryPlan = pickBorderEntryPlan(spawnRoom, maze, rng, hallWidth, rooms);
         if (entryPlan == null) return new PlaceResult(false, null, null);
 
@@ -1272,6 +1280,50 @@ public class MazeGenerator {
         }
 
         throw new RuntimeException("Failed to generate BSP dungeon after " + MAX_ATTEMPTS + " attempts");
+    }
+
+    private Room pickBossRoomNearExitFarFromSpawn(List<Room> rooms, Room spawn, Room exit, Random rng) {
+        // Prefer decent-sized rooms so boss has space
+        final int minW = 14;
+        final int minH = 14;
+
+        Room best = null;
+        float bestScore = -Float.MAX_VALUE;
+
+        for (Room r : rooms) {
+            if (r == spawn || r == exit) continue;
+            if (r.w() < minW || r.h() < minH) continue;
+
+            int dSpawn = dist2(r, spawn);
+            int dExit  = dist2(r, exit);
+
+            // Bigger is slightly better; far from spawn and close to exit is the main objective
+            float sizeBonus = (r.w() * r.h()) * 0.01f;
+            float score = (float)dSpawn - 0.85f * (float)dExit + sizeBonus;
+
+            if (score > bestScore) {
+                bestScore = score;
+                best = r;
+            }
+        }
+
+        // fallback: just biggest non-spawn/non-exit
+        if (best == null) {
+            best = biggestRoom(rooms);
+            if (best == spawn || best == exit) {
+                // find next biggest
+                Room second = null;
+                int bestA = -1;
+                for (Room r : rooms) {
+                    if (r == spawn || r == exit) continue;
+                    int a = r.w() * r.h();
+                    if (a > bestA) { bestA = a; second = r; }
+                }
+                best = second;
+            }
+        }
+
+        return best;
     }
 
 }

@@ -1,5 +1,7 @@
 package de.tum.cit.fop.maze.world;
 
+import de.tum.cit.fop.maze.enemies.Boss;
+import de.tum.cit.fop.maze.enemies.PlayerLike;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
@@ -22,49 +24,77 @@ public class CombatSystem {
     public CombatSystem() {
     }
 
-    public void update(float deltaTime, Player player, Maze maze, List<Enemy> enemies, List<Obstacle> obstacles, GameCamera gameCamera) {
+    public void update(float deltaTime,
+                       Player player,
+                       PlayerLike bossTarget,
+                       Boss boss,
+                       Maze maze,
+                       List<Enemy> enemies,
+                       List<Obstacle> obstacles,
+                       GameCamera gameCamera) {
 
-        // --- 1. HANDLE BULLET COLLISIONS ---
+        // --- 1) BULLETS: walls, enemies, boss ---
         if (player.getBullets() != null) {
             Iterator<Bullet> bIter = player.getBullets().iterator();
             while (bIter.hasNext()) {
                 Bullet b = bIter.next();
+                if (!b.isAlive()) { bIter.remove(); continue; }
 
-                // Check Wall Collision
+                // Wall
                 if (isWall(b.getBounds(), maze)) {
                     b.setDead();
+                    continue;
                 }
 
-                // Check Enemy Collision
+                // Boss (separate entity)
+                if (boss != null && !boss.isDead() && b.getBounds().overlaps(boss.getHitbox())) {
+                    boss.damage(5);   // bullet dmg vs boss (tune)
+                    b.setDead();      // if later you want piercing, gate this behind a flag
+                    continue;
+                }
+
+                // Enemies
                 for (Enemy e : enemies) {
                     if (b.getBounds().overlaps(e.getCollisionBox())) {
-                        e.takeDamage(5); // Bullet damage
+                        // If you later enable piercing, use b.hasAlreadyHit(e)
+                        e.takeDamage(5);
                         b.setDead();
-                        break; // Bullet hits one enemy and vanishes
+                        break;
                     }
                 }
             }
         }
+
+        // --- 1.5) Player Melee vs Boss ---
+        if (boss != null && !boss.isDead() && player.isAttacking() && player.getAttackHitbox() != null) {
+            if (player.getAttackHitbox().overlaps(boss.getHitbox())) {
+                boss.damage(2); // melee dmg vs boss (tune)
+            }
+        }
+
+        // --- 2) Boss AI vs Player ---
+        if (boss != null && !boss.isDead() && bossTarget != null) {
+            boss.update(deltaTime, bossTarget);
+        }
+
+        // --- 3) Repulse (enemies only, boss stays separate unless you want it affected) ---
         if (player.isRepulseActive()) {
-            float repulseRange = 200f; // Range in pixels
-            float pushForce = 300f;   // How far they fly
+            float repulseRange = 200f;
+            float pushForce = 300f;
 
             for (Enemy e : enemies) {
                 Vector2 enemyPos = e.getPosition();
                 Vector2 playerPos = new Vector2(player.getX(), player.getY());
 
                 if (playerPos.dst(enemyPos) < repulseRange) {
-                    // Calculate direction away from player
                     Vector2 push = enemyPos.cpy().sub(playerPos).nor().scl(pushForce);
-                    // Apply push (simple teleport for now, or add velocity if enemies support it)
-                    // For simple logic, we just bump them back:
                     e.getPosition().add(push.x * deltaTime * 5, push.y * deltaTime * 5);
-                    e.takeDamage(2); // Minor damage from the blast
+                    e.takeDamage(2);
                 }
             }
         }
 
-        // --- 2. ENEMY LOGIC ---
+        // --- 4) Enemy logic (UNCHANGED) ---
         Rectangle playerHitbox = new Rectangle(player.getX(), player.getY(), 32f, 32f);
         float centerX = player.getX() + 16f;
         float centerY = player.getY() + 16f;
@@ -74,7 +104,6 @@ public class CombatSystem {
         while (iter.hasNext()) {
             Enemy enemy = iter.next();
 
-            // Wake up check
             float diffX = enemy.getPosition().x - centerX;
             float diffY = enemy.getPosition().y - centerY;
             float closenessSquared = diffX * diffX + diffY * diffY;
@@ -83,22 +112,18 @@ public class CombatSystem {
             if (isTooFar && !enemy.isAggroLocked())
                 continue;
 
-            // Move Enemy
             enemy.update(deltaTime, maze);
 
-            // Player takes damage from Enemy
             if (playerHitbox.overlaps(enemy.getCollisionBox())) {
                 player.takeDamage(1);
             }
 
-            // Enemy takes damage from Player Melee
             if (player.isAttacking() && player.getAttackHitbox() != null) {
                 if (player.getAttackHitbox().overlaps(enemy.getCollisionBox())) {
                     enemy.takeDamage(1);
                 }
             }
 
-            // Death Check
             if (enemy.isDead()) {
                 player.addExperience(50);
                 player.addScore(100);
@@ -112,42 +137,28 @@ public class CombatSystem {
             }
         }
 
-// --- 4. OBSTACLE LOGIC (Corrected) ---
+        // --- 5) Obstacles (UNCHANGED) ---
         float speedModifier = 1f;
         float visibilityFactor = 1f;
 
         for (Obstacle obs : obstacles) {
             obs.updateCooldown(deltaTime);
 
-            // Check if player stepped on it
             if (obs.tryActivate(playerHitbox)) {
-
-                // --- GHOST WALKER CHECK ---
                 boolean isTrap = (obs instanceof SpikeTrap || obs instanceof SlimeTrap);
-
-                // Only activate if:
-                // 1. It is NOT a trap (always activate)
-                // 2. OR It IS a trap but we DO NOT have the Ghost skill
                 if (!isTrap || !player.hasGhost()) {
                     obs.onActivate();
 
-                    if (obs instanceof SpikeTrap) {
-                        player.takeDamage(1);
-                    } else {
-                        player.takeDamage(obs.getDamageToPlayer());
-                    }
+                    if (obs instanceof SpikeTrap) player.takeDamage(1);
+                    else player.takeDamage(obs.getDamageToPlayer());
                 }
             }
 
-            // --- UPDATE ANIMATIONS & EFFECTS ---
-            if (obs instanceof SpikeTrap spike) {
-                spike.update(deltaTime);
-            }
+            if (obs instanceof SpikeTrap spike) spike.update(deltaTime);
 
             if (obs instanceof SlimeTrap slime) {
                 slime.updateEffect(deltaTime);
                 if (slime.isEffectActive()) {
-                    // This will only run if onActivate() was actually called above
                     speedModifier = slime.getSlowMultiplier();
                     visibilityFactor = slime.getVisionMultiplier();
                 }
@@ -162,11 +173,8 @@ public class CombatSystem {
 
         player.setSpeedMultiplier(speedModifier);
         gameCamera.setZoomMultiplier(visibilityFactor);
-
-        // Apply Status Effects
-        player.setSpeedMultiplier(speedModifier);
-        gameCamera.setZoomMultiplier(visibilityFactor);
     }
+
 
     public void renderProjectiles(SpriteBatch batch) {
         // No op (Player draws bullets now)

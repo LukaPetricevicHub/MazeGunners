@@ -84,7 +84,8 @@ public class Boss {
     private boolean lineDamageApplied = false;
     private boolean meleeDamageApplied = false;
 
-    private int hp = 250;
+    private final int maxHp = 250;
+    private int hp = maxHp;
 
     public Boss(Maze maze, Room bossRoom, BossAnimations anims, float spawnWorldX, float spawnWorldY) {
         this.maze = maze;
@@ -501,6 +502,12 @@ public class Boss {
             case RIGHT -> new Vector2(1, 0);
         };
     }
+
+
+    public int getHp() { return hp; }
+    public int getMaxHp() { return maxHp; }
+    public float getHpPct() { return (maxHp <= 0) ? 0f : (hp / (float)maxHp); }
+
 
     private float roomWorldX(int tileX) { return tileX * maze.getTileSize() + maze.getTileSize() / 2f; }
     private float roomWorldY(int tileY) { return tileY * maze.getTileSize() + maze.getTileSize() / 2f; }
