@@ -2,10 +2,10 @@ package de.tum.cit.fop.maze.obstacles;
 
 public enum PropType {
 
-    BARREL("BARREL.png", 1, 1, true, 35),
-    CRATE ("CRATE.png",  1, 1, true, 35),
-    SKELETON ("SKELETON.png",  1, 1, true, 35),
-    ROBOT ("ROBOT.png",  1, 1, true, 35);
+    BARREL("BARREL.png", 1, 1, false, 35),
+    CRATE ("CRATE.png",  1, 1, false, 35),
+    SKELETON ("SKELETON.png",  1, 1, false, 35),
+    ROBOT ("ROBOT.png",  1, 1, false, 35);
 
     public final String texturePath;
     public final int tilesW;

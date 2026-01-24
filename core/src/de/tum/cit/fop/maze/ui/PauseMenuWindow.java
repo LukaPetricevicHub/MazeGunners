@@ -7,13 +7,15 @@ import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 
 public class PauseMenuWindow extends Window {
-    public PauseMenuWindow(Skin skin, Runnable onResume, Runnable onSettings, Runnable onExit) {
+
+    // ADD 'Runnable onSkills' HERE vvv
+    public PauseMenuWindow(Skin skin, Runnable onResume, Runnable onSettings, Runnable onSkills, Runnable onExit) {
         super("Paused", skin);
         this.getTitleLabel().setAlignment(1);
         this.setMovable(false);
         this.setModal(true);
 
-        //RESUME BUTTON
+        // RESUME BUTTON
         TextButton resumeBtn = new TextButton("Resume", skin);
         resumeBtn.addListener(new ChangeListener() {
             @Override
@@ -23,7 +25,18 @@ public class PauseMenuWindow extends Window {
         });
         this.add(resumeBtn).width(200).pad(10).row();
 
-        //SETTINGS BUTTON
+        // SKILL TREE BUTTON
+        TextButton skillsBtn = new TextButton("Skill Tree", skin);
+        skillsBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                // Now this works because we added it to the constructor
+                onSkills.run();
+            }
+        });
+        add(skillsBtn).width(200).padBottom(10).row();
+
+        // SETTINGS BUTTON
         TextButton settingsBtn = new TextButton("Settings", skin);
         settingsBtn.addListener(new ChangeListener() {
             @Override
@@ -33,7 +46,7 @@ public class PauseMenuWindow extends Window {
         });
         this.add(settingsBtn).width(200).pad(10).row();
 
-        //EXIT BUTTON
+        // EXIT BUTTON
         TextButton menuBtn = new TextButton("Exit to Menu", skin);
         menuBtn.addListener(new ChangeListener() {
             @Override

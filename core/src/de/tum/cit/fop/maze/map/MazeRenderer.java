@@ -4,207 +4,321 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 
+import java.util.EnumMap;
+import java.util.Map;
+
 public class MazeRenderer {
 
-    private static final int SRC = 32;
+    private enum WallShape {
+        SOLID,
+        EDGE_TOP, EDGE_BOTTOM, EDGE_LEFT, EDGE_RIGHT,
+        OUTER_TL, OUTER_TR, OUTER_BL, OUTER_BR,
+        INNER_TL, INNER_TR, INNER_BL, INNER_BR
+    }
+
     private final Texture tileset;
 
-    // =============================
-    // FLOORS
-    // =============================
-    private final TextureRegion hallFloor;
-    private final TextureRegion[] roomFloorVariants;
+    // size of ONE tile inside tileset image (e.g. 16x16)
+    private final int tilePxW;
+    private final int tilePxH;
 
-    // =============================
-    // SPECIALS
-    // =============================
-    private final TextureRegion spawn, exit, door, key;
+    // computed grid size of the sheet
+    @SuppressWarnings("unused")
+    private final int cols;
+    @SuppressWarnings("unused")
+    private final int rows;
 
-    // =============================
-    // WALLS (AUTOTILE)
-    // =============================
-    private final TextureRegion[] wallFillTiles;
-    private final TextureRegion[] wallNTiles;
-    private final TextureRegion[] wallETiles;
-    private final TextureRegion[] wallSTiles;
-    private final TextureRegion[] wallWTiles;
+    private final Map<WallShape, TextureRegion> wall = new EnumMap<>(WallShape.class);
 
-    // corners (NOT randomized)
-    private final TextureRegion wallNE, wallNW, wallSE, wallSW;
+    // Floor variation pools
+    private TextureRegion[] roomFloors;
+    private int[] roomFloorWeights;
 
-    // optional inner corners (can be null)
-    private final TextureRegion wallInnerNE, wallInnerNW, wallInnerSE, wallInnerSW;
+    private TextureRegion[] hallFloors;
+    private int[] hallFloorWeights;
+
+    // Specials (door intentionally ignored visually)
+    private TextureRegion spawn;
+    private TextureRegion exit;
+    private TextureRegion key;
 
     public MazeRenderer(Texture tileset) {
+        this(tileset, 16, 16);
+    }
+
+    public MazeRenderer(Texture tileset, int tilePxW, int tilePxH) {
         this.tileset = tileset;
-        this.tileset.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        this.tilePxW = tilePxW;
+        this.tilePxH = tilePxH;
 
-        // =============================
-        // SET TILE COORDINATES HERE
-        // =============================
+        if (tileset.getWidth() % tilePxW != 0 || tileset.getHeight() % tilePxH != 0) {
+            throw new IllegalArgumentException(
+                    "Tileset size must be divisible by tilePxW/tilePxH. " +
+                            "Got " + tileset.getWidth() + "x" + tileset.getHeight() +
+                            " with tile " + tilePxW + "x" + tilePxH
+            );
+        }
 
-        // Hall floor
-        hallFloor = region(4, 8);
+        this.cols = tileset.getWidth() / tilePxW;
+        this.rows = tileset.getHeight() / tilePxH;
 
-        // Room interior random pool
-        roomFloorVariants = new TextureRegion[] {
-                region(4, 8),
-                region(3, 6),
-        };
-
-        // Specials
-        spawn = region(5, 6);
-        exit  = region(6, 6);
-        door  = region(3, 6);
-        key   = new TextureRegion(new Texture("key.png"));
-
-        // =============================
-        // WALL TILE POOLS
-        // =============================
-
-        wallFillTiles = new TextureRegion[] {
-                region(0, 9),
-
-        };
-
-        wallNTiles = new TextureRegion[] {
-                region(4, 7),
-                region(7, 9),
-                region(8,9),
-                region(7,7)
-        };
-
-        wallSTiles = new TextureRegion[] {
-                region(4, 9)
-        };
-
-        wallETiles = new TextureRegion[] {
-                region(5, 8)
-        };
-
-        wallWTiles = new TextureRegion[] {
-                region(3, 8),
-
-        };
-
-        // corners
-        wallNW = region(3, 7);
-        wallNE = region(5, 7);
-        wallSW = region(3, 9);
-        wallSE = region(5, 9);
-
-        // inner corners (if you have them)
-        wallInnerNW = null;
-        wallInnerNE = null;
-        wallInnerSW = null;
-        wallInnerSE = null;
+        buildRegions();
+        applyCornerFallbacks();
+        validatePools();
     }
-
-    private TextureRegion region(int col, int row) {
-        return new TextureRegion(tileset, col * SRC, row * SRC, SRC, SRC);
-    }
-
-    // ============================================================
-    // RENDER
-    // ============================================================
 
     public void render(Maze maze, SpriteBatch batch) {
-        int ts = maze.getTileSize();
+        int w = maze.getWidth();
+        int h = maze.getHeight();
+        int dst = maze.getTileSize(); // world tile size (32px) - we scale tileset tiles up
 
-        for (int y = 0; y < maze.getHeight(); y++) {
-            for (int x = 0; x < maze.getWidth(); x++) {
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
 
                 Tiles t = maze.getTile(x, y);
+                TextureRegion r;
 
-                // ----- FLOOR -----
-                if (!t.isWall()) {
-                    TextureRegion floor = maze.isRoomCell(x, y)
-                            ? pickRandom(roomFloorVariants, x, y, 11)
-                            : hallFloor;
-
-                    batch.draw(floor, x * ts, y * ts, ts, ts);
-                }
-
-                // ----- WALL -----
-                if (t.isWall()) {
-                    TextureRegion wall = pickWallTile(maze, x, y);
-                    batch.draw(wall, x * ts, y * ts, ts, ts);
-                    continue;
-                }
-
-                // ----- SPECIALS -----
                 switch (t) {
-                    case SPAWN -> batch.draw(spawn, x * ts, y * ts, ts, ts);
-                    case EXIT  -> batch.draw(exit,  x * ts, y * ts, ts, ts);
-                    case DOOR  -> batch.draw(door,  x * ts, y * ts, ts, ts);
-                    case KEY   -> batch.draw(key,   x * ts, y * ts, ts, ts);
-                    default -> {}
+                    case WALL -> r = pickWall(maze, x, y);
+
+                    case FLOOR -> r = pickFloor(maze, x, y);
+
+                    // DOOR: render like floor (door tile “irrelevant”)
+                    case DOOR -> r = pickFloor(maze, x, y);
+
+                    case SPAWN -> r = spawn;
+                    case EXIT -> r = exit;
+                    case KEY -> r = key;
+
+                    default -> r = pickFloor(maze, x, y);
                 }
+
+                batch.draw(r, x * dst, y * dst, dst, dst);
             }
         }
     }
 
-    // ============================================================
-    // WALL AUTOTILING
-    // ============================================================
-
-    private TextureRegion pickWallTile(Maze maze, int x, int y) {
-
-        boolean fN = isFloorAt(maze, x, y + 1);
-        boolean fE = isFloorAt(maze, x + 1, y);
-        boolean fS = isFloorAt(maze, x, y - 1);
-        boolean fW = isFloorAt(maze, x - 1, y);
-
-        // interior wall
-        if (!fN && !fE && !fS && !fW)
-            return pickRandom(wallFillTiles, x, y, 101);
-
-        boolean fNE = isFloorAt(maze, x + 1, y + 1);
-        boolean fNW = isFloorAt(maze, x - 1, y + 1);
-        boolean fSE = isFloorAt(maze, x + 1, y - 1);
-        boolean fSW = isFloorAt(maze, x - 1, y - 1);
-
-        // outer corners
-        if (fS && fE) return wallNE;
-        if (fS && fW) return wallNW;
-        if (fN && fE) return wallSE;
-        if (fN && fW) return wallSW;
-
-        // inner corners (optional)
-        if (wallInnerNE != null && fN && fW && !fNW) return wallInnerNE;
-        if (wallInnerNW != null && fN && fE && !fNE) return wallInnerNW;
-        if (wallInnerSE != null && fS && fW && !fSW) return wallInnerSE;
-        if (wallInnerSW != null && fS && fE && !fSE) return wallInnerSW;
-
-        // edges (random pools)
-        if (fS) return pickRandom(wallNTiles, x, y, 201);
-        if (fN) return pickRandom(wallSTiles, x, y, 202);
-        if (fW) return pickRandom(wallETiles, x, y, 203);
-        if (fE) return pickRandom(wallWTiles, x, y, 204);
-
-        return pickRandom(wallFillTiles, x, y, 105);
+    public void dispose() {
+        // GameScreen owns the tileset Texture; do not dispose here.
     }
 
-    // ============================================================
-    // HELPERS
-    // ============================================================
+    // ---------------- FLOOR PICKING (WEIGHTED) ----------------
 
-    private boolean isFloorAt(Maze maze, int x, int y) {
-        if (x < 0 || y < 0 || x >= maze.getWidth() || y >= maze.getHeight())
-            return false;
-        return maze.getTile(x, y).isWalkable();
+    private TextureRegion pickFloor(Maze maze, int x, int y) {
+        boolean isRoom = maze.isRoomCell(x, y);
+
+        if (isRoom) {
+            return pickWeighted(roomFloors, roomFloorWeights, x, y, 1337);
+        } else {
+            return pickWeighted(hallFloors, hallFloorWeights, x, y, 7331);
+        }
+    }
+
+    private TextureRegion pickWeighted(TextureRegion[] pool, int[] weights, int x, int y, int salt) {
+        int total = 0;
+        for (int w : weights) total += Math.max(0, w);
+        if (total <= 0) return pool[0];
+
+        int r = stableRand0(total, x, y, salt);
+
+        int acc = 0;
+        for (int i = 0; i < pool.length; i++) {
+            acc += Math.max(0, weights[i]);
+            if (r < acc) return pool[i];
+        }
+        return pool[pool.length - 1];
     }
 
     /**
-     * Deterministic random picker
+     * Deterministic "random" in [0, bound).
      */
-    private TextureRegion pickRandom(TextureRegion[] arr, int x, int y, int salt) {
-        int h = x * 73856093 ^ y * 19349663 ^ salt;
-        h = Math.abs(h);
-        return arr[h % arr.length];
+    private int stableRand0(int bound, int x, int y, int salt) {
+        int h = x * 73856093 ^ y * 19349663 ^ salt * 83492791;
+        h ^= (h >>> 16);
+        h *= 0x7feb352d;
+        h ^= (h >>> 15);
+        h *= 0x846ca68b;
+        h ^= (h >>> 16);
+
+        // make non-negative
+        if (h < 0) h = -h;
+
+        return h % bound;
     }
 
-    public void dispose() {
-        tileset.dispose();
+    // ---------------- WALL AUTOTILING ----------------
+
+    private TextureRegion pickWall(Maze maze, int x, int y) {
+        boolean N = isWalkable(maze, x, y + 1);
+        boolean S = isWalkable(maze, x, y - 1);
+        boolean E = isWalkable(maze, x + 1, y);
+        boolean W = isWalkable(maze, x - 1, y);
+
+        boolean NE = isWalkable(maze, x + 1, y + 1);
+        boolean NW = isWalkable(maze, x - 1, y + 1);
+        boolean SE = isWalkable(maze, x + 1, y - 1);
+        boolean SW = isWalkable(maze, x - 1, y - 1);
+
+        if (!N && !S && !E && !W) return wall.get(WallShape.SOLID);
+
+        // inner corners (concave)
+        if (S && E && !SE) return wall.get(WallShape.INNER_TL);
+        if (S && W && !SW) return wall.get(WallShape.INNER_TR);
+        if (N && E && !NE) return wall.get(WallShape.INNER_BL);
+        if (N && W && !NW) return wall.get(WallShape.INNER_BR);
+
+        // outer corners (convex)
+        if (S && E && !N && !W) return wall.get(WallShape.OUTER_TL);
+        if (S && W && !N && !E) return wall.get(WallShape.OUTER_TR);
+        if (N && E && !S && !W) return wall.get(WallShape.OUTER_BL);
+        if (N && W && !S && !E) return wall.get(WallShape.OUTER_BR);
+
+        // edges
+        if (S) return wall.get(WallShape.EDGE_TOP);
+        if (N) return wall.get(WallShape.EDGE_BOTTOM);
+        if (E) return wall.get(WallShape.EDGE_LEFT);
+        if (W) return wall.get(WallShape.EDGE_RIGHT);
+
+        return wall.get(WallShape.SOLID);
+    }
+
+    private boolean isWalkable(Maze maze, int x, int y) {
+        return maze.inBounds(x, y) && maze.getTile(x, y).isWalkable();
+    }
+
+    // ---------------- TILESET MAPPING ----------------
+    // IMPORTANT: This uses BOTTOM->TOP coordinates:
+    // row=0 is the BOTTOM row (matches your latest labeled image).
+
+    private void buildRegions() {
+        TilesetMapping m = new TilesetMapping();
+
+        // Room floor pool + weights (weights can be different per tile)
+        roomFloors = new TextureRegion[] {
+                tile(m.ROOM_F0_C, m.ROOM_F0_R),
+                tile(m.ROOM_F1_C, m.ROOM_F1_R),
+                tile(m.ROOM_F2_C, m.ROOM_F2_R),
+                tile(m.ROOM_F3_C, m.ROOM_F3_R)
+        };
+        roomFloorWeights = new int[] {
+                70, 20, 8, 2   // example: mostly F0, rare F3
+        };
+
+        // Hall floor pool + weights
+        hallFloors = new TextureRegion[] {
+                tile(m.HALL_F0_C, m.HALL_F0_R),
+                tile(m.HALL_F1_C, m.HALL_F1_R),
+                tile(m.HALL_F2_C, m.HALL_F2_R),
+                tile(m.HALL_F3_C, m.HALL_F3_R)
+        };
+        hallFloorWeights = new int[] {
+                70, 25, 15, 5  // example: more variety in halls
+        };
+
+        // Specials
+        spawn = tile(m.SPAWN_C, m.SPAWN_R);
+        exit  = tile(m.EXIT_C,  m.EXIT_R);
+        key   = tile(m.KEY_C,   m.KEY_R);
+
+        // Walls
+        wall.put(WallShape.SOLID,       tile(m.WALL_SOLID_C,       m.WALL_SOLID_R));
+        wall.put(WallShape.EDGE_TOP,    tile(m.WALL_EDGE_TOP_C,    m.WALL_EDGE_TOP_R));
+        wall.put(WallShape.EDGE_BOTTOM, tile(m.WALL_EDGE_BOTTOM_C, m.WALL_EDGE_BOTTOM_R));
+        wall.put(WallShape.EDGE_LEFT,   tile(m.WALL_EDGE_LEFT_C,   m.WALL_EDGE_LEFT_R));
+        wall.put(WallShape.EDGE_RIGHT,  tile(m.WALL_EDGE_RIGHT_C,  m.WALL_EDGE_RIGHT_R));
+
+        // corners optional — if your tileset doesn't have some of them, fallbacks handle it
+        wall.put(WallShape.OUTER_TL, tile(m.WALL_OUTER_TL_C, m.WALL_OUTER_TL_R));
+        wall.put(WallShape.OUTER_TR, tile(m.WALL_OUTER_TR_C, m.WALL_OUTER_TR_R));
+        wall.put(WallShape.OUTER_BL, tile(m.WALL_OUTER_BL_C, m.WALL_OUTER_BL_R));
+        wall.put(WallShape.OUTER_BR, tile(m.WALL_OUTER_BR_C, m.WALL_OUTER_BR_R));
+
+        wall.put(WallShape.INNER_TL, tile(m.WALL_INNER_TL_C, m.WALL_INNER_TL_R));
+        wall.put(WallShape.INNER_TR, tile(m.WALL_INNER_TR_C, m.WALL_INNER_TR_R));
+        wall.put(WallShape.INNER_BL, tile(m.WALL_INNER_BL_C, m.WALL_INNER_BL_R));
+        wall.put(WallShape.INNER_BR, tile(m.WALL_INNER_BR_C, m.WALL_INNER_BR_R));
+    }
+
+    private void validatePools() {
+        if (roomFloors == null || roomFloors.length == 0) throw new IllegalStateException("roomFloors not set");
+        if (hallFloors == null || hallFloors.length == 0) throw new IllegalStateException("hallFloors not set");
+        if (roomFloorWeights == null || roomFloorWeights.length != roomFloors.length)
+            throw new IllegalStateException("roomFloorWeights must match roomFloors length");
+        if (hallFloorWeights == null || hallFloorWeights.length != hallFloors.length)
+            throw new IllegalStateException("hallFloorWeights must match hallFloors length");
+    }
+
+    private void applyCornerFallbacks() {
+        TextureRegion SOL = wall.get(WallShape.SOLID);
+        TextureRegion TOP = wall.get(WallShape.EDGE_TOP);
+        TextureRegion LFT = wall.get(WallShape.EDGE_LEFT);
+
+        wall.put(WallShape.OUTER_TL, safe(wall.get(WallShape.OUTER_TL), TOP));
+        wall.put(WallShape.OUTER_TR, safe(wall.get(WallShape.OUTER_TR), TOP));
+        wall.put(WallShape.OUTER_BL, safe(wall.get(WallShape.OUTER_BL), SOL));
+        wall.put(WallShape.OUTER_BR, safe(wall.get(WallShape.OUTER_BR), SOL));
+
+        wall.put(WallShape.INNER_TL, safe(wall.get(WallShape.INNER_TL), LFT));
+        wall.put(WallShape.INNER_TR, safe(wall.get(WallShape.INNER_TR), LFT));
+        wall.put(WallShape.INNER_BL, safe(wall.get(WallShape.INNER_BL), SOL));
+        wall.put(WallShape.INNER_BR, safe(wall.get(WallShape.INNER_BR), SOL));
+    }
+
+    private TextureRegion safe(TextureRegion r, TextureRegion fallback) {
+        return (r != null) ? r : fallback;
+    }
+
+    /**
+     * Bottom-to-top tileset coordinates:
+     * row=0 is bottom row.
+     */
+    private TextureRegion tile(int col, int rowTop) {
+        int px = col * tilePxW;
+        int py = tileset.getHeight() - (rowTop + 1) * tilePxH;
+        return new TextureRegion(tileset, px, py, tilePxW, tilePxH);
+    }
+
+    /**
+     * EDIT THESE TILE COORDS using your bottom-to-top labeled image.
+     * Valid:
+     *   col: 0..18
+     *   row: 0..12   (row 0 = BOTTOM)
+     */
+    private static final class TilesetMapping {
+        // Room floors (pick 4 nice ones)
+        int ROOM_F0_C = 0, ROOM_F0_R = 1;
+        int ROOM_F1_C = 4, ROOM_F1_R = 2;
+        int ROOM_F2_C = 7, ROOM_F2_R = 1;
+        int ROOM_F3_C = 2, ROOM_F3_R = 1;
+
+        // Hall floors (pick 4 nice ones)
+        int HALL_F0_C = 0, HALL_F0_R = 1;
+        int HALL_F1_C = 6, HALL_F1_R = 1;
+        int HALL_F2_C = 3, HALL_F2_R = 1;
+        int HALL_F3_C = 7, HALL_F3_R = 2;
+
+        // Specials (set to whatever you want)
+        int SPAWN_C = 3, SPAWN_R = 3;
+        int EXIT_C  = 4, EXIT_R  = 3;
+        int KEY_C   = 4, KEY_R   = 4;
+
+        // Walls
+        int WALL_SOLID_C = 0, WALL_SOLID_R = 6;
+
+        int WALL_EDGE_TOP_C    = 2, WALL_EDGE_TOP_R    = 7;
+        int WALL_EDGE_BOTTOM_C = 2, WALL_EDGE_BOTTOM_R = 9;
+        int WALL_EDGE_LEFT_C   = 3, WALL_EDGE_LEFT_R   = 8;
+        int WALL_EDGE_RIGHT_C  = 1, WALL_EDGE_RIGHT_R  = 8;
+
+        int WALL_OUTER_TL_C = 3, WALL_OUTER_TL_R = 7;
+        int WALL_OUTER_TR_C = 1, WALL_OUTER_TR_R = 7;
+        int WALL_OUTER_BL_C = 3, WALL_OUTER_BL_R = 9;
+        int WALL_OUTER_BR_C = 1, WALL_OUTER_BR_R = 9;
+
+        // If you don’t have inner corners, point them anywhere; fallbacks will cover them.
+        int WALL_INNER_TL_C = 0, WALL_INNER_TL_R = 6;
+        int WALL_INNER_TR_C = 0, WALL_INNER_TR_R = 6;
+        int WALL_INNER_BL_C = 0, WALL_INNER_BL_R = 6;
+        int WALL_INNER_BR_C = 0, WALL_INNER_BR_R = 6;
     }
 }

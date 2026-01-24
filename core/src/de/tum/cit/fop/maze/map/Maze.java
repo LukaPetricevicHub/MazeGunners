@@ -115,7 +115,7 @@ public class Maze {
         return getTile(x, y) == Tiles.EXIT && !hasKey;
     }
 
-    // Explicit setters (useful when generator wants to clear tracked cells)
+    // Explicit setters
     public void setEntryCell(Point p) {
         entryCell = (p == null) ? null : new Point(p);
     }
@@ -129,6 +129,10 @@ public class Maze {
 
     public void setRooms(List<Room> rooms) {
         this.rooms = rooms != null ? rooms : List.of();
+    }
+
+    public List<Room> getRooms() {
+        return List.copyOf(rooms);
     }
 
     public boolean isRoomTile(int x, int y) {

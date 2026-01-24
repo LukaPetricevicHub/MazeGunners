@@ -1,16 +1,15 @@
-package de.tum.cit.fop.maze;
+package de.tum.cit.fop.maze.ui;
 
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
-import com.badlogic.gdx.scenes.scene2d.ui.Window;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.utils.Align;
 
 import de.tum.cit.fop.maze.GameScreen;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.LevelDiscovery;
+import de.tum.cit.fop.maze.player.Player;
 
 public class GameOverWindow extends Window {
 
@@ -18,47 +17,79 @@ public class GameOverWindow extends Window {
                           MazeRunnerGame game,
                           int currentLevel,
                           boolean won,
-                          FileHandle currentLevelFile) {
+                          FileHandle currentLevelFile,
+                          int score,
+                          Player player) {
 
-        super(won ? "LEVEL " + currentLevel + " COMPLETED" : "GAME OVER", skin);
+        super(won ? "LEVEL COMPLETED" : "GAME OVER", skin);
 
-        this.getTitleLabel().setAlignment(1);
+        // 1. VISUAL SETUP
+        this.getTitleLabel().setAlignment(Align.center);
         this.setMovable(false);
         this.setModal(true);
+        this.setResizable(false);
 
-        String message = won ? "Great Job!" : "Better luck next time...";
-        this.add(new Label(message, skin)).padBottom(20).row();
+        // --- SPACING FIXES ---
+        this.pad(60); // Big internal padding
+        this.defaults().spaceBottom(20); // Add gap between every row
+        this.defaults().align(Align.center); // Center everything
+        // ---------------------
 
-        // Next Level Button
+        // 2. Message & Score
+        String message = won ? "Great Job! You escaped." : "You died.";
+        Label messageLabel = new Label(message, skin);
+        messageLabel.setFontScale(1.2f);
+        this.add(messageLabel).row();
+
+        Label scoreLabel = new Label("Final Score: " + score, skin);
+        scoreLabel.setFontScale(1.1f);
+        this.add(scoreLabel).padBottom(30).row();
+
+        // 3. Name Entry
+        this.add(new Label("Enter Name:", skin)).spaceBottom(10).row();
+
+        final TextField nameField = new TextField("Player", skin);
+        nameField.setAlignment(Align.center);
+        this.add(nameField).width(300).row();
+
+        TextButton submitBtn = new TextButton("Submit Score", skin);
+        submitBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                String name = nameField.getText();
+                if (name == null || name.trim().isEmpty()) name = "Unknown";
+
+                game.getLeaderboardManager().addScore(name, score);
+
+                submitBtn.setText("Saved!");
+                submitBtn.setDisabled(true);
+            }
+        });
+        this.add(submitBtn).width(300).padBottom(30).row();
+
+        // 4. Navigation Buttons
+
+        // "Next Level" (Only if you won)
         if (won) {
             TextButton nextBtn = new TextButton("Next Level", skin);
             nextBtn.addListener(new ChangeListener() {
                 @Override
                 public void changed(ChangeEvent event, Actor actor) {
                     FileHandle nextFile = findNextLevelFile(currentLevelFile);
+                    if (player != null) game.handleLevelTransition(player);
+
                     if (nextFile != null) {
                         int nextDifficulty = guessDifficulty(nextFile.name());
                         game.setScreen(new GameScreen(game, nextDifficulty, nextFile));
                     } else {
-                        // If no next file exists, go back to menu
                         game.goToMenu();
                     }
                 }
             });
-            this.add(nextBtn).width(200).padBottom(10).row();
+            this.add(nextBtn).width(300).row();
         }
 
-        // Restart Button (reopen same file)
-        TextButton restartBtn = new TextButton("Restart Level", skin);
-        restartBtn.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                int difficulty = guessDifficulty(currentLevelFile != null ? currentLevelFile.name() : ("level-" + currentLevel + ".properties"));
-                game.setScreen(new GameScreen(game, difficulty, currentLevelFile));
-            }
-        });
-        this.add(restartBtn).width(200).padBottom(10).row();
-
+        // "Main Menu" (Always visible)
         TextButton menuBtn = new TextButton("Main Menu", skin);
         menuBtn.addListener(new ChangeListener() {
             @Override
@@ -66,7 +97,7 @@ public class GameOverWindow extends Window {
                 game.goToMenu();
             }
         });
-        this.add(menuBtn).width(200).row();
+        this.add(menuBtn).width(300).row();
 
         this.pack();
     }
@@ -74,19 +105,14 @@ public class GameOverWindow extends Window {
     private FileHandle findNextLevelFile(FileHandle current) {
         var all = LevelDiscovery.listAllLevels();
         if (all.size == 0) return null;
-
-        // If we don't know current file, just take the first one
         if (current == null) return all.get(0);
 
-        // Find current in the list and return the next one
         for (int i = 0; i < all.size; i++) {
             if (all.get(i).path().equals(current.path())) {
                 if (i + 1 < all.size) return all.get(i + 1);
                 return null;
             }
         }
-
-        // current not found -> return first
         return all.get(0);
     }
 
