@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Random;
 
 public class ItemSpawner {
-    public List<AbstractCollectable> spawnItems(Maze maze, int count) {
-        List<AbstractCollectable> items = new ArrayList<>();
+    public List<Collectable> spawnItems(Maze maze, int count) {
+        List<Collectable> items = new ArrayList<>();
         Random random = new Random();
         int tileSize = (int) maze.getTileSize();
 

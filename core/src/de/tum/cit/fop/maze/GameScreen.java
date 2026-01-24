@@ -26,18 +26,19 @@ import de.tum.cit.fop.maze.enemies.FlyingDrone;
 import de.tum.cit.fop.maze.enemies.MutantWorker;
 import de.tum.cit.fop.maze.enemies.RobotGuard;
 import de.tum.cit.fop.maze.hud.Hud;
+import de.tum.cit.fop.maze.items.Collectable;
 import de.tum.cit.fop.maze.map.*;
 import de.tum.cit.fop.maze.obstacles.*;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.util.GridUtils;
 import de.tum.cit.fop.maze.world.*;
-import de.tum.cit.fop.maze.FogOfWarRenderer;
 import de.tum.cit.fop.maze.obstacles.PropType;
 import de.tum.cit.fop.maze.obstacles.Prop;
 
-import de.tum.cit.fop.maze.GameOverWindow;
 import de.tum.cit.fop.maze.ui.PauseMenuWindow;
 import de.tum.cit.fop.maze.map.GeneratedMaze;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+
 
 
 import java.awt.Point;
@@ -80,12 +81,15 @@ public class GameScreen implements Screen {
     private Texture texFloorRoom, texFloorHall, texWallFill, texWallSet, texSpawn, texExit, texDoor, texKey;
     private int trackedLevel = 1;
 
-
     private Hud hud;
 
     private GameStateController gameStateController;
     private InteractionLogic worldLogic;
     private CombatSystem combatSystem;
+
+    private ShapeRenderer debugRenderer;
+    private boolean debugDrawInteractionRects = true; // toggle later
+
 
     private static final int TILE_SIZE = 32;
     private static final float PLAYER_WIDTH = 32f;
@@ -97,7 +101,7 @@ public class GameScreen implements Screen {
     private Sound pickupSound;
     private Sound hitSound;
     private Sound clickSound;
-    private java.util.List<de.tum.cit.fop.maze.items.AbstractCollectable> items;
+    private java.util.List<Collectable> items;
 
     private FogOfWarRenderer fog;
     private List<Room> rooms;
@@ -174,9 +178,9 @@ public class GameScreen implements Screen {
 
 
             // Item Pickups
-            java.util.Iterator<de.tum.cit.fop.maze.items.AbstractCollectable> iter = items.iterator();
+            java.util.Iterator<Collectable> iter = items.iterator();
             while (iter.hasNext()) {
-                de.tum.cit.fop.maze.items.AbstractCollectable item = iter.next();
+                Collectable item = iter.next();
 
 
                 Rectangle playerBounds = new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
@@ -236,8 +240,13 @@ public class GameScreen implements Screen {
 
         for (Obstacle obstacle : obstacles) {
             if (obstacle instanceof SpikeTrap spike) {
-                game.getSpriteBatch().draw(spike.getCurrentFrame(),
-                        spike.getCollisionBox().x, spike.getCollisionBox().y, 64, 64);
+                game.getSpriteBatch().draw(
+                        spike.getCurrentFrame(),
+                        spike.getRenderX(),
+                        spike.getRenderY(),
+                        spike.getCollisionBox().width,
+                        spike.getCollisionBox().height
+                );
             } else if (obstacle instanceof SlimeTrap slime) {
                 game.getSpriteBatch().draw(slime.getSprite(),
                         slime.getCollisionBox().x, slime.getCollisionBox().y, 64, 64);
@@ -263,7 +272,7 @@ public class GameScreen implements Screen {
         game.getSpriteBatch().setColor(Color.WHITE);
 
         // Draw Items
-        for (de.tum.cit.fop.maze.items.AbstractCollectable item : items) {
+        for (Collectable item : items) {
             item.render(game.getSpriteBatch());
         }
 
@@ -278,6 +287,35 @@ public class GameScreen implements Screen {
                 game.getSpriteBatch().draw(frame, enemy.getPosition().x, enemy.getPosition().y, enemy.getRenderWidth(), enemy.getRenderHeight());
             }
         }
+
+        if (debugDrawInteractionRects) {
+            debugRenderer.setProjectionMatrix(gameCamera.getCamera().combined);
+            debugRenderer.begin(ShapeRenderer.ShapeType.Line);
+
+            // Enemy interaction rectangles
+            debugRenderer.setColor(1f, 0f, 0f, 1f);
+            for (Enemy enemy : enemies) {
+                Rectangle r = enemy.getInteractionRect();
+                debugRenderer.rect(r.x, r.y, r.width, r.height);
+            }
+
+            // Enemy COLLISION boxes (blue)
+            debugRenderer.setColor(0f, 0f, 1f, 1f);
+            for (Enemy enemy : enemies) {
+                Rectangle r = enemy.getCollisionBox();
+                debugRenderer.rect(r.x, r.y, r.width, r.height);
+            }
+
+
+            // Player interaction rectangle
+            debugRenderer.setColor(0f, 1f, 0f, 1f);
+            Rectangle pr = player.getInteractionRect();
+            debugRenderer.rect(pr.x, pr.y, pr.width, pr.height);
+
+            debugRenderer.end();
+        }
+
+
 
         float worldW = maze.getWidth() * TILE_SIZE;
         float worldH = maze.getHeight() * TILE_SIZE;
@@ -312,6 +350,8 @@ public class GameScreen implements Screen {
         worldLogic = new InteractionLogic();
         combatSystem = new CombatSystem();
 
+        debugRenderer = new ShapeRenderer();
+
         playLevelMusic();
 
         createPauseMenu();
@@ -345,7 +385,7 @@ public class GameScreen implements Screen {
     }
 
     private void initializeEnemiesAndObstacles(long seed) {
-        obstacles = new ObstaclePlacer().placeObstacles(maze, 40, seed);
+        obstacles = new ObstaclePlacer().placeObstacles(maze, 28, seed);
 
         int propCount = switch (level) {
             case 1 -> 10;
@@ -704,10 +744,12 @@ public class GameScreen implements Screen {
         if (hitSound != null) hitSound.dispose();
         if (clickSound != null) clickSound.dispose();
         if (items != null) {
-            for (de.tum.cit.fop.maze.items.AbstractCollectable item : items) {
+            for (Collectable item : items) {
                 item.dispose();
             }
         }
+        if (debugRenderer != null) debugRenderer.dispose();
+
         if (fog != null) fog.dispose();
         if (propTilesetTexture != null) propTilesetTexture.dispose();
         propSprites.clear();

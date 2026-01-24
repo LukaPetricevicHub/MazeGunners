@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.map;
 
 import com.badlogic.gdx.math.Rectangle;
+import de.tum.cit.fop.maze.enemies.Enemy;
 import de.tum.cit.fop.maze.util.GridUtils;
 
 import java.awt.Point;
@@ -19,6 +20,11 @@ public class Maze {
     private final List<Point> exitCells = new ArrayList<>();
     private List<Room> rooms = List.of();
     private final boolean[][] roomMask;
+
+    private boolean[][] enemyOccupancy;
+    private int enemyOccW = -1;
+    private int enemyOccH = -1;
+
 
     public Maze(int width, int height, int tileSize) {
         this.width = width;
@@ -152,5 +158,60 @@ public class Maze {
         if (!inBounds(x, y)) return false;
         return roomMask[x][y];
     }
+
+    public void updateEnemyOccupancy(List<Enemy> enemies) {
+        if (enemyOccupancy == null
+                || enemyOccW != width
+                || enemyOccH != height) {
+
+            enemyOccupancy = new boolean[width][height];
+            enemyOccW = width;
+            enemyOccH = height;
+        } else {
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    enemyOccupancy[x][y] = false;
+                }
+            }
+        }
+
+        if (enemies == null) return;
+
+        for (Enemy e : enemies) {
+
+            if (e == null) continue;
+
+            if (e.ignoresEnemyCollision()) continue;
+
+
+            // World → tile
+
+            Rectangle r = e.getCollisionBox();
+
+            float inset = 4f; // same idea as COLLISION_INSET, but local to Maze
+
+            int minX = (int) ((r.x + inset) / tileSize);
+            int minY = (int) ((r.y + inset) / tileSize);
+            int maxX = (int) ((r.x + r.width  - inset) / tileSize);
+            int maxY = (int) ((r.y + r.height - inset) / tileSize);
+
+            for (int x = minX; x <= maxX; x++) {
+                for (int y = minY; y <= maxY; y++) {
+                    if (inBounds(x, y)) {
+                        enemyOccupancy[x][y] = true;
+                    }
+                }
+            }
+
+        }
+    }
+
+    public boolean isEnemyOccupied(int x, int y) {
+        if (enemyOccupancy == null) return false;
+        if (!inBounds(x, y)) return false;
+        return enemyOccupancy[x][y];
+    }
+
+
 
 }

@@ -53,10 +53,15 @@ public class ObstaclePlacer {
     // Instantiate a random obstacle type
     private Obstacle spawnRandomTrap(Point cell, Maze maze, Random rng) {
         float size = maze.getTileSize();
+        float tileSize = maze.getTileSize();
+        float obstacleSize = 16f;
+
         Vector2 spawnPos = new Vector2(
-                cell.x * size + (size / 4f),
-                cell.y * size + (size / 4f)
+                cell.x * tileSize,
+                cell.y * tileSize
         );
+
+
 
         int roll = rng.nextInt(3);
         return switch (roll) {

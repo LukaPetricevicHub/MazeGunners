@@ -290,7 +290,6 @@ public class FlyingDrone extends Enemy {
     }
 
 
-
     @Override
     protected boolean shouldResetPatrolOnReturn() {
         return false;
@@ -314,6 +313,11 @@ public class FlyingDrone extends Enemy {
     @Override
     public float getAttackRadius() {
         return ATTACK_RADIUS;
+    }
+
+    @Override
+    public boolean ignoresEnemyCollision() {
+        return true;
     }
 
 }

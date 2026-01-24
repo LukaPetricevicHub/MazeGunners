@@ -7,11 +7,24 @@ import com.badlogic.gdx.math.Vector2;
 public class SpikeTrap extends Obstacle {
 
     private static final int SPIKE_DAMAGE = 1;
-    private static final float RESET_COOLDOWN = 1.5f;
-    private static final float HITBOX_SIZE = 16f;
-    private static final float FRAME_TIME = 0.15f;
+    private static final float RESET_COOLDOWN = 8f;
+    private static final float HITBOX_SIZE = 32f;
+    private static final float FRAME_TIME = 0.025f;
 
-    private static final Texture SPIKE_TEXTURE = new Texture("spikeTrap.png");
+    private static final int FRAME_COLS = 14;
+    private static final int FRAME_ROWS = 1;
+
+    private static final int DAMAGE_START_FRAME = 7;
+    private static final float VISUAL_Y_OFFSET = 4f;
+
+    private boolean playerOnTrap = false;
+    private float cooldownTimer = 0f;
+
+    private boolean triggeredThisOccupancy = false;
+
+
+    private static final Texture SPIKE_TEXTURE =
+            new Texture("assets/Traps/SpikeTrap.png");
 
     private final TextureRegion[] frames;
 
@@ -22,64 +35,113 @@ public class SpikeTrap extends Obstacle {
     public SpikeTrap(Vector2 spawnPosition) {
         super(spawnPosition, SPIKE_DAMAGE, RESET_COOLDOWN, HITBOX_SIZE, HITBOX_SIZE);
 
-        // 1536 / 4 = 384
+        int frameWidth  = SPIKE_TEXTURE.getWidth() / FRAME_COLS;
+        int frameHeight = SPIKE_TEXTURE.getHeight() / FRAME_ROWS;
+
         TextureRegion[][] split = TextureRegion.split(
                 SPIKE_TEXTURE,
-                384,
-                1024
+                frameWidth,
+                frameHeight
         );
 
-        frames = split[0]; // frames 0..3
+        frames = split[0]; // 14 frames (1 row)
 
-        if (frames.length != 4) {
+        if (frames.length != FRAME_COLS) {
             throw new IllegalStateException(
-                    "spikeTrap.png must have exactly 4 frames, but has " + frames.length
+                    "SpikeTrap.png must have exactly " + FRAME_COLS +
+                            " frames, but has " + frames.length
             );
         }
     }
 
-    /** Called every frame */
+    // Called every frame
     public void update(float delta) {
-        updateCooldown(delta);
         frameTimer += delta;
+
+        // cooldown always ticks
+        // cooldown ticks ONCE
+        if (cooldownTimer > 0f) {
+            cooldownTimer -= delta;
+
+            if (cooldownTimer <= 0f) {
+                cooldownTimer = 0f;
+                triggeredThisOccupancy = false;
+                currentFrame = 0;
+            }
+
+        }
+
+
+
+        // activation condition
+        if (playerOnTrap && !triggeredThisOccupancy && cooldownTimer <= 0f && !activating && currentFrame == 0) {
+            activate();
+            cooldownTimer = RESET_COOLDOWN;
+            triggeredThisOccupancy = true;
+        }
+
+
 
         // === EXTENDING ===
         if (activating) {
             if (frameTimer >= FRAME_TIME) {
                 frameTimer = 0f;
 
-                if (currentFrame < 2) {
-                    currentFrame++; // 0 → 1 → 2
+                if (currentFrame < frames.length - 1) {
+                    currentFrame++;
                 } else {
                     activating = false;
-                    startCooldown(); // IMPORTANT
+                    currentFrame = frames.length - 1; // STAY extended until next trigger
                 }
+
             }
             return;
         }
 
-        // === RETRACTING ===
-        if (cooldownTimer <= 0f && currentFrame > 0) {
-            if (frameTimer >= FRAME_TIME) {
-                frameTimer = 0f;
-                currentFrame--; // 2 → 1 → 0
-            }
-        }
+
     }
 
-    /** Triggered by tryActivate() */
-    @Override
-    public void onActivate() {
-        if (cooldownTimer <= 0f && !activating && currentFrame == 0) {
-            activating = true;
-            frameTimer = 0f;
-        }
+
+
+    // Activate SpikeTrap
+    private void activate() {
+        activating = true;
+        frameTimer = 0f;
+        currentFrame = 0;
     }
 
-    /** Used by GameScreen for rendering */
+
+
+    // Used by GameScreen for rendering
     public TextureRegion getCurrentFrame() {
         return frames[currentFrame];
     }
+
+    @Override
+    public int getDamageToPlayer() {
+        return currentFrame >= DAMAGE_START_FRAME ? SPIKE_DAMAGE : 0;
+    }
+
+    public void setPlayerOnTrap(boolean onTrap) {
+        if (!onTrap) {
+            triggeredThisOccupancy = false;
+        }
+        this.playerOnTrap = onTrap;
+    }
+
+
+
+
+    public float getRenderX() {
+        return getCollisionBox().x;
+    }
+
+    public float getRenderY() {
+        return getCollisionBox().y + VISUAL_Y_OFFSET;
+    }
+
+
 }
+
 
 

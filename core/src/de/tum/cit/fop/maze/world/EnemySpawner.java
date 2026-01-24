@@ -8,6 +8,7 @@ import de.tum.cit.fop.maze.ai.RoomPatrolBuilder;
 import de.tum.cit.fop.maze.enemies.*;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.map.Room;
+import de.tum.cit.fop.maze.map.RoomType;
 import de.tum.cit.fop.maze.map.Tiles;
 import de.tum.cit.fop.maze.player.Player;
 
@@ -47,6 +48,10 @@ public class EnemySpawner {
         int roomsWithPatrol = 0;
 
         for (Room room : rooms) {
+
+            if (room.getType() == RoomType.SPAWN)
+                continue;
+
 
             // 1) Find all entrances of THIS room
             List<RoomEntrance> entrances =
@@ -129,7 +134,7 @@ public class EnemySpawner {
 
             out.add(new MutantWorker(
                     new Vector2(wx, wy),
-                    200f,
+                    100f,
                     targetPlayer
             ));
             spawned++;
@@ -170,6 +175,10 @@ public class EnemySpawner {
         List<Point> result = new ArrayList<>();
 
         for (Room room : rooms) {
+
+            if (room.getType() == RoomType.SPAWN)
+                continue;
+
             // shrink room by 1 tile on all sides
             for (int x = room.x() + 1; x < room.x() + room.w() - 1; x++) {
                 for (int y = room.y() + 1; y < room.y() + room.h() - 1; y++) {

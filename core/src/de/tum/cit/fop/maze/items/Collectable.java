@@ -5,12 +5,12 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 import de.tum.cit.fop.maze.player.Player;
 
-public abstract class AbstractCollectable {
+public abstract class Collectable {
     protected Rectangle bounds;
     protected Texture texture;
     private boolean active = true;
 
-    public AbstractCollectable(float x, float y, String texturePath) {
+    public Collectable(float x, float y, String texturePath) {
         this.bounds = new Rectangle(x, y, 32, 32);
         this.texture = new Texture(texturePath);
     }

@@ -2,7 +2,7 @@ package de.tum.cit.fop.maze.items;
 
 import de.tum.cit.fop.maze.player.Player;
 
-public class ShieldItem extends AbstractCollectable {
+public class ShieldItem extends Collectable {
     public ShieldItem(float x, float y) {
         super(x, y, "shield.png");
     }

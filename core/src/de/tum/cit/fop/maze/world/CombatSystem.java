@@ -10,13 +10,31 @@ import java.util.List;
 
 public class CombatSystem {
 
-    // Attributes
     private static final float ENEMY_WAKE_UP_DIST = 24 * 16f;
 
+    public void update(
+            float deltaTime,
+            Player player,
+            Maze maze,
+            List<Enemy> enemies,
+            List<Obstacle> obstacles,
+            GameCamera gameCamera
+    ) {
 
-    // Update combat and trap logic
-    public void update(float deltaTime, Player player, Maze maze, List<Enemy> enemies, List<Obstacle> obstacles, GameCamera gameCamera) {
+        // make sure maze is aware of current enemy rectangles before any Enemy.update(pathfinding) runs
+        if (maze != null && enemies != null) {
+            maze.updateEnemyOccupancy(enemies);
+        }
+
         Rectangle playerHitbox = new Rectangle(player.getX(), player.getY(), 32f, 64f);
+
+        Rectangle playerFeetHitbox = new Rectangle(
+                player.getX(),
+                player.getY(),
+                32f,
+                8f
+        );
+
 
         float centerX = player.getX() + 16f;
         float centerY = player.getY() + 32f;
@@ -29,36 +47,46 @@ public class CombatSystem {
             float closenessSquared = diffX * diffX + diffY * diffY;
             boolean isTooFar = closenessSquared > detectionRangeSquared;
 
-            if (isTooFar && !enemy.isAggroLocked())
-                continue;
-
+            // FIRST: detect contact
+            if (playerHitbox.overlaps(enemy.getCollisionBox())) {
+                enemy.onPlayerContact();
+            }
 
             enemy.update(deltaTime, maze);
+            enemy.applyEnemySeparation(enemies, player, deltaTime, maze);
 
-            if(playerHitbox.overlaps(enemy.getCollisionBox())) {
+            if (playerHitbox.overlaps(enemy.getCollisionBox())) {
                 player.takeDamage(1);
             }
+
+
         }
 
         float speedModifier = 1f;
         float visibilityFactor = 1f;
 
         for (Obstacle obs : obstacles) {
+
+            if (obs instanceof SpikeTrap spike) {
+
+                boolean onTrap = spike.getCollisionBox().overlaps(playerFeetHitbox);
+
+                spike.setPlayerOnTrap(onTrap);
+                spike.update(deltaTime);
+
+                int damage = spike.getDamageToPlayer();
+                if (damage > 0 && onTrap) {
+                    player.takeDamage(damage);
+                }
+
+                continue;
+            }
+
             obs.updateCooldown(deltaTime);
 
             if (obs.tryActivate(playerHitbox)) {
                 obs.onActivate();
-
-                if (obs instanceof SpikeTrap spike) {
-                    player.takeDamage(1);
-                } else {
-                    player.takeDamage(obs.getDamageToPlayer());
-                }
-            }
-
-
-            if (obs instanceof SpikeTrap spike) {
-                spike.update(deltaTime);
+                player.takeDamage(obs.getDamageToPlayer());
             }
 
             if (obs instanceof SlimeTrap slime) {
@@ -73,8 +101,9 @@ public class CombatSystem {
             if (obs instanceof FloorHazard hazard) {
                 hazard.updateEffect(deltaTime);
 
-                if(hazard.isBoostActive())
+                if (hazard.isBoostActive()) {
                     speedModifier = hazard.getSpeedBoost();
+                }
             }
         }
 

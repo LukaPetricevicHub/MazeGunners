@@ -2,7 +2,7 @@ package de.tum.cit.fop.maze.items;
 
 import de.tum.cit.fop.maze.player.Player;
 
-public class SpeedItem extends AbstractCollectable {
+public class SpeedItem extends Collectable {
     public SpeedItem(float x, float y) {
         super(x, y, "speed.png");
     }

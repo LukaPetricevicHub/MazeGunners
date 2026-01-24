@@ -6,12 +6,14 @@ import java.util.*;
 
 public final class GridPathfinder {
 
-    // Attributes
     private static final int[][] cardDirections = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
+    private static class Node {
+        final Point coordinates;
+        int costFromStart;
+        int estimatedTotalCost;
+        Node parentNode;
 
-    // Internal node for A* search
-    private static class Node { final Point coordinates;int costFromStart;int estimatedTotalCost;Node parentNode;
         Node(Point coordinates, int costFromStart, int estimatedTotalCost, Node parent) {
             this.coordinates = coordinates;
             this.costFromStart = costFromStart;
@@ -20,22 +22,18 @@ public final class GridPathfinder {
         }
     }
 
-
-    // Constructor
     private GridPathfinder() {}
 
-
-    // Find path using A* algorithm
     public static List<Point> findPath(
             Maze maze,
             Point start,
             Point goal,
             int footprint
     ) {
-        if (!isValidPlacement(start.x, start.y, maze, footprint))
+        if (!isValidPlacement(start.x, start.y, maze, footprint, start))
             return List.of();
 
-        if (!isValidPlacement(goal.x, goal.y, maze, footprint))
+        if (!isValidPlacement(goal.x, goal.y, maze, footprint, start))
             return List.of();
 
         if (start.equals(goal))
@@ -67,7 +65,7 @@ public final class GridPathfinder {
                 if (!maze.inBounds(nx, ny))
                     continue;
 
-                if (!isValidPlacement(nx, ny, maze, footprint))
+                if (!isValidPlacement(nx, ny, maze, footprint, start))
                     continue;
 
                 Point next = new Point(nx, ny);
@@ -90,15 +88,10 @@ public final class GridPathfinder {
         return List.of();
     }
 
-
-
-    // Calculate Manhattan distance
     private static int calculateManhattanDistance(Point a, Point b) {
         return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
     }
 
-
-    // Reconstruct path from goal node
     private static List<Point> reconstructPath(Node goalNode) {
         LinkedList<Point> path = new LinkedList<>();
         Node traversalNode = goalNode;
@@ -111,9 +104,13 @@ public final class GridPathfinder {
         return path;
     }
 
-
-    // Check if space fits enemy
-    private static boolean isValidPlacement(int x, int y, Maze maze, int footprint) {
+    private static boolean isValidPlacement(
+            int x,
+            int y,
+            Maze maze,
+            int footprint,
+            Point start
+    ) {
         for (int dx = 0; dx < footprint; dx++) {
             for (int dy = 0; dy < footprint; dy++) {
                 int tx = x + dx;
@@ -124,14 +121,25 @@ public final class GridPathfinder {
 
                 if (!maze.getTile(tx, ty).isWalkable())
                     return false;
+
+                if (maze.isEnemyOccupied(tx, ty)) {
+                    // Allow our own footprint at the start position
+                    if (start == null) return false;
+
+                    boolean isOwnFootprint =
+                            tx >= start.x && tx < start.x + footprint &&
+                                    ty >= start.y && ty < start.y + footprint;
+
+                    if (!isOwnFootprint)
+                        return false;
+                }
+
+
             }
         }
         return true;
     }
 
-
-
-    // Find reachable goal near player
     public static Point findReachableGoalNearPlayer(
             Maze maze,
             Point enemyTile,
@@ -171,6 +179,7 @@ public final class GridPathfinder {
                     continue;
 
                 int distanceToPlayer = Math.abs(offsetX) + Math.abs(offsetY);
+
                 if (distanceToPlayer < shortestDistanceToPlayer) {
                     shortestDistanceToPlayer = distanceToPlayer;
                     bestCandidate = candidatePoint;
@@ -181,10 +190,7 @@ public final class GridPathfinder {
         return bestCandidate;
     }
 
-
-    // Default pathfinding: 2x2 footprint (ground enemies)
     public static List<Point> findPath(Maze maze, Point start, Point goal) {
         return findPath(maze, start, goal, 2);
     }
-
 }

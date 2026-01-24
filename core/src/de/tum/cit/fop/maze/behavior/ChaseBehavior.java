@@ -10,10 +10,15 @@ import java.util.List;
 
 public class ChaseBehavior implements BehaviorState {
 
-    // Attributes
     private static final float RECALCULATION_COOLDOWN = 0.3f;
     private static final float MIN_STUCK_DIST = 1.0f;
     private static final float MAX_STUCK_DURATION = 0.25f;
+
+    private static final float NO_PATH_RETRY_DELAY = 0.6f;
+
+    private boolean noPathAvailable = false;
+    private float noPathRetryTimer = 0f;
+
 
     private List<Point> currentPath = List.of();
     private int currentWaypointIndex = 0;
@@ -22,30 +27,36 @@ public class ChaseBehavior implements BehaviorState {
     private Vector2 previousFramePos = null;
     private float timeSinceLastMovement = 0f;
 
-
-    // Return the chase state type
     @Override
     public BehaviorStateType getType() {
         return BehaviorStateType.CHASE;
     }
 
-
-    // Logic for pursuing the player
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
         Vector2 currentPosition = enemy.getPosition();
+
+        if (noPathAvailable) {
+            noPathRetryTimer -= deltaTime;
+            if (noPathRetryTimer <= 0f) {
+                noPathAvailable = false;
+            }
+            return;
+        }
 
         if (previousFramePos != null) {
             if (currentPosition.dst2(previousFramePos) < MIN_STUCK_DIST * MIN_STUCK_DIST)
                 timeSinceLastMovement += deltaTime;
             else
                 timeSinceLastMovement = 0f;
-
         } else {
             previousFramePos = new Vector2(currentPosition);
         }
 
         previousFramePos.set(currentPosition);
+
+        if (enemy.isAttackingLocked())
+            return;
 
         Point enemyTile = convertToTileCoords(currentPosition, maze);
         Point playerTile = convertToTileCoords(enemy.getPlayerPosition(), maze);
@@ -53,7 +64,16 @@ public class ChaseBehavior implements BehaviorState {
         timeUntilRepath -= deltaTime;
 
         boolean isStuck = timeSinceLastMovement >= MAX_STUCK_DURATION;
-        boolean needsNewPath = isStuck || currentPath.isEmpty() || currentWaypointIndex >= currentPath.size() || trackedPlayerTile == null || !playerTile.equals(trackedPlayerTile) || timeUntilRepath <= 0f;
+        boolean needsNewPath =
+                !noPathAvailable && (
+                        isStuck
+                                || currentPath.isEmpty()
+                                || currentWaypointIndex >= currentPath.size()
+                                || trackedPlayerTile == null
+                                || !playerTile.equals(trackedPlayerTile)
+                                || timeUntilRepath <= 0f
+                );
+
 
         if (needsNewPath) {
             Point bestGoal = GridPathfinder.findReachableGoalNearPlayer(
@@ -64,20 +84,27 @@ public class ChaseBehavior implements BehaviorState {
                     enemy.getPathfindingFootprint()
             );
 
-
-            if (bestGoal != null)
-                currentPath = currentPath = GridPathfinder.findPath(
+            if (bestGoal != null) {
+                currentPath = GridPathfinder.findPath(
                         maze,
                         enemyTile,
                         bestGoal,
                         enemy.getPathfindingFootprint()
                 );
-
-            else
+            } else {
                 currentPath = List.of();
+            }
+
+            if (currentPath.isEmpty()) {
+                noPathAvailable = true;
+                noPathRetryTimer = NO_PATH_RETRY_DELAY;
+                return; // HOLD POSITION
+            }
+
+            noPathAvailable = false; //?
 
 
-            if (!currentPath.isEmpty() && currentPath.get(0).equals(enemyTile)) {
+            if (currentPath.get(0).equals(enemyTile)) {
                 currentWaypointIndex = 1;
             } else {
                 currentWaypointIndex = 0;
@@ -89,40 +116,35 @@ public class ChaseBehavior implements BehaviorState {
             previousFramePos.set(currentPosition);
         }
 
-        if(currentPath.isEmpty() || currentWaypointIndex >= currentPath.size())
+        if (currentPath.isEmpty() || currentWaypointIndex >= currentPath.size())
             return;
 
-        currentWaypointIndex = SteeringBehavior.followPath(enemy, maze, currentPath, currentWaypointIndex, deltaTime);
+        currentWaypointIndex =
+                SteeringBehavior.followPath(enemy, maze, currentPath, currentWaypointIndex, deltaTime);
     }
 
-
-    // Convert world coordinates to tile
     private static Point convertToTileCoords(Vector2 worldPos, Maze maze) {
         int tileX = (int) (worldPos.x / maze.getTileSize());
         int tileY = (int) (worldPos.y / maze.getTileSize());
-
         return new Point(tileX, tileY);
     }
 
-
-    // Get center position of tile
     private static Vector2 getTileCenter(Point tileCoords, Maze maze) {
         float size = maze.getTileSize();
-
-        return new Vector2(tileCoords.x * size + size * 0.5f, tileCoords.y * size + size * 0.5f);
+        return new Vector2(
+                tileCoords.x * size + size * 0.5f,
+                tileCoords.y * size + size * 0.5f
+        );
     }
 
-
-    // Check direct path to player
     private boolean canDirectChase(Enemy enemy, Maze maze) {
         Vector2 pos = enemy.getPosition();
         Vector2 playerPos = enemy.getPlayerPosition();
 
         Vector2 direction = playerPos.cpy().sub(pos);
 
-        if(direction.len2() < 1f)
+        if (direction.len2() < 1f)
             return false;
-
 
         Vector2 movementStep = direction.nor().scl(4f);
         Vector2 testPosition = pos.cpy().add(movementStep);

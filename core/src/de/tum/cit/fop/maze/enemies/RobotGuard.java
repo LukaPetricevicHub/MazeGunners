@@ -298,4 +298,10 @@ public class RobotGuard extends Enemy {
         return Math.max(ATTACK_RANGE_X, ATTACK_RANGE_Y);
     }
 
+    @Override
+    public float getSeparationRadius() {
+        return 20f;
+    }
+
+
 }

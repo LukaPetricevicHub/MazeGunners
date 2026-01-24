@@ -11,7 +11,6 @@ import de.tum.cit.fop.maze.map.Maze;
 
 public class Player {
 
-    // Attributes
     private float x;
     private float y;
 
@@ -51,53 +50,44 @@ public class Player {
     private int skillSpeedLevel = 0;
     private int skillHealthLevel = 0;
     private int skillDamageLevel = 0;
+    private final Rectangle interactionRect = new Rectangle();
+    private static final float INTERACTION_MARGIN = 2f;
+    private static final float INTERACTION_HEIGHT = 40f;
 
     private static final int XP_PER_LEVEL_BASE = 100;
-
-
 
     @FunctionalInterface
     public interface BlockChecker {
         boolean isBlocked(Rectangle playerRect);
     }
 
-
-    // Constructor
     public Player(float startX, float startY, Animation<TextureRegion> walkDownAnimation) {
         this.x = startX;
         this.y = startY;
         this.walkDownAnimation = walkDownAnimation;
     }
 
-
-    // Main Update
     public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker) {
-        // 1. Handle Power-up Timers
         if (speedTimer > 0) {
             speedTimer -= dt;
             if (speedTimer <= 0) {
                 speedMultiplier = 1.0f;
-                System.out.println("Speed Boost Ended");
             }
         }
         if (shieldTimer > 0) {
             shieldTimer -= dt;
             if (shieldTimer <= 0) {
                 isShielded = false;
-                System.out.println("Shield Depleted");
             }
         }
 
-        // 2. Handle Animation & State
         animTime += dt;
         updateTimers(dt);
 
-        // 3. Handle Movement
         MovementInput input = readMovementInput(dt);
         attemptMove(input.dx, input.dy, maze, game, blockChecker);
     }
 
-    // Timers & State
     private void updateTimers(float dt) {
         if (invulnerable) {
             invulnTimeLeft -= dt;
@@ -112,8 +102,6 @@ public class Player {
         }
     }
 
-
-    // Keyboard input
     private MovementInput readMovementInput(float dt) {
         int keyUp = Gdx.app.getPreferences("maze_runner_prefs").getInteger("key_up", Input.Keys.UP);
         int keyDown = Gdx.app.getPreferences("maze_runner_prefs").getInteger("key_down", Input.Keys.DOWN);
@@ -128,18 +116,16 @@ public class Player {
         float dx = 0f;
         float dy = 0f;
 
-        if (Gdx.input.isKeyPressed(keyLeft))  dx -= move;
+        if (Gdx.input.isKeyPressed(keyLeft)) dx -= move;
         if (Gdx.input.isKeyPressed(keyRight)) dx += move;
-        if (Gdx.input.isKeyPressed(keyUp))    dy += move;
-        if (Gdx.input.isKeyPressed(keyDown))  dy -= move;
+        if (Gdx.input.isKeyPressed(keyUp)) dy += move;
+        if (Gdx.input.isKeyPressed(keyDown)) dy -= move;
 
         return new MovementInput(dx, dy);
     }
 
     public void addExperience(int amount) {
         this.experience += amount;
-        System.out.println("Gained " + amount + " XP. Total: " + experience);
-
         checkLevelUp();
     }
 
@@ -150,19 +136,15 @@ public class Player {
             experience -= xpNeeded;
             playerLevel++;
             skillPoints++;
-
             lives = Math.min(lives + 1, 5);
-
-            System.out.println("LEVEL UP! Now Level " + playerLevel + ". Skill Points: " + skillPoints);
-
             xpNeeded = playerLevel * XP_PER_LEVEL_BASE;
         }
     }
+
     public boolean upgradeSpeed() {
-        if (skillPoints > 0 && skillSpeedLevel < 5) { // Max level 5
+        if (skillPoints > 0 && skillSpeedLevel < 5) {
             skillPoints--;
             skillSpeedLevel++;
-            System.out.println("Upgraded Speed to Lv " + skillSpeedLevel);
             return true;
         }
         return false;
@@ -172,26 +154,18 @@ public class Player {
         if (skillPoints > 0 && skillHealthLevel < 5) {
             skillPoints--;
             skillHealthLevel++;
-            // Immediately give the extra life
             if (lives < getMaxLives()) lives++;
-            System.out.println("Upgraded Health to Lv " + skillHealthLevel);
             return true;
         }
         return false;
     }
 
-
-    // Collision & Movement
     private void attemptMove(float dx, float dy, Maze maze, MazeRunnerGame game, BlockChecker blockChecker) {
-
         boolean hitWallX = false;
         boolean hitWallY = false;
 
-        // --- move X ---
         if (dx != 0f) {
             float nextX = x + dx;
-
-            // first check tiles (walls/exit)
             if (canOccupy(nextX, y, maze)) {
                 if (blockChecker == null || !blockChecker.isBlocked(makeRect(nextX, y))) {
                     x = nextX;
@@ -203,34 +177,31 @@ public class Player {
             }
         }
 
-        // --- move Y ---
         if (dy != 0f) {
             float nextY = y + dy;
             if (canOccupy(x, nextY, maze)) {
-
                 if (blockChecker == null || !blockChecker.isBlocked(makeRect(x, nextY))) {
                     y = nextY;
                 } else {
                     hitWallY = true;
                 }
-
             } else {
                 hitWallY = true;
             }
         }
+
         if (hitWallX || hitWallY) {
             game.playWallHitSound();
         }
     }
 
-
     private boolean canOccupy(float testX, float testY, Maze maze) {
         if (noClip) return true;
 
-        float left   = testX + COLLISION_INSET;
-        float right  = testX + WIDTH - COLLISION_INSET;
+        float left = testX + COLLISION_INSET;
+        float right = testX + WIDTH - COLLISION_INSET;
         float bottom = testY + COLLISION_INSET;
-        float top    = testY + 40.0f;
+        float top = testY + 40.0f;
 
         return !isBlocked(left, bottom, maze)
                 && !isBlocked(right, bottom, maze)
@@ -241,28 +212,23 @@ public class Player {
     public void addLife() {
         if (lives < getMaxLives()) {
             lives++;
-            System.out.println("Life Added! Current lives: " + lives);
         }
     }
 
     public void activateSpeedBoost(float duration, float multiplier) {
         this.speedTimer = duration;
         this.speedMultiplier = multiplier;
-        System.out.println("Speed Boost Activated!");
     }
 
     public void activateShield(float duration) {
         this.shieldTimer = duration;
         this.isShielded = true;
-        System.out.println("Shield Activated!");
     }
 
     public boolean isShielded() {
         return isShielded;
     }
 
-
-    // Rendering
     public void draw(SpriteBatch batch) {
         TextureRegion frame = walkDownAnimation.getKeyFrame(animTime, true);
         com.badlogic.gdx.graphics.Color oldColor = batch.getColor();
@@ -274,31 +240,17 @@ public class Player {
         }
 
         batch.draw(frame, x, y, 52f, 52f);
-
         batch.setColor(oldColor);
     }
 
-
-    // Player takes damage
     public void takeDamage(int amount) {
-        if (godMode) {
-            System.out.println("God Mode: Damage ignored."); //test, remove for end product
-            return;
-        }
-
-        if (isShielded) {
-            System.out.println("Damage blocked by Shield!"); //test, remove for end product
-            return;
-        }
-
+        if (godMode) return;
+        if (isShielded) return;
         if (invulnerable) return;
 
-
         lives = Math.max(0, lives - amount);
-
         invulnerable = true;
         invulnTimeLeft = 0.8f;
-
         damageFlash = true;
         flashTimeLeft = 0.25f;
     }
@@ -306,7 +258,6 @@ public class Player {
     public void giveKey() {
         hasKey = true;
     }
-
 
     public void setSpeedMultiplier(float multiplier) {
         speedMultiplier = multiplier;
@@ -316,8 +267,6 @@ public class Player {
         speedMultiplier = 1f;
     }
 
-
-    // Getters
     public int getLives() { return lives; }
     public boolean hasKey() { return hasKey; }
     public boolean isDamageFlashing() { return damageFlash; }
@@ -327,26 +276,37 @@ public class Player {
 
     public void setGodMode(boolean enabled) {
         this.godMode = enabled;
-        System.out.println("God Mode set to: " + enabled);
     }
 
     public void setNoClip(boolean enabled) {
         this.noClip = enabled;
-        System.out.println("No Clip set to: " + enabled);
     }
+
+    public Rectangle getInteractionRect() {
+        interactionRect.set(
+                x - INTERACTION_MARGIN,
+                y - INTERACTION_MARGIN,
+                WIDTH + INTERACTION_MARGIN * 2,
+                INTERACTION_HEIGHT + INTERACTION_MARGIN * 2
+        );
+        return interactionRect;
+    }
+
     public int getMaxLives() {
         return 3 + skillHealthLevel;
     }
+
     public float getWalkSpeed() {
         return WALK_SPEED + (skillSpeedLevel * 50f);
     }
+
     public int getExperience() { return experience; }
     public int getPlayerLevel() { return playerLevel; }
     public int getSkillPoints() { return skillPoints; }
     public int getXpToNextLevel() { return playerLevel * XP_PER_LEVEL_BASE; }
 
-    // Internal helper
     private record MovementInput(float dx, float dy) {}
+
     private boolean isBlocked(float worldX, float worldY, Maze maze) {
         int cx = (int) (worldX / maze.getTileSize());
         int cy = (int) (worldY / maze.getTileSize());
@@ -358,9 +318,7 @@ public class Player {
     }
 
     private Rectangle makeRect(float px, float py) {
-        // Use SAME collision "top" you used in canOccupy (40px tall)
-        // so the rectangle matches your actual collision height.
         return new Rectangle(px, py, WIDTH, HEIGHT);
     }
-
 }
+
