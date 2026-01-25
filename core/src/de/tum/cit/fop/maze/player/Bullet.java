@@ -15,7 +15,7 @@ public class Bullet {
     private static final float SPEED = 600f;
     private static final float SIZE = 8f;
 
-    // --- NEW: Track enemies we already pierced so we don't hit them twice ---
+    // Track enemies we already pierced so we don't hit them twice ---
     private List<Enemy> hitEnemies = new ArrayList<>();
 
     public Bullet(float startX, float startY, float targetX, float targetY) {

@@ -14,8 +14,6 @@ import de.tum.cit.fop.maze.player.Player;
 
 public class MutantWorker extends Enemy {
 
-    /* ===================== CONSTANTS ===================== */
-
     private static final float WALK_FRAME_DURATION   = 0.12f;
     private static final float ATTACK_FRAME_DURATION = 0.10f;
 

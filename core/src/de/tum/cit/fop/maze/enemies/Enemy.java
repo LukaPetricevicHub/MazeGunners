@@ -13,6 +13,7 @@ import java.util.List;
 
 public abstract class Enemy {
 
+    // Attributes
     protected Vector2 worldPosition;
     protected float movementSpeed;
     protected Rectangle collisionBounds;
@@ -30,23 +31,14 @@ public abstract class Enemy {
     private static final float CHASE_MEMORY_DURATION = 2.0f;
     protected boolean aggroLocked = false;
 
-    // =========================
-    // HEALTH / DAMAGE
-    // =========================
     protected int health = 3;
     protected boolean markedForRemoval = false;
 
-    // =========================
-    // STUCK DETECTION
-    // =========================
     private final Vector2 prevPosition = new Vector2();
     private float stuckTimer = 0f;
     private static final float STUCK_TIME_THRESHOLD = 0.4f;
     private static final float MIN_MOVEMENT_EPSILON = 0.5f;
 
-    // =========================
-    // INTERACTION / COMBAT LOCK
-    // =========================
     private final Rectangle interactionRect = new Rectangle();
     protected static final float INTERACTION_MARGIN = 2f;
     protected static final float INTERACTION_BODY_HEIGHT = 32f;
@@ -61,33 +53,19 @@ public abstract class Enemy {
     protected CombatLockState combatLockState = CombatLockState.NONE;
     protected float combatLockTimer = 0f;
 
-    // =========================
-    // CONSTRUCTOR
-    // =========================
-    public Enemy(Vector2 startWorldPosition,
-                 float movementSpeed,
-                 BehaviorState initialBehavior,
-                 Player targetPlayer) {
-
+    // Constructor
+    public Enemy(Vector2 startWorldPosition, float movementSpeed, BehaviorState initialBehavior, Player targetPlayer) {
         this.worldPosition = startWorldPosition;
         this.homeWorldPosition = new Vector2(startWorldPosition);
         this.movementSpeed = movementSpeed;
         this.activeBehavior = initialBehavior;
         this.targetPlayer = targetPlayer;
 
-        this.collisionBounds = new Rectangle(
-                startWorldPosition.x + COLLISION_OFFSET,
-                startWorldPosition.y + COLLISION_OFFSET,
-                COLLISION_SIZE,
-                COLLISION_SIZE
-        );
-
+        this.collisionBounds = new Rectangle(startWorldPosition.x + COLLISION_OFFSET, startWorldPosition.y + COLLISION_OFFSET, COLLISION_SIZE, COLLISION_SIZE);
         this.collisionHandler = new CollisionHandler(collisionBounds, COLLISION_INSET);
     }
 
-    // =========================
-    // UPDATE
-    // =========================
+    // Enemy movement
     public final void update(float deltaTime, Maze maze) {
         prevPosition.set(worldPosition);
 
@@ -96,40 +74,35 @@ public abstract class Enemy {
         if (combatLockState == CombatLockState.NONE) {
             updateAI(deltaTime);
         }
-
         updateBehavior(deltaTime, maze);
 
-        collisionBounds.setPosition(
-                worldPosition.x + COLLISION_OFFSET,
-                worldPosition.y + COLLISION_OFFSET
-        );
+        collisionBounds.setPosition(worldPosition.x + COLLISION_OFFSET, worldPosition.y + COLLISION_OFFSET);
 
-        if (prevPosition.dst2(worldPosition) < MIN_MOVEMENT_EPSILON * MIN_MOVEMENT_EPSILON)
+        if(prevPosition.dst2(worldPosition) < MIN_MOVEMENT_EPSILON * MIN_MOVEMENT_EPSILON)
             stuckTimer += deltaTime;
         else
             stuckTimer = 0f;
 
-        if (stuckTimer >= STUCK_TIME_THRESHOLD) {
+        if(stuckTimer >= STUCK_TIME_THRESHOLD) {
             onStuck(maze);
             stuckTimer = 0f;
         }
     }
 
-    // =========================
-    // AI
-    // =========================
+    // AI behavior
     protected void updateAI(float deltaTime) {
-        if (targetPlayer == null || activeBehavior == null)
+        if (targetPlayer == null || activeBehavior == null) {
             return;
+        }
 
         float dist2 = worldPosition.dst2(getPlayerPosition());
         boolean playerInRange = dist2 <= chaseRadius * chaseRadius;
 
-        if (playerInRange && supportsAggroLock()) {
+        if(playerInRange && supportsAggroLock()) {
             aggroLocked = true;
         }
 
-        if (aggroLocked || playerInRange) {
+        if(aggroLocked || playerInRange) {
             chaseMemoryTimer = 0f;
 
             if (activeBehavior.getType() != BehaviorStateType.CHASE) {
@@ -137,11 +110,9 @@ public abstract class Enemy {
             }
             return;
         }
-
         chaseMemoryTimer += deltaTime;
 
-        if (chaseMemoryTimer >= CHASE_MEMORY_DURATION
-                && activeBehavior.getType() == BehaviorStateType.CHASE) {
+        if (chaseMemoryTimer >= CHASE_MEMORY_DURATION && activeBehavior.getType() == BehaviorStateType.CHASE) {
             setCurrentBehavior(createDefaultBehavior());
         }
     }
@@ -154,9 +125,7 @@ public abstract class Enemy {
     protected abstract BehaviorState createChaseBehavior();
     protected abstract BehaviorState createDefaultBehavior();
 
-    // =========================
-    // HEALTH
-    // =========================
+    // Health system
     public void takeDamage(int amount) {
         health -= amount;
         if (health <= 0) {
@@ -172,9 +141,7 @@ public abstract class Enemy {
         return markedForRemoval;
     }
 
-    // =========================
-    // ACCESSORS
-    // =========================
+    // Getters
     public Vector2 getPosition() { return worldPosition; }
     public float getSpeed() { return movementSpeed; }
     public Rectangle getCollisionBox() { return collisionBounds; }
@@ -197,24 +164,13 @@ public abstract class Enemy {
         this.activeBehavior = behavior;
     }
 
-    // =========================
-    // SEPARATION
-    // =========================
+    // Enemy - Enemy col
     public Rectangle getInteractionRect() {
-        interactionRect.set(
-                worldPosition.x - INTERACTION_MARGIN,
-                worldPosition.y - INTERACTION_MARGIN,
-                getRenderWidth() + INTERACTION_MARGIN * 2,
-                INTERACTION_BODY_HEIGHT + INTERACTION_MARGIN * 2
-        );
+        interactionRect.set(worldPosition.x - INTERACTION_MARGIN, worldPosition.y - INTERACTION_MARGIN, getRenderWidth() + INTERACTION_MARGIN * 2, INTERACTION_BODY_HEIGHT + INTERACTION_MARGIN * 2);
         return interactionRect;
     }
 
-    public void applyEnemySeparation(List<Enemy> others,
-                                     Player player,
-                                     float deltaTime,
-                                     Maze maze) {
-
+    public void applyEnemySeparation(List<Enemy> others, Player player, float deltaTime, Maze maze) {
         if (combatLockState == CombatLockState.ATTACKING)
             return;
 
@@ -222,32 +178,25 @@ public abstract class Enemy {
         Rectangle myRect = getInteractionRect();
         Vector2 correction = new Vector2();
 
-        for (Enemy other : others) {
+        for(Enemy other : others) {
             if (other == this) continue;
             if (ignoresEnemyCollision() || other.ignoresEnemyCollision()) continue;
 
             Rectangle otherRect = other.getInteractionRect();
-            if (!myRect.overlaps(otherRect)) continue;
+            if(!myRect.overlaps(otherRect)) continue;
 
-            float overlapX = Math.min(
-                    myRect.x + myRect.width - otherRect.x,
-                    otherRect.x + otherRect.width - myRect.x
-            );
-
-            float overlapY = Math.min(
-                    myRect.y + myRect.height - otherRect.y,
-                    otherRect.y + otherRect.height - myRect.y
-            );
+            float overlapX = Math.min(myRect.x + myRect.width - otherRect.x, otherRect.x + otherRect.width - myRect.x);
+            float overlapY = Math.min(myRect.y + myRect.height - otherRect.y, otherRect.y + otherRect.height - myRect.y);
 
             float tolerance = maxAllowedOverlap();
             if (overlapX < tolerance && overlapY < tolerance)
                 continue;
 
-            if (overlapX < overlapY) {
+            if(overlapX < overlapY) {
                 correction.x += (myRect.x + myRect.width * 0.5f <
                         otherRect.x + otherRect.width * 0.5f)
                         ? -overlapX : overlapX;
-            } else {
+            }else {
                 correction.y += (myRect.y + myRect.height * 0.5f <
                         otherRect.y + otherRect.height * 0.5f)
                         ? -overlapY : overlapY;
@@ -261,9 +210,8 @@ public abstract class Enemy {
         getCollisionHandler().move(pos, correction, deltaTime, maze);
     }
 
-    // =========================
-    // COMBAT LOCK
-    // =========================
+
+    // Combat
     protected void updateCombatLock(float deltaTime) {
 
         switch (combatLockState) {
@@ -304,9 +252,6 @@ public abstract class Enemy {
     protected float attackLockDuration() { return 0.4f; }
     protected float postAttackDelay() { return 0.25f; }
 
-    // =========================
-    // OVERRIDES / QUERIES
-    // =========================
     public boolean isAggroLocked() { return aggroLocked; }
     public boolean isAttackingLocked() { return combatLockState == CombatLockState.ATTACKING; }
 
@@ -317,16 +262,11 @@ public abstract class Enemy {
     public boolean ignoresEnemyCollision() { return false; }
 
     public boolean isChasing() {
-        return activeBehavior != null
-                && activeBehavior.getType() == BehaviorStateType.CHASE
-                && (aggroLocked || isAggroLocked());
+        return activeBehavior != null && activeBehavior.getType() == BehaviorStateType.CHASE && (aggroLocked || isAggroLocked());
     }
 
     protected void onStuck(Maze maze) {
-        Vector2 escape = new Vector2(
-                (float) (Math.random() * 2 - 1),
-                (float) (Math.random() * 2 - 1)
-        );
+        Vector2 escape = new Vector2((float) (Math.random() * 2 - 1), (float) (Math.random() * 2 - 1));
         if (escape.len2() < 0.001f) return;
         escape.nor().scl(getSpeed() * 0.5f);
         collisionHandler.move(worldPosition, escape, 0.1f, maze);
@@ -334,10 +274,7 @@ public abstract class Enemy {
 
     protected boolean canMoveTo(float x, float y, Maze maze) {
         float inset = 2f;
-        return !maze.isWallWorld(x + inset, y + inset)
-                && !maze.isWallWorld(x + 32f - inset, y + inset)
-                && !maze.isWallWorld(x + inset, y + 32f - inset)
-                && !maze.isWallWorld(x + 32f - inset, y + 32f - inset);
+        return !maze.isWallWorld(x + inset, y + inset) && !maze.isWallWorld(x + 32f - inset, y + inset) && !maze.isWallWorld(x + inset, y + 32f - inset) && !maze.isWallWorld(x + 32f - inset, y + 32f - inset);
     }
 
     public int getPathfindingFootprint() { return 2; }

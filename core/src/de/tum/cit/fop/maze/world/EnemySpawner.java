@@ -20,18 +20,8 @@ public class EnemySpawner {
     private static final float AVG_ENEMY_W = 32f;
     private static final float AVG_ENEMY_H = 32f;
 
-    /**
-     * Main entry.
-     * excludedRoom may be null.
-     */
-    public List<Enemy> spawnEnemies(
-            Maze maze,
-            List<Room> rooms,
-            Room excludedRoom,
-            Player targetPlayer,
-            int enemyCount,
-            long seed
-    ) {
+
+    public List<Enemy> spawnEnemies(Maze maze, List<Room> rooms, Room excludedRoom, Player targetPlayer, int enemyCount, long seed) {
         List<Enemy> enemies = new ArrayList<>();
         Random rng = new Random(seed);
 
@@ -64,26 +54,16 @@ public class EnemySpawner {
         return enemies;
     }
 
-    // =====================================================
-    // PATROL ENEMIES
-    // =====================================================
-    private void spawnRoomPatrolEnemies(
-            Maze maze,
-            List<Room> rooms,
-            Player targetPlayer,
-            Random rng,
-            List<Enemy> out
-    ) {
+    // Patrolling enemies
+    private void spawnRoomPatrolEnemies(Maze maze, List<Room> rooms, Player targetPlayer, Random rng, List<Enemy> out) {
         int roomsWithPatrol = 0;
-
         for (Room room : rooms) {
 
             if (room.getType() == RoomType.SPAWN)
                 continue;
 
             // 1) Entrances
-            List<RoomEntrance> entrances =
-                    EntranceFinder.findEntrances(maze, room);
+            List<RoomEntrance> entrances = EntranceFinder.findEntrances(maze, room);
 
             // 2) Patrols
             List<Array<Vector2>> patrols = new ArrayList<>();
@@ -120,17 +100,8 @@ public class EnemySpawner {
         }
     }
 
-    // =====================================================
-    // RANDOM ENEMIES
-    // =====================================================
-    private void spawnRandomEnemies(
-            Maze maze,
-            List<Room> rooms,
-            Player targetPlayer,
-            int maxEnemies,
-            Random rng,
-            List<Enemy> out
-    ) {
+    // Random enemies
+    private void spawnRandomEnemies(Maze maze, List<Room> rooms, Player targetPlayer, int maxEnemies, Random rng, List<Enemy> out) {
         List<Point> candidates;
 
         // Prefer room interiors
@@ -159,23 +130,14 @@ public class EnemySpawner {
             if (!isSafeToSpawn(wx, wy, maze))
                 continue;
 
-            out.add(new MutantWorker(
-                    new Vector2(wx, wy),
-                    100f,
-                    targetPlayer
-            ));
+            out.add(new MutantWorker(new Vector2(wx, wy), 100f, targetPlayer));
             spawned++;
         }
 
-        System.out.println(
-                "[EnemySpawner] Random enemies spawned=" +
-                        spawned + " (requested " + maxEnemies + ")"
-        );
+        System.out.println("[EnemySpawner] Random enemies spawned=" + spawned + " (requested " + maxEnemies + ")");
     }
 
-    // =====================================================
-    // HELPERS
-    // =====================================================
+    // Helpers
     private List<Point> collectFloorCells(Maze maze) {
         List<Point> cells = new ArrayList<>();
         for (int y = 1; y < maze.getHeight() - 1; y++) {
@@ -196,19 +158,13 @@ public class EnemySpawner {
         float b = y + pad;
         float t = y + AVG_ENEMY_H - pad;
 
-        return !maze.isWallWorld(l, b)
-                && !maze.isWallWorld(r, b)
-                && !maze.isWallWorld(l, t)
-                && !maze.isWallWorld(r, t);
+        return !maze.isWallWorld(l, b) && !maze.isWallWorld(r, b) && !maze.isWallWorld(l, t) && !maze.isWallWorld(r, t);
     }
 
-    private List<Point> collectSafeRoomInteriorTiles(
-            Maze maze,
-            List<Room> rooms
-    ) {
+    private List<Point> collectSafeRoomInteriorTiles(Maze maze, List<Room> rooms) {
         List<Point> result = new ArrayList<>();
 
-        for (Room room : rooms) {
+        for(Room room : rooms) {
             if (room.getType() == RoomType.SPAWN)
                 continue;
 

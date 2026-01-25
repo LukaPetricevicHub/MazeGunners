@@ -125,7 +125,7 @@ public class GameScreen implements Screen {
     private int clampLevel(int lv) { return Math.max(1, Math.min(5, lv)); }
 
 
-    // --- CONSTRUCTORS ---
+    // Constructors
 
     public GameScreen(MazeRunnerGame game, int level, FileHandle levelFile) {
         this(game, level, levelFile, false, level);
@@ -142,11 +142,9 @@ public class GameScreen implements Screen {
         this.level = level;
         this.endlessMode = endlessMode;
         this.floor = startFloor;
-
-        // --- FIX: INITIALIZE VIEWPORTS HERE TOO ---
         this.viewport = new ScreenViewport();
         this.uiViewport = new com.badlogic.gdx.utils.viewport.FitViewport(1280, 720);
-        // ------------------------------------------
+
 
         // Initialize viewport for the HUD specifically if needed early (usually done in show(), but safe here)
         this.viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
@@ -156,10 +154,8 @@ public class GameScreen implements Screen {
     public GameScreen(MazeRunnerGame game, String mapPath) {
         this.game = game;
 
-        // --- FIX: INITIALIZE BOTH VIEWPORTS HERE ---
         this.viewport = new ScreenViewport();
         this.uiViewport = new com.badlogic.gdx.utils.viewport.FitViewport(1280, 720);
-        // ------------------------------------------
 
         FileHandle localHandle = Gdx.files.local(mapPath);
         if (localHandle.exists()) {
@@ -186,9 +182,7 @@ public class GameScreen implements Screen {
     @Override
     public void render(float delta) {
 
-        // =============================
-        // INPUT
-        // =============================
+        // Input
         if (gameStateController.isRunning() && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             togglePause();
         }
@@ -206,9 +200,7 @@ public class GameScreen implements Screen {
 
         cameraInput.update(delta);
 
-        // =============================
-        // GAME LOGIC
-        // =============================
+        // Game logic
         if (!isPaused && gameStateController.isRunning()) {
 
             player.update(delta, maze, game, this::collidesWithBlockingObstacle, gameCamera.getCamera());
@@ -257,9 +249,7 @@ public class GameScreen implements Screen {
                 }
             }
 
-            // =============================
-            // ITEM PICKUPS
-            // =============================
+            // Item pickup
             if (items != null) {
                 Rectangle playerBounds =
                         new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
@@ -282,23 +272,12 @@ public class GameScreen implements Screen {
                 }
             }
 
-            // =============================
-            // COMBAT
-            // =============================
+            // Combat
             if (gameStateController.isRunning()) {
 
                 int previousLives = player.getLives();
 
-                combatSystem.update(
-                        delta,
-                        player,
-                        bossTarget,
-                        boss,
-                        maze,
-                        enemies,
-                        obstacles,
-                        gameCamera
-                );
+                combatSystem.update(delta, player, bossTarget, boss, maze, enemies, obstacles, gameCamera);
 
                 if (player.getLives() < previousLives && hitSound != null) {
                     long id = hitSound.play();
@@ -332,9 +311,7 @@ public class GameScreen implements Screen {
 
         gameCamera.update(delta);
 
-        // =============================
-        // RENDER WORLD
-        // =============================
+        // Render world
         ScreenUtils.clear(0, 0, 0, 1);
 
         game.getSpriteBatch().setProjectionMatrix(gameCamera.getCamera().combined);
@@ -388,7 +365,8 @@ public class GameScreen implements Screen {
                     game.getSpriteBatch().draw(frame,
                             enemy.getPosition().x,
                             enemy.getPosition().y,
-                            32, 32);
+                            enemy.getRenderWidth(),
+                            enemy.getRenderHeight());
                 }
             }
         }
@@ -404,9 +382,7 @@ public class GameScreen implements Screen {
 
         fog.render(game.getSpriteBatch(), gameCamera.getCamera(), px, py);
 
-        // =============================
-        // UI
-        // =============================
+
         if (isPaused) {
             pauseStage.getViewport().apply();
             pauseStage.act(delta);
@@ -421,9 +397,7 @@ public class GameScreen implements Screen {
             renderMinimap();
         }
 
-        // =============================
-        // BOSS HP BAR
-        // =============================
+
         if (boss != null && !boss.isDead()) {
             uiViewport.apply();
             shapeRenderer.setProjectionMatrix(uiViewport.getCamera().combined);
@@ -545,10 +519,10 @@ public class GameScreen implements Screen {
                 + " items=" + itemCount
                 + " props=" + propCount);
 
-// IMPORTANT: actually spawn things
+
         initializeEnemiesAndObstacles(runSeed);
 
-// log AFTER spawning
+
         Gdx.app.log("SPAWN", "rooms=" + (rooms == null ? 0 : rooms.size())
                 + " enemies=" + (enemies == null ? 0 : enemies.size())
                 + " items=" + (items == null ? 0 : items.size())
@@ -564,7 +538,7 @@ public class GameScreen implements Screen {
         if (entry == null) entry = new Point(1, 1);
         Point safeSpawn = findSafeSpawnPosition(entry, maze);
 
-        // FIXED: Added 'game' to the end of constructor for Bullet system
+        // Added 'game' to the end of constructor for Bullet system
         player = new Player(
                 safeSpawn.x * TILE_SIZE,
                 safeSpawn.y * TILE_SIZE,
@@ -575,7 +549,7 @@ public class GameScreen implements Screen {
                 game // <--- IMPORTANT: Required for bullets
         );
 
-        // --- CHECK FOR SAVED DATA ---
+        // Check for saved data
         GameState savedState = game.getPendingSaveState();
         if (savedState != null) {
             System.out.println("Loading Saved State...");
@@ -699,9 +673,7 @@ public class GameScreen implements Screen {
 
         shapeRenderer.setProjectionMatrix(uiViewport.getCamera().combined);
 
-        // =========================
-        // FILLED PASS
-        // =========================
+        // Filled pass
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
         // Background
@@ -771,9 +743,7 @@ public class GameScreen implements Screen {
 
         shapeRenderer.end();
 
-        // =========================
-        // BORDER PASS
-        // =========================
+        // Border pass
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
         shapeRenderer.setColor(Color.WHITE);
         shapeRenderer.rect(mapX, mapY, minimapSize, minimapSize);
@@ -806,9 +776,8 @@ public class GameScreen implements Screen {
         GameState saved = game.getPendingSaveState();
         boolean loadingSave = (saved != null);
 
-        // =========================
+
         // 1) LOAD GAME -> REGEN FROM SAVED SEED
-        // =========================
         if (loadingSave) {
             long savedSeed = saved.mazeSeed;
             int savedEffectiveLevel = saved.isEndless ? saved.currentFloor : saved.level;
@@ -829,9 +798,7 @@ public class GameScreen implements Screen {
             return;
         }
 
-        // =========================
         // 2) NEW RUN / LEVEL SELECT -> ALWAYS GENERATE NEW
-        // =========================
         FileHandle localTarget = getLevelTargetFile(level);
 
         Gdx.app.log("MAZE", "NEW RUN -> generating NEW maze -> " + localTarget.path());
@@ -988,9 +955,9 @@ public class GameScreen implements Screen {
         createSettingsWindow();
 
         // 7. Add everything to the Stage
-        pauseStage.addActor(rootTable);      // The dark background + pause menu
-        pauseStage.addActor(settingsWindow); // Popups on top
-        pauseStage.addActor(skillWindow);    // Popups on top
+        pauseStage.addActor(rootTable);
+        pauseStage.addActor(settingsWindow);
+        pauseStage.addActor(skillWindow);
 
         settingsWindow.setVisible(false);
         skillWindow.setVisible(false);
@@ -1006,15 +973,7 @@ public class GameScreen implements Screen {
         if (settingsWindow != null) settingsWindow.setVisible(false);
 
         // FIX: Remove "de.tum.cit.fop.maze." prefix so it uses the import
-        GameOverWindow window = new GameOverWindow(
-                game.getSkin(),
-                game,
-                level,
-                won,
-                activeLevelFile != null ? activeLevelFile : levelFile,
-                player.getScore(),
-                player
-        );
+        GameOverWindow window = new GameOverWindow(game.getSkin(), game, level, won, activeLevelFile != null ? activeLevelFile : levelFile, player.getScore(), player);
         window.setPosition(
                 (uiViewport.getWorldWidth() - window.getWidth()) / 2f,
                 (uiViewport.getWorldHeight() - window.getHeight()) / 2f
@@ -1112,12 +1071,7 @@ public class GameScreen implements Screen {
         propCount  = PROPS_PER_LEVEL[lv];
 
 
-        gameCamera = new GameCamera(
-                viewport.getWorldWidth(),
-                viewport.getWorldHeight(),
-                maze.getWidth() * TILE_SIZE,
-                maze.getHeight() * TILE_SIZE
-        );
+        gameCamera = new GameCamera(viewport.getWorldWidth(), viewport.getWorldHeight(), maze.getWidth() * TILE_SIZE, maze.getHeight() * TILE_SIZE);
         gameCamera.setZoom(0.25f);
         cameraInput = new CameraInputController(gameCamera);
 
@@ -1240,10 +1194,7 @@ public class GameScreen implements Screen {
             return;
         }
 
-        hud.setExitTarget(
-                exit.x * TILE_SIZE + TILE_SIZE / 2f,
-                exit.y * TILE_SIZE + TILE_SIZE / 2f
-        );
+        hud.setExitTarget(exit.x * TILE_SIZE + TILE_SIZE / 2f, exit.y * TILE_SIZE + TILE_SIZE / 2f);
     }
 
 

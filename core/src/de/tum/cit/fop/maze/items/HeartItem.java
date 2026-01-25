@@ -27,13 +27,7 @@ public class HeartItem extends Collectable {
         TextureRegion[] frames = new TextureRegion[FRAME_COUNT];
 
         for (int col = 0; col < FRAME_COUNT; col++) {
-            frames[col] = new TextureRegion(
-                    texture,
-                    START_X + col * FRAME_WIDTH,
-                    ROW_Y,
-                    FRAME_WIDTH,
-                    FRAME_HEIGHT
-            );
+            frames[col] = new TextureRegion(texture, START_X + col * FRAME_WIDTH, ROW_Y, FRAME_WIDTH, FRAME_HEIGHT);
         }
 
         animation = new Animation<>(0.15f, frames);
@@ -47,13 +41,7 @@ public class HeartItem extends Collectable {
         stateTime += Gdx.graphics.getDeltaTime();
         TextureRegion frame = animation.getKeyFrame(stateTime);
 
-        batch.draw(
-                frame,
-                bounds.x,
-                bounds.y,
-                32,   // scale up to tile size
-                32
-        );
+        batch.draw(frame, bounds.x, bounds.y, 32, 32);
     }
 
     @Override
