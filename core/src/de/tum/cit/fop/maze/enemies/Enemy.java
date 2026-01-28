@@ -43,6 +43,8 @@ public abstract class Enemy {
     protected static final float INTERACTION_MARGIN = 2f;
     protected static final float INTERACTION_BODY_HEIGHT = 32f;
 
+    protected boolean dying = false;
+
     protected enum CombatLockState {
         NONE,
         ATTACKING,
@@ -134,8 +136,22 @@ public abstract class Enemy {
     }
 
     protected void die() {
+        if (dying) return;
+        dying = true;
+
+        // Default: enemies WITHOUT death animation die immediately
+        finalizeDeath();
+    }
+
+
+    public boolean isDying() {
+        return dying;
+    }
+
+    public void finalizeDeath() {
         markedForRemoval = true;
     }
+
 
     public boolean isDead() {
         return markedForRemoval;
@@ -258,6 +274,10 @@ public abstract class Enemy {
     protected boolean supportsAggroLock() { return false; }
     protected boolean usesAISwitching() { return true; }
     protected boolean shouldResetPatrolOnReturn() { return true; }
+    public boolean canBeHitByMelee() {
+        return true;
+    }
+
 
     public boolean ignoresEnemyCollision() { return false; }
 

@@ -1,5 +1,6 @@
 package de.tum.cit.fop.maze.enemies;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -12,6 +13,8 @@ import de.tum.cit.fop.maze.behavior.PatrolBehavior;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.behavior.ReturnToPatrolBehavior;
+import com.badlogic.gdx.audio.Sound;
+
 
 
 public class FlyingDrone extends Enemy {
@@ -22,15 +25,39 @@ public class FlyingDrone extends Enemy {
     private static final int FLY_FRAMES = 5;
     private static final float FLY_FRAME_DURATION = 0.12f;
 
-
     private static final float[] HOVER_Y_OFFSETS = {0f, 4f, 8f, 4f, 0f};
 
-    private static final float ATTACK_RADIUS = 80f;
-    private static final float MIN_SAFE_RADIUS = 60f;
-
+    private static final float ATTACK_RADIUS = 120f;
+    private static final float MIN_SAFE_RADIUS = 80f;
 
     private boolean attacking = false;
     private float attackTimer = 0f;
+
+    private final Array<DroneLaser> lasers = new Array<>();
+    private float laserLockTime = 0f;
+    private static final float MAX_LASER_LOCK = 3.0f; // seconds to max power
+
+    private static final float LASER_GUN_OFFSET_X = 0f;
+    private static final float LASER_GUN_OFFSET_Y = 6f;
+
+
+    private float laserCooldown = 0f;
+    private static final float LASER_INTERVAL = 0.02f;
+
+    private static final int DEATH_FRAMES = 6;
+    private static final float DEATH_FRAME_DURATION = 0.16f;
+    private static Animation<TextureRegion> deathAnim;
+
+    private static Sound deathSound;
+    private static Sound laserSound;
+    private long laserSoundId = -1;
+    private static final float LASER_VOLUME_MIN = 0.25f;
+    private static final float LASER_VOLUME_MAX = 0.7f;
+
+
+
+    private float deathTimer = 0f;
+    private boolean deathSoundPlayed = false;
 
 
     private enum Direction {
@@ -91,6 +118,16 @@ public class FlyingDrone extends Enemy {
         flyRight = buildStripAnim(rightTex,4, FLY_FRAME_DURATION);
         patrolScan = buildStripAnim(patrolScanTex,8, FLY_FRAME_DURATION);
         scan  = buildStripAnim(scanTex,8, FLY_FRAME_DURATION);
+
+        Texture deathTex = new Texture("Enemies/FlyingDrone/FlyingDroneDeath.png");
+        setNearest(deathTex);
+
+        deathAnim = buildStripAnim(deathTex, DEATH_FRAMES, DEATH_FRAME_DURATION);
+        deathAnim.setPlayMode(Animation.PlayMode.NORMAL);
+
+        laserSound = Gdx.audio.newSound(Gdx.files.internal("Enemies/FlyingDrone/FlyingDroneLaser.wav"));
+        deathSound = Gdx.audio.newSound(Gdx.files.internal("Enemies/FlyingDrone/FlyingDroneDeath.wav"));
+
     }
 
 
@@ -153,6 +190,20 @@ public class FlyingDrone extends Enemy {
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
 
+        if (dying) {
+            deathTimer += deltaTime;
+
+            if (!deathSoundPlayed) {
+                deathSound.play(1f);
+                deathSoundPlayed = true;
+            }
+
+            if (deathAnim.isAnimationFinished(deathTimer)) {
+                finalizeDeath();
+            }
+            return;
+        }
+
         if (snapToCenterOnChase || snapToCenterOnReturn) {
             float ts = maze.getTileSize();
             Vector2 pos = getPosition();
@@ -180,8 +231,21 @@ public class FlyingDrone extends Enemy {
 
             if (dist2 <= ATTACK_RADIUS * ATTACK_RADIUS) {
 
+                if (!attacking) {
+                    startLaserSound();
+                }
+
                 attacking = true;
                 attackTimer += deltaTime;
+
+                updateLaserSoundVolume();
+
+                laserCooldown -= deltaTime;
+                if (laserCooldown <= 0f) {
+                    fireLaserAtPlayer();
+                    laserCooldown = LASER_INTERVAL;
+                }
+
 
                 if (dist2 < MIN_SAFE_RADIUS * MIN_SAFE_RADIUS) {
                     moveAwayFromPlayer(deltaTime, maze);
@@ -190,16 +254,34 @@ public class FlyingDrone extends Enemy {
 
                 return;
             }
+        }
 
+
+        if (attacking) {
+            stopLaserSound();
         }
 
         attacking = false;
         attackTimer = 0f;
 
+
         super.updateBehavior(deltaTime, maze);
         updateDirectionFromMovement();
 
     }
+
+    private void fireLaserAtPlayer() {
+        if (targetPlayer == null) return;
+
+        Vector2 start = getLaserStart();
+
+        float px = targetPlayer.getX() + 16f;
+        float py = targetPlayer.getY() + 32f;
+
+        lasers.add(new DroneLaser(start.x, start.y, px, py));
+    }
+
+
 
 
     private void updateDirectionFromMovement() {
@@ -221,11 +303,16 @@ public class FlyingDrone extends Enemy {
 
     public TextureRegion getCurrentFrame() {
 
+        if (dying) {
+            return deathAnim.getKeyFrame(deathTimer, false);
+        }
+
         boolean isChasing = activeBehavior.getType() == BehaviorStateType.CHASE;
 
         if (attacking) {
-            return scan.getKeyFrame(attackTimer, true);
+            return idle.getKeyFrame(attackTimer, true);
         }
+
 
         if (isChasing) {
             return switch (currentDirection) {
@@ -289,6 +376,81 @@ public class FlyingDrone extends Enemy {
         );
     }
 
+    public Array<DroneLaser> getLasers() {
+        return lasers;
+    }
+
+    public boolean isLaserActive() {
+        return attacking;
+    }
+
+    public Vector2 getLaserStart() {
+        return new Vector2(
+                getX() + getRenderWidth() * 0.5f + LASER_GUN_OFFSET_X,
+                getY() + LASER_GUN_OFFSET_Y
+        );
+    }
+
+
+    public Vector2 getLaserEnd() {
+        if (targetPlayer == null) return getLaserStart();
+
+        return new Vector2(
+                targetPlayer.getX() + 16f,
+                targetPlayer.getY() + 32f
+        );
+    }
+
+    private void startLaserSound() {
+        if (laserSound == null) return;
+        if (laserSoundId != -1) return;
+
+        laserSoundId = laserSound.loop(LASER_VOLUME_MIN);
+    }
+
+    private void updateLaserSoundVolume() {
+        if (laserSound == null) return;
+        if (laserSoundId == -1) return;
+
+        float heat = getLaserCharge(); // 0 → 1
+
+        // Smooth curve: quiet at first, ramps up aggressively
+        float intensity = heat * heat;
+
+        float volume = LASER_VOLUME_MIN +
+                (LASER_VOLUME_MAX - LASER_VOLUME_MIN) * intensity;
+
+        laserSound.setVolume(laserSoundId, volume);
+    }
+
+
+    private void stopLaserSound() {
+        if (laserSound == null) return;
+        if (laserSoundId == -1) return;
+
+        laserSound.stop(laserSoundId);
+        laserSoundId = -1;
+    }
+
+
+    public void increaseLaserLock(float dt) {
+        laserLockTime = Math.min(laserLockTime + dt, MAX_LASER_LOCK);
+    }
+
+    public void resetLaserLock() {
+        laserLockTime = 0f;
+    }
+
+    public float getLaserCharge() {
+        return laserLockTime / MAX_LASER_LOCK; // 0 → 1
+    }
+
+    public float getLaserLockTime() {
+        return laserLockTime;
+    }
+
+
+
 
     @Override
     protected boolean shouldResetPatrolOnReturn() {
@@ -319,6 +481,25 @@ public class FlyingDrone extends Enemy {
     public boolean ignoresEnemyCollision() {
         return true;
     }
+
+    @Override
+    public boolean canBeHitByMelee() {
+        return false; // airborne enemy
+    }
+
+    @Override
+    protected void die() {
+        if (dying) return;
+
+        dying = true;
+        deathTimer = 0f;
+        deathSoundPlayed = false;
+
+        stopLaserSound();   // 🔴 IMPORTANT
+        lasers.clear();
+    }
+
+
 
 }
 

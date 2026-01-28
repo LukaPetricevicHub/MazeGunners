@@ -25,7 +25,7 @@ public class Player {
 
     // Stats
     private int lives;
-    private static final int BASE_LIVES = 100;
+    private static final int BASE_LIVES = 20;
     private boolean hasKey = false;
     private int score = 0;
 
@@ -89,6 +89,14 @@ public class Player {
     // Direction Logic
     private Vector2 facingDirection = new Vector2(0, -1);
 
+    // --- FLOOR HAZARD EFFECT ---
+    private float hazardWallDamageTimer = 0f;
+    private static final int HAZARD_WALL_DAMAGE = 1;
+    private float controlMultiplier = 1f;
+    private Vector2 slideVelocity = new Vector2();
+    private boolean isSliding = false;
+    private final Vector2 lastMovementDir = new Vector2(0, 1);
+
     // Repulse Skill
     private boolean isRepulsing = false; // Flag to tell CombatSystem to push
     private float repulseCooldownTimer = 0f;
@@ -126,6 +134,14 @@ public class Player {
 
     // Shooting Cooldown
     private float shootTimer = 0f;
+
+    // Drone shoots me
+    private int laserHitCounter = 0;
+    private static final int LASER_HITS_PER_HEART = 50; // 1 heart per second @ 0.02s
+    private float laserDamageAccumulator = 0f;
+    private float laserHeat = 0f;
+
+
 
     @FunctionalInterface
     public interface BlockChecker {
@@ -179,9 +195,37 @@ public class Player {
         MovementInput input = readMovementInput(dt, game);
         boolean moving = (input.dx != 0f || input.dy != 0f);
 
+        float moveDx = input.dx;
+        float moveDy = input.dy;
+
+        if (moveDx != 0f || moveDy != 0f) {
+            lastMovementDir.set(moveDx, moveDy).nor();
+        }
+
         // 3. Facing Direction
         if (hasGun) updateFacingToMouse(camera);
         else updateFacingDirection(game);
+
+        // --- FLOOR HAZARD SLIDING ---
+        // --- FLOOR HAZARD SLIDING ---
+        if (isSliding) {
+
+            // Only allow steering if player is actually pressing a direction
+            if (input.dx != 0f || input.dy != 0f) {
+                Vector2 inputVelocity = new Vector2(
+                        input.dx / dt,
+                        input.dy / dt
+                );
+
+                // Gently steer slide direction toward input
+                slideVelocity.lerp(inputVelocity, 0.08f); // steering strength
+            }
+
+            // Always move using slide velocity
+            moveDx = slideVelocity.x * dt;
+            moveDy = slideVelocity.y * dt;
+        }
+
 
         // 4. Skills Input (Dash)
         if (skillDash && Gdx.input.isKeyJustPressed(Input.Keys.E) && dashCooldown <= 0 && moving) {
@@ -223,10 +267,13 @@ public class Player {
             animTime = 0f;
         }
 
+
+        // 7. Movement & Bullets
         // 7. Movement & Bullets
         if (!isDashing) {
-            attemptMove(input.dx, input.dy, maze, game, blockChecker);
+            attemptMove(moveDx, moveDy, maze, game, blockChecker);
         }
+
         updateBullets(dt);
 
         // 8. Melee Hitbox Update
@@ -267,6 +314,23 @@ public class Player {
             flashTimeLeft -= dt;
             if (flashTimeLeft <= 0f) damageFlash = false;
         }
+        if (hazardWallDamageTimer > 0f) {
+            hazardWallDamageTimer -= dt;
+
+            if (hazardWallDamageTimer <= 0f) {
+                controlMultiplier = 1f;
+            }
+        }
+
+        if (isSliding) {
+            slideVelocity.scl(0.98f); // friction (tweakable)
+
+            if (slideVelocity.len() < 50f) {
+                slideVelocity.setZero();
+                isSliding = false;
+            }
+        }
+
     }
 
     private record MovementInput(float dx, float dy) {}
@@ -279,7 +343,7 @@ public class Player {
 
         boolean run = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
 
-        float currentSpeed = getWalkSpeed() * (run ? RUN_MULTIPLIER : 1f) * speedMultiplier;
+        float currentSpeed = getWalkSpeed() * (run ? RUN_MULTIPLIER : 1f) * speedMultiplier * controlMultiplier;
         float move = currentSpeed * dt;
 
         float dx = 0f;
@@ -344,18 +408,37 @@ public class Player {
             if (canOccupy(nextX, y, maze)) {
                 if (blockChecker == null || !blockChecker.isBlocked(makeRect(nextX, y))) {
                     x = nextX;
-                } else game.playWallHitSound();
-            } else game.playWallHitSound();
+                } else {
+                    onWallHit(game);
+                }
+            } else {
+                onWallHit(game);
+            }
         }
+
         if (dy != 0f) {
             float nextY = y + dy;
             if (canOccupy(x, nextY, maze)) {
                 if (blockChecker == null || !blockChecker.isBlocked(makeRect(x, nextY))) {
                     y = nextY;
-                } else game.playWallHitSound();
-            } else game.playWallHitSound();
+                } else {
+                    onWallHit(game);
+                }
+            } else {
+                onWallHit(game);
+            }
         }
     }
+
+
+    private void onWallHit(MazeRunnerGame game) {
+        game.playWallHitSound();
+
+        if (hazardWallDamageTimer > 0f) {
+            takeDamage(HAZARD_WALL_DAMAGE);
+        }
+    }
+
 
     private boolean canOccupy(float testX, float testY, Maze maze) {
         if (noClip) return true;
@@ -479,6 +562,7 @@ public class Player {
         }
     }
 
+
     public boolean upgradeSpeed() {
         if (skillPoints > 0 && skillSpeedLevel < 5) {
             skillPoints--;
@@ -500,12 +584,62 @@ public class Player {
 
     public void takeDamage(int amount) {
         if (godMode || isShielded || invulnerable) return;
+
         lives = Math.max(0, lives - amount);
+
+        laserHitCounter = 0;
+
         invulnerable = true;
         invulnTimeLeft = 0.8f;
         damageFlash = true;
         flashTimeLeft = 0.25f;
     }
+
+    public void takeLaserDamage(int amount) {
+        if (godMode || isShielded) return;
+
+        lives = Math.max(0, lives - amount);
+
+        // NO invulnerability for laser
+        damageFlash = true;
+        flashTimeLeft = 0.1f; // subtle flicker
+    }
+
+
+
+    public void onLaserHit(float chargeTime, float dt) {
+        if (godMode || isShielded) return;
+
+        float damagePerSecond = 0f;
+
+        if (chargeTime < 1f) {
+            damagePerSecond = 0f;          // warning phase
+        }
+        else if (chargeTime < 3f) {
+            damagePerSecond = 0.5f;        // light damage
+        }
+        else {
+            damagePerSecond = 1f;          // heavy damage
+        }
+
+        laserDamageAccumulator += damagePerSecond * dt;
+
+        // visual heat: 0 → 1 over first 3 seconds
+        laserHeat = MathUtils.clamp(chargeTime / 3f, 0f, 1f);
+
+        if (laserDamageAccumulator >= 1f) {
+            takeLaserDamage(1);
+            laserDamageAccumulator -= 1f;
+        }
+
+    }
+
+
+    public void resetLaserHeat() {
+        laserHeat = 0f;
+        laserDamageAccumulator = 0f;
+    }
+
 
     public void addLife() {
         if (lives < getMaxLives()) lives++;
@@ -522,15 +656,65 @@ public class Player {
         if (isShielded) {
             batch.setColor(0.5f, 0.5f, 1f, 1f);
         }
+        else if (laserHeat > 0f) {
+            float glow = computeLaserGlowAlpha();
+
+            if (glow > 0f) {
+                batch.setColor(
+                        1f,
+                        MathUtils.lerp(1f, 0.2f, glow),
+                        MathUtils.lerp(1f, 0.2f, glow),
+                        1f
+                );
+            }
+        }
+
         else if (damageFlash) {
             batch.setColor(1f, 0f, 0f, 1f);
         }
         else if (isAttacking) {
-            batch.setColor(1f, 1f, 0f, 1f); // YELLOW/ORANGE for Melee Attack
+            batch.setColor(1f, 1f, 0f, 1f);
         }
+
 
         batch.draw(frame, x, y, 52f, 52f);
         batch.setColor(oldColor);
+    }
+
+    private float computeLaserGlowAlpha() {
+        // laserHeat already = clamp(chargeTime / 3f)
+        float chargeTime = laserHeat * 3f;
+
+        // < 1s → no glow
+        if (chargeTime < 1f) {
+            return 0f;
+        }
+
+        // 1–2s → slow pulse
+        if (chargeTime < 2f) {
+            return 0.5f + 0.5f * MathUtils.sin(animTime * MathUtils.PI);
+        }
+
+        // 2–3s → fast pulse
+        if (chargeTime < 3f) {
+            return 0.5f + 0.5f * MathUtils.sin(animTime * MathUtils.PI * 3f);
+        }
+
+        // > 3s → solid red
+        return 1f;
+    }
+
+    public void activateFloorHazard(float speedDuration, float speedBoost) {
+        this.speedTimer = speedDuration;
+        this.speedMultiplier = speedBoost;
+        this.hazardWallDamageTimer = 3f;
+
+        slideVelocity
+                .set(lastMovementDir)
+                .nor()
+                .scl(getWalkSpeed() * speedBoost);
+
+        isSliding = true;
     }
 
     // --- GETTERS & SETTERS ---

@@ -2,6 +2,7 @@ package de.tum.cit.fop.maze.obstacles;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
 public class FloorHazard extends Obstacle {
@@ -12,6 +13,7 @@ public class FloorHazard extends Obstacle {
     private float activeBoostTimer = 0f;
     private static final Texture HAZARD_TEX = new Texture("hazard.png");
     private final TextureRegion hazardSprite;
+    private boolean playerWasOn = false;
 
 
     // Constructor
@@ -34,6 +36,13 @@ public class FloorHazard extends Obstacle {
         if (activeBoostTimer > 0f)
             activeBoostTimer -= deltaTime;
 
+    }
+
+    public boolean justEntered(Rectangle playerFeet) {
+        boolean on = collisionBounds.overlaps(playerFeet);
+        boolean entered = on && !playerWasOn;
+        playerWasOn = on;
+        return entered;
     }
 
 
