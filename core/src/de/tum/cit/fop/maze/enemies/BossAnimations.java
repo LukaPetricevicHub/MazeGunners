@@ -8,38 +8,36 @@ import com.badlogic.gdx.utils.Disposable;
 
 public class BossAnimations implements Disposable {
 
-    // ===== FRAME SIZE =====
-    // Your sheet: 8 rows × 128px wide frames
-    // Height MUST match the real sprite sheet
+    // Sword.png is 1792x512
+    // 8 rows => 64px per row
+    // 1792 / 128 => 14 frames per row
     private static final int FRAME_W = 128;
-    private static final int FRAME_H = 64; // ← 8 rows in a 512px tall image
+    private static final int FRAME_H = 64;
 
-    // ===== ROW INDICES =====
-    private static final int ROW_IDLE  = 0;
-    private static final int ROW_RUN   = 1;
-    private static final int ROW_MELEE = 2;
-    private static final int ROW_LINE  = 3;
-    private static final int ROW_AOE   = 4;
-    private static final int ROW_DASH  = 5;
-    private static final int ROW_HURT  = 6;
-    private static final int ROW_DEAD  = 7;
+    // Rows 0-7 (as you described)
+    private static final int ROW_IDLE   = 0;
+    private static final int ROW_WALK   = 1;
+    private static final int ROW_RUN_1  = 2;
+    private static final int ROW_RUN_2  = 3;
+    private static final int ROW_ATTACK = 4; // "normal"
+    private static final int ROW_COMBO  = 5;
+    private static final int ROW_HIT    = 6;
+    private static final int ROW_DEATH  = 7;
 
     private final Texture texture;
 
     public final Animation<TextureRegion> idle;
+    public final Animation<TextureRegion> walk;
     public final Animation<TextureRegion> run;
-    public final Animation<TextureRegion> melee;
-    public final Animation<TextureRegion> line;
-    public final Animation<TextureRegion> aoe;
-    public final Animation<TextureRegion> dash;
-    public final Animation<TextureRegion> hurt;
-    public final Animation<TextureRegion> dead;
+    public final Animation<TextureRegion> run2;
+    public final Animation<TextureRegion> attack;
+    public final Animation<TextureRegion> combo;
+    public final Animation<TextureRegion> hit;
+    public final Animation<TextureRegion> death;
 
     public BossAnimations(String path) {
-
         texture = new Texture(Gdx.files.internal(path));
 
-        // ---- DEBUG INFO ----
         Gdx.app.log("BOSS_ANIMS",
                 "Loaded " + path +
                         " size=" + texture.getWidth() + "x" + texture.getHeight() +
@@ -51,33 +49,28 @@ public class BossAnimations implements Disposable {
                 "Grid rows=" + grid.length +
                         " cols=" + grid[0].length);
 
-        // ---- VALIDATION ----
         if (grid.length < 8) {
             throw new RuntimeException(
                     "Boss sprite sheet INVALID.\n" +
                             "Expected 8 rows but got " + grid.length + ".\n" +
-                            "Check FRAME_H or wrong Sword.png loaded."
+                            "Check FRAME_H or wrong png loaded."
             );
         }
 
-        idle  = anim(grid, ROW_IDLE,  0.12f, true);
-        run   = anim(grid, ROW_RUN,   0.08f, true);
+        idle   = anim(grid, ROW_IDLE,   0.12f, true);
+        walk   = anim(grid, ROW_WALK,   0.10f, true);
 
-        melee = anim(grid, ROW_MELEE, 0.07f, false);
-        line  = anim(grid, ROW_LINE,  0.09f, false);
-        aoe   = anim(grid, ROW_AOE,   0.10f, false);
-        dash  = anim(grid, ROW_DASH,  0.05f, false);
+        run    = anim(grid, ROW_RUN_1,  0.08f, true);
+        run2   = anim(grid, ROW_RUN_2,  0.07f, true);
 
-        hurt  = anim(grid, ROW_HURT,  0.10f, false);
-        dead  = anim(grid, ROW_DEAD,  0.12f, false);
+        attack = anim(grid, ROW_ATTACK, 0.07f, false);
+        combo  = anim(grid, ROW_COMBO,  0.06f, false);
+
+        hit    = anim(grid, ROW_HIT,    0.10f, false);
+        death  = anim(grid, ROW_DEATH,  0.12f, false);
     }
 
-    private Animation<TextureRegion> anim(
-            TextureRegion[][] grid,
-            int row,
-            float frameTime,
-            boolean loop) {
-
+    private Animation<TextureRegion> anim(TextureRegion[][] grid, int row, float frameTime, boolean loop) {
         if (row < 0 || row >= grid.length) {
             throw new RuntimeException(
                     "BossAnimations requested row " + row +
@@ -86,16 +79,9 @@ public class BossAnimations implements Disposable {
         }
 
         TextureRegion[] frames = grid[row];
-
-        Animation<TextureRegion> animation =
-                new Animation<>(frameTime, frames);
-
-        animation.setPlayMode(
-                loop ? Animation.PlayMode.LOOP
-                        : Animation.PlayMode.NORMAL
-        );
-
-        return animation;
+        Animation<TextureRegion> a = new Animation<>(frameTime, frames);
+        a.setPlayMode(loop ? Animation.PlayMode.LOOP : Animation.PlayMode.NORMAL);
+        return a;
     }
 
     @Override
