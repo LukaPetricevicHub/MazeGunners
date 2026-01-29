@@ -89,13 +89,23 @@ public class Player {
     // Direction Logic
     private Vector2 facingDirection = new Vector2(0, -1);
 
-    // --- FLOOR HAZARD EFFECT ---
+    // FLOOR HAZARD EFFECT
     private float hazardWallDamageTimer = 0f;
     private static final int HAZARD_WALL_DAMAGE = 1;
     private float controlMultiplier = 1f;
     private Vector2 slideVelocity = new Vector2();
     private boolean isSliding = false;
     private final Vector2 lastMovementDir = new Vector2(0, 1);
+    private boolean hazardWallDamageUsed = false;
+
+    // LightningTrap visual effect
+    private boolean lightningSlowed = false;
+    private float lightningTimer = 0f;
+    private float lightningAnimTime = 0f;
+    private float lightningDebuffTimer = 0f;
+
+
+
 
     // Repulse Skill
     private boolean isRepulsing = false; // Flag to tell CombatSystem to push
@@ -237,14 +247,16 @@ public class Player {
             repulseCooldownTimer = 5.0f; // 5 Seconds Cooldown
         }
 
-        // --- FIX: RESTORE MELEE INPUT HERE ---
-        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+        // RESTORE MELEE INPUT HERE
+        if (!isParalyzed() && Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             attack();
         }
-        // -------------------------------------
 
         // 5. Shooting Input
-        if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && hasGun) {
+        if (!isParalyzed()
+                && Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)
+                && hasGun) {
+
             if (shootTimer <= 0) {
                 spawnBullet(camera);
                 shootTimer = skillRapidFire ? 0.2f : 0.4f;
@@ -330,7 +342,23 @@ public class Player {
                 isSliding = false;
             }
         }
+        // ⚡ LightningTrap debuff timer
+        if (lightningDebuffTimer > 0f) {
+            lightningDebuffTimer -= dt;
+            lightningAnimTime += dt;
+            lightningSlowed = true;
+        } else {
+            lightningSlowed = false;
+        }
 
+    }
+
+    public boolean isLightningDebuffed() {
+        return lightningDebuffTimer > 0f;
+    }
+
+    public boolean isParalyzed() {
+        return lightningDebuffTimer > 0f;
     }
 
     private record MovementInput(float dx, float dy) {}
@@ -430,14 +458,22 @@ public class Player {
         }
     }
 
+//    public void onLightningSlow(float dt) {
+//        lightningSlowed = true;
+//        lightningTimer = 0.1f; // refreshed every frame while active
+//    }
+
+
 
     private void onWallHit(MazeRunnerGame game) {
         game.playWallHitSound();
 
-        if (hazardWallDamageTimer > 0f) {
+        if (hazardWallDamageTimer > 0f && !hazardWallDamageUsed) {
             takeDamage(HAZARD_WALL_DAMAGE);
+            hazardWallDamageUsed = true; // consume
         }
     }
+
 
 
     private boolean canOccupy(float testX, float testY, Maze maze) {
@@ -595,6 +631,7 @@ public class Player {
         flashTimeLeft = 0.25f;
     }
 
+
     public void takeLaserDamage(int amount) {
         if (godMode || isShielded) return;
 
@@ -669,6 +706,19 @@ public class Player {
             }
         }
 
+        else if (lightningSlowed) {
+            float pulse =
+                    0.6f + 0.4f * MathUtils.sin(lightningAnimTime * MathUtils.PI * 6f);
+
+            batch.setColor(
+                    0.5f,   // R
+                    0.8f,   // G
+                    1.0f,   // B
+                    pulse
+            );
+        }
+
+
         else if (damageFlash) {
             batch.setColor(1f, 0f, 0f, 1f);
         }
@@ -676,8 +726,19 @@ public class Player {
             batch.setColor(1f, 1f, 0f, 1f);
         }
 
+        float jitterX = 0f;
+        float jitterY = 0f;
 
-        batch.draw(frame, x, y, 52f, 52f);
+        if (lightningSlowed) {
+            float strength = 2.5f;
+            jitterX = MathUtils.sin(lightningAnimTime * 45f) * strength;
+            jitterY = MathUtils.cos(lightningAnimTime * 60f) * strength;
+        }
+
+
+
+        batch.draw(frame, x + jitterX, y + jitterY, 52f, 52f);
+
         batch.setColor(oldColor);
     }
 
@@ -704,10 +765,21 @@ public class Player {
         return 1f;
     }
 
+    public void applyLightningDebuff(float duration) {
+        lightningDebuffTimer = Math.max(lightningDebuffTimer, duration);
+
+        // visuals
+        lightningSlowed = true;
+        lightningAnimTime = 0f;
+    }
+
+
     public void activateFloorHazard(float speedDuration, float speedBoost) {
         this.speedTimer = speedDuration;
         this.speedMultiplier = speedBoost;
         this.hazardWallDamageTimer = 3f;
+
+        this.hazardWallDamageUsed = false;
 
         slideVelocity
                 .set(lastMovementDir)
@@ -716,6 +788,7 @@ public class Player {
 
         isSliding = true;
     }
+
 
     // --- GETTERS & SETTERS ---
     public void setPlayerLevel(int level) { this.playerLevel = level; }

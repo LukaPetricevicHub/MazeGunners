@@ -116,6 +116,11 @@ public class GameScreen implements Screen {
     private int itemCount;
     private int propCount;
 
+    // Lightning trap deferred spawning
+    private List<LightningTrap> pendingLightningTraps = new ArrayList<>();
+    private boolean lightningTrapsActivated = false;
+
+
 
     private static final int[] ENEMIES_PER_LEVEL = {0, 18, 22, 26, 30, 34};
     private static final int[] TRAPS_PER_LEVEL   = {0, 20, 26, 32, 38, 45};
@@ -204,6 +209,11 @@ public class GameScreen implements Screen {
         if (!isPaused && gameStateController.isRunning()) {
 
             player.update(delta, maze, game, this::collidesWithBlockingObstacle, gameCamera.getCamera());
+
+            if (!lightningTrapsActivated && player.hasGun()) {
+                activateLightningTraps();
+            }
+
 
             if (player.getPlayerLevel() > trackedLevel) {
                 trackedLevel = player.getPlayerLevel();
@@ -325,12 +335,29 @@ public class GameScreen implements Screen {
                 if (obstacle instanceof SpikeTrap spike) {
                     game.getSpriteBatch().draw(spike.getCurrentFrame(),
                             spike.getCollisionBox().x, spike.getCollisionBox().y, 32, 32);
-                } else if (obstacle instanceof SlimeTrap slime) {
-                    game.getSpriteBatch().draw(slime.getSprite(),
-                            slime.getCollisionBox().x, slime.getCollisionBox().y, 32, 32);
-                } else if (obstacle instanceof FloorHazard hazard) {
+                } else if (obstacle instanceof LightningTrap lightning) {
+                    Rectangle box = lightning.getCollisionBox();
+
+                    float originX = box.width / 2f;
+                    float originY = box.height / 2f;
+
+                    game.getSpriteBatch().draw(
+                            lightning.getSprite(),
+                            box.x,
+                            box.y,
+                            originX,           // rotation origin X (center)
+                            originY,           // rotation origin Y (center)
+                            box.width,
+                            box.height,
+                            1f,                // scale X
+                            1f,                // scale Y
+                            lightning.getRotationDegrees()
+                    );
+                }
+
+                else if (obstacle instanceof FloorHazard hazard) {
                     game.getSpriteBatch().draw(hazard.getSprite(),
-                            hazard.getCollisionBox().x, hazard.getCollisionBox().y, 32, 32);
+                            hazard.getCollisionBox().x, hazard.getCollisionBox().y, 48, 48);
                 } else if (obstacle instanceof Prop prop) {
                     game.getSpriteBatch().draw(prop.getSprite(),
                             prop.getCollisionBox().x,
@@ -435,6 +462,8 @@ public class GameScreen implements Screen {
         runSeed = System.currentTimeMillis();
         shapeRenderer = new ShapeRenderer();
 
+        ObstacleAudioManager.init();
+
         int w = Gdx.graphics.getWidth();
         int h = Gdx.graphics.getHeight();
 
@@ -457,6 +486,7 @@ public class GameScreen implements Screen {
             // New game: Random seed
             runSeed = System.currentTimeMillis();
         }
+
 
         // 1) Maze & graphics first (camera needs maze size)
         initializeMaze(runSeed);
@@ -596,7 +626,20 @@ public class GameScreen implements Screen {
         Room spawnRoom = findSpawnRoom();
 
         // 1) Traps (NOT in spawn room)
-        obstacles = new ObstaclePlacer().placeObstacles(maze, trapCount, seed, spawnRoom);
+        ObstaclePlacer placer = new ObstaclePlacer();
+
+        obstacles = placer.placeObstacles(
+                maze,
+                trapCount,
+                seed,
+                spawnRoom,
+                false
+        );
+
+        pendingLightningTraps = placer.findLightningTrapCandidates(maze, seed, spawnRoom);
+
+        lightningTrapsActivated = false;
+
 
         // 2) Props (ALLOWED in spawn room) - use propCount instead of 20
         int effectiveLevel = endlessMode ? floor : level;
@@ -768,6 +811,14 @@ public class GameScreen implements Screen {
         };
         game.getAudioManager().playBackgroundMusic(musicFile);
     }
+
+    private void activateLightningTraps() {
+        lightningTrapsActivated = true;
+
+        obstacles.addAll(pendingLightningTraps);
+        pendingLightningTraps.clear();
+    }
+
 
     private void initializeMaze(long seed) {
         int effectiveLevel = endlessMode ? floor : level;
@@ -1185,6 +1236,7 @@ public class GameScreen implements Screen {
         propTextures.clear();
         propSprites.clear();
         if (bossAnims != null) bossAnims.dispose();
+        ObstacleAudioManager.dispose();
     }
 
     private void updateHudExitTarget() {

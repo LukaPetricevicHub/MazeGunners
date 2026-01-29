@@ -24,7 +24,8 @@ public class CombatSystem {
     private Texture droneLaserTexture;
     private List<Enemy> enemies;
 
-
+    private long floorHazardSoundId = -1;
+    private boolean floorHazardSoundPlaying = false;
 
     public CombatSystem() {}
 
@@ -56,9 +57,23 @@ public class CombatSystem {
                 }
 
                 if (isWall(b.getBounds(), maze)) {
+
+                    float hitX = b.getBounds().x + b.getBounds().width * 0.5f;
+                    float hitY = b.getBounds().y + b.getBounds().height * 0.5f;
+
+                    for (Obstacle obs : obstacles) {
+                        if (obs instanceof LightningTrap lightning) {
+                            if (lightning.isHitByBullet(hitX, hitY)) {
+                                lightning.disable();
+                            }
+                        }
+                    }
+
                     b.setDead();
                     continue;
                 }
+
+
 
                 if (boss != null && !boss.isDead()
                         && b.getBounds().overlaps(boss.getHitbox())) {
@@ -219,6 +234,16 @@ public class CombatSystem {
         float speedModifier = 1f;
         float visibilityFactor = 1f;
 
+        float playerCenterX = player.getX() + 16f;
+        float playerCenterY = player.getY() + 32f;
+
+        boolean nearAnyFloorHazard = false;
+
+        float playerX = player.getX() + 16f;
+        float playerY = player.getY() + 32f;
+        float tileSize = maze.getTileSize();
+
+
         for (Obstacle obs : obstacles) {
 
             if (obs instanceof FloorHazard hazard) {
@@ -230,40 +255,82 @@ public class CombatSystem {
                     );
                 }
 
+                if (hazard.isPlayerInRange(playerX, playerY, tileSize)) {
+                    nearAnyFloorHazard = true;
+                }
+
                 continue;
             }
+
+
+
 
             if (obs instanceof SpikeTrap spike) {
                 boolean onTrap = spike.getCollisionBox().overlaps(playerFeetHitbox);
                 spike.setPlayerOnTrap(onTrap);
                 spike.update(deltaTime);
 
-                if (onTrap && spike.getDamageToPlayer() > 0) {
-                    player.takeDamage(spike.getDamageToPlayer());
+                if (spike.shouldDamagePlayerThisFrame()) {
+                    player.takeDamage(1); // SPIKE_DAMAGE
                 }
                 continue;
             }
 
+
+            if (obs instanceof LightningTrap lightning && lightning.disabled) {
+                continue;
+            }
+
+            if (obs instanceof LightningTrap lightning) {
+
+                if (lightning.disabled) {
+                    continue;
+                }
+
+                boolean onTrap = lightning.containsPoint(playerCenterX, playerCenterY);
+                lightning.setPlayerOnTrap(onTrap);
+                lightning.update(deltaTime);
+
+                if (lightning.didTriggerThisFrame()) {
+
+                    if (!player.hasGhost()) {
+                        player.takeDamage(lightning.getDamageToPlayer());
+                    }
+
+                    player.applyLightningDebuff(3f);
+                }
+
+                if (player.isLightningDebuffed()) {
+                    speedModifier = lightning.getSlowMultiplier();
+                    visibilityFactor = lightning.getVisionMultiplier();
+                }
+
+
+                continue;
+            }
+
+
             obs.updateCooldown(deltaTime);
 
+
             if (obs.tryActivate(playerHitbox)) {
-                boolean isTrap = (obs instanceof SpikeTrap || obs instanceof SlimeTrap);
+                boolean isTrap = (obs instanceof SpikeTrap || obs instanceof LightningTrap);
 
                 if (!isTrap || !player.hasGhost()) {
                     obs.onActivate();
                     player.takeDamage(obs.getDamageToPlayer());
                 }
             }
+        }
 
-            if (obs instanceof SlimeTrap slime) {
-                slime.updateEffect(deltaTime);
-                if (slime.isEffectActive()) {
-                    speedModifier = slime.getSlowMultiplier();
-                    visibilityFactor = slime.getVisionMultiplier();
-                }
-            }
-
-
+        if (nearAnyFloorHazard && !floorHazardSoundPlaying) {
+            floorHazardSoundId = ObstacleAudioManager.playFloorHazardLoop(0.6f);
+            floorHazardSoundPlaying = true;
+        }
+        else if (!nearAnyFloorHazard && floorHazardSoundPlaying) {
+            ObstacleAudioManager.stopFloorHazard(floorHazardSoundId);
+            floorHazardSoundId = -1;
+            floorHazardSoundPlaying = false;
         }
 
         player.setSpeedMultiplier(speedModifier);
@@ -297,26 +364,7 @@ public class CombatSystem {
             float glowAlpha = MathUtils.lerp(0.4f, 1f, charge);
             batch.setColor(1f, 0.3f, 0.3f, glowAlpha);
 
-
-
-            batch.draw(
-                    droneLaserTexture,
-                    start.x,
-                    start.y - beamThickness * 0.5f,
-                    0f,
-                    beamThickness * 0.5f,
-                    length,
-                    beamThickness,
-                    1f,
-                    1f,
-                    angleDeg,
-                    0,
-                    0,
-                    droneLaserTexture.getWidth(),
-                    droneLaserTexture.getHeight(),
-                    false,
-                    false
-            );
+            batch.draw(droneLaserTexture, start.x, start.y - beamThickness * 0.5f, 0f, beamThickness * 0.5f, length, beamThickness, 1f, 1f, angleDeg, 0, 0, droneLaserTexture.getWidth(), droneLaserTexture.getHeight(), false, false);
             batch.setColor(1f, 1f, 1f, 1f);
 
         }

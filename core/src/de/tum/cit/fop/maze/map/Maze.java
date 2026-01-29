@@ -216,6 +216,24 @@ public class Maze {
         return enemyOccupancy[x][y];
     }
 
+    public boolean isHallTile(int x, int y) {
+        if (!inBounds(x, y)) return false;
+        return getTile(x, y) == Tiles.FLOOR && !isRoomCell(x, y);
+    }
+
+    public HallOrientation getHallOrientation(int x, int y) {
+        if (!isHallTile(x, y)) return null;
+
+        boolean left  = isHallTile(x - 1, y);
+        boolean right = isHallTile(x + 1, y);
+        boolean up    = isHallTile(x, y + 1);
+        boolean down  = isHallTile(x, y - 1);
+
+        if (left || right) return HallOrientation.LEFT_RIGHT;
+        if (up || down)    return HallOrientation.UP_DOWN;
+
+        return null;
+    }
 
 
 }

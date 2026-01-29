@@ -51,8 +51,8 @@ public class FlyingDrone extends Enemy {
     private static Sound deathSound;
     private static Sound laserSound;
     private long laserSoundId = -1;
-    private static final float LASER_VOLUME_MIN = 0.25f;
-    private static final float LASER_VOLUME_MAX = 0.7f;
+    private static final float LASER_VOLUME_MIN = 0.1f;
+    private static final float LASER_VOLUME_MAX = 0.3f;
 
 
 

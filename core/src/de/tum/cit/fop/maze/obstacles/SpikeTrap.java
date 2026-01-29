@@ -19,8 +19,8 @@ public class SpikeTrap extends Obstacle {
 
     private boolean playerOnTrap = false;
     private float cooldownTimer = 0f;
+    private boolean damageDealtThisCycle = false;
 
-    private boolean triggeredThisOccupancy = false;
 
 
     private static final Texture SPIKE_TEXTURE =
@@ -38,11 +38,7 @@ public class SpikeTrap extends Obstacle {
         int frameWidth  = SPIKE_TEXTURE.getWidth() / FRAME_COLS;
         int frameHeight = SPIKE_TEXTURE.getHeight() / FRAME_ROWS;
 
-        TextureRegion[][] split = TextureRegion.split(
-                SPIKE_TEXTURE,
-                frameWidth,
-                frameHeight
-        );
+        TextureRegion[][] split = TextureRegion.split(SPIKE_TEXTURE, frameWidth, frameHeight);
 
         frames = split[0]; // 14 frames (1 row)
 
@@ -52,6 +48,7 @@ public class SpikeTrap extends Obstacle {
                             " frames, but has " + frames.length
             );
         }
+        System.out.println("[SpikeTrap] texture size = " + SPIKE_TEXTURE.getWidth() + "x" + SPIKE_TEXTURE.getHeight());
     }
 
     // Called every frame
@@ -65,20 +62,20 @@ public class SpikeTrap extends Obstacle {
 
             if (cooldownTimer <= 0f) {
                 cooldownTimer = 0f;
-                triggeredThisOccupancy = false;
                 currentFrame = 0;
+                damageDealtThisCycle = false; // 🔥 RESET DAMAGE FLAG
             }
-
         }
+
 
 
 
         // activation condition
-        if (playerOnTrap && !triggeredThisOccupancy && cooldownTimer <= 0f && !activating && currentFrame == 0) {
+        if (playerOnTrap && cooldownTimer <= 0f && !activating && currentFrame == 0) {
             activate();
             cooldownTimer = RESET_COOLDOWN;
-            triggeredThisOccupancy = true;
         }
+
 
 
 
@@ -108,7 +105,10 @@ public class SpikeTrap extends Obstacle {
         activating = true;
         frameTimer = 0f;
         currentFrame = 0;
+
+        ObstacleAudioManager.playSpikeTrap(); // 🔊 ADD
     }
+
 
 
 
@@ -117,19 +117,23 @@ public class SpikeTrap extends Obstacle {
         return frames[currentFrame];
     }
 
-    @Override
-    public int getDamageToPlayer() {
-        return currentFrame >= DAMAGE_START_FRAME ? SPIKE_DAMAGE : 0;
+    public boolean shouldDamagePlayerThisFrame() {
+        if (!playerOnTrap) return false;
+
+        if (damageDealtThisCycle) return false;
+
+        if (currentFrame >= DAMAGE_START_FRAME) {
+            damageDealtThisCycle = true;
+            return true;
+        }
+
+        return false;
     }
+
 
     public void setPlayerOnTrap(boolean onTrap) {
-        if (!onTrap) {
-            triggeredThisOccupancy = false;
-        }
         this.playerOnTrap = onTrap;
     }
-
-
 
 
     public float getRenderX() {
@@ -142,6 +146,3 @@ public class SpikeTrap extends Obstacle {
 
 
 }
-
-
-

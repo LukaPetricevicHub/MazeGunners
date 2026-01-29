@@ -45,6 +45,19 @@ public class FloorHazard extends Obstacle {
         return entered;
     }
 
+    public boolean isPlayerInRange(float px, float py, float tileSize) {
+        float radius = 3f * tileSize;
+
+        float cx = collisionBounds.x + collisionBounds.width * 0.5f;
+        float cy = collisionBounds.y + collisionBounds.height * 0.5f;
+
+        float dx = px - cx;
+        float dy = py - cy;
+
+        return dx * dx + dy * dy <= radius * radius;
+    }
+
+
 
     public boolean isBoostActive() {
         return activeBoostTimer > 0f;
