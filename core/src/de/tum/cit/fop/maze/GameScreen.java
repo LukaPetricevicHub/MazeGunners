@@ -226,6 +226,15 @@ public class GameScreen implements Screen {
                 }
             }
 
+            // Boss HUD sync (one boss bar only)
+            if (boss != null && !boss.isDead()) {
+                hud.setBossVisible(true);
+                hud.setBossHp(boss.getHp(), boss.getMaxHp());
+            } else {
+                hud.setBossVisible(false);
+            }
+
+
             boolean onExit = worldLogic.isPlayerOnExit(player, maze);
 
             if (endlessMode && onExit && player.hasKey()) {
@@ -422,32 +431,6 @@ public class GameScreen implements Screen {
 
         if (Gdx.input.isKeyPressed(Input.Keys.M)) {
             renderMinimap();
-        }
-
-
-        if (boss != null && !boss.isDead()) {
-            uiViewport.apply();
-            shapeRenderer.setProjectionMatrix(uiViewport.getCamera().combined);
-
-            float barW = 420f;
-            float barH = 18f;
-            float x = (uiViewport.getWorldWidth() - barW) / 2f;
-            float y = uiViewport.getWorldHeight() - 35f;
-
-            float pct = boss.getHp() / (float) boss.getMaxHp();
-            pct = Math.max(0f, Math.min(1f, pct));
-
-            Gdx.gl.glEnable(GL20.GL_BLEND);
-            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-
-            shapeRenderer.setColor(0f, 0f, 0f, 0.6f);
-            shapeRenderer.rect(x - 2, y - 2, barW + 4, barH + 4);
-
-            shapeRenderer.setColor(0.8f, 0.1f, 0.1f, 1f);
-            shapeRenderer.rect(x, y, barW * pct, barH);
-
-            shapeRenderer.end();
-            Gdx.gl.glDisable(GL20.GL_BLEND);
         }
     }
 
@@ -699,7 +682,8 @@ public class GameScreen implements Screen {
         float worldH = uiViewport.getWorldHeight();
 
         float mapX = worldW - minimapSize - 20;
-        float mapY = worldH - minimapSize - 20;
+        float mapY = 20; // bottom-right instead of top-right
+
 
         // Show a 30-tile range (15 left, 15 right)
         float viewRange = 15 * TILE_SIZE;

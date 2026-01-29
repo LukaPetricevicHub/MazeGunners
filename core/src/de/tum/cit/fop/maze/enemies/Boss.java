@@ -1,18 +1,3 @@
-// =======================================================
-// Boss.java
-//
-// A complete boss AI with:
-// - AOE circle
-// - Line attack (ray forward until wall)
-// - Normal melee
-// - Dash to random point inside boss room
-//
-// You only need to call:
-//   boss.update(dt, player);
-//   boss.render(batch);
-//
-// And you need to spawn boss in boss room on level 5.
-// =======================================================
 package de.tum.cit.fop.maze.enemies;
 
 import com.badlogic.gdx.graphics.g2d.Animation;
@@ -27,38 +12,59 @@ import java.util.Random;
 
 public class Boss {
 
-    // ===== tuning =====
-    private static final float MOVE_SPEED = 90f;
-    private static final float DASH_SPEED = 320f;
+    // =========================
+    // SIZE (10 x 10 tiles drawn)
+    // =========================
+    private final float TILE;
 
-    private static final float MELEE_RANGE = 42f;
-    private static final int   MELEE_DMG = 10;
+    private final float DRAW_W; // 10 tiles
+    private final float DRAW_H; // 10 tiles
 
-    private static final float LINE_RANGE = 520f;
-    private static final float LINE_WIDTH = 36f;
-    private static final int   LINE_DMG = 14;
+    // Hitbox smaller for fairness
+    private final float HIT_W;  // 7 tiles
+    private final float HIT_H;  // 7 tiles
 
-    private static final float AOE_RADIUS = 96f;
-    private static final int   AOE_DMG = 16;
+    // =========================
+    // HP / PHASE
+    // =========================
+    private static final int MAX_HP = 250;
+    private static final float RUN2_HP_PCT = 0.25f;
 
-    // windups/recovery (seconds)
-    private static final float MELEE_WINDUP_T = 0.25f;
-    private static final float LINE_WINDUP_T  = 0.55f;
-    private static final float AOE_WINDUP_T   = 0.75f;
-    private static final float DASH_WINDUP_T  = 0.25f;
-    private static final float RECOVER_T      = 0.55f;
+    // =========================
+    // TUNING
+    // =========================
+    private static final float WALK_SPEED_TPS = 2.8f;   // tiles per second
+    private static final float RUN_SPEED_TPS  = 5.0f;
+    private static final float RUN2_SPEED_TPS = 6.6f;
 
-    // cooldowns (seconds)
-    private static final float MELEE_CD = 0.35f;
-    private static final float LINE_CD  = 2.0f;
-    private static final float AOE_CD   = 3.0f;
-    private static final float DASH_CD  = 2.5f;
+    private static final float COMBO_SPEED_TPS = 11.25f;
 
+    private static final float ATTACK_START_DIST_T = 6.5f; // tiles
+    private static final float COMBO_START_DIST_T  = 9.0f; // tiles
+
+    private static final int ATTACK_DMG = 10;
+    private static final int COMBO_DMG  = 14;
+
+    private static final float ATTACK_WINDUP_T = 0.30f;
+    private static final float ATTACK_ACTIVE_T = 0.25f;
+    private static final float HIT_STUN_T      = 0.25f;
+
+    private static final float ATTACK_CD = 0.9f;
+    private static final float COMBO_CD  = 2.5f;
+
+    // Combo dash control
+    private static final float COMBO_OVERSHOOT_T = 12f; // tiles beyond player
+    private static final float COMBO_MAX_TIME = 0.75f;  // seconds
+    private static final float COMBO_STOP_DIST_T = 1.0f;
+
+    // =========================
+    // CORE FIELDS
+    // =========================
     private final Maze maze;
     private final Room bossRoom;
     private final BossAnimations anims;
 
-    private final Vector2 pos = new Vector2();      // world position (center-ish)
+    private final Vector2 pos = new Vector2(); // world center
     private final Vector2 vel = new Vector2();
     private final Rectangle hitbox = new Rectangle();
 
@@ -66,369 +72,304 @@ public class Boss {
     private Facing facing = Facing.DOWN;
     private float stateTime = 0f;
 
-    private float meleeCd = 0f;
-    private float lineCd  = 0f;
-    private float aoeCd   = 0f;
-    private float dashCd  = 0f;
+    private int hp = MAX_HP;
+
+    private float attackCd = 0f;
+    private float comboCd  = 0f;
+
+    private boolean attackDamageApplied = false;
+    private boolean comboHitApplied = false;
 
     private final Random rng = new Random();
 
-    // For dash
-    private final Vector2 dashTarget = new Vector2();
+    // Combo dash target
+    private final Vector2 comboTarget = new Vector2();
 
-    // For line attack: we store a static rectangle hitbox
-    private final Rectangle lineRect = new Rectangle();
-
-    // For AOE: we just check radius during damage moment
-    private boolean aoeDamageApplied = false;
-    private boolean lineDamageApplied = false;
-    private boolean meleeDamageApplied = false;
-
-    private final int maxHp = 250;
-    private int hp = maxHp;
+    // temps to avoid allocations
+    private final Vector2 tmp1 = new Vector2();
+    private final Vector2 tmp2 = new Vector2();
+    private final Rectangle tmpRect1 = new Rectangle();
+    private final Rectangle tmpRect2 = new Rectangle();
 
     public Boss(Maze maze, Room bossRoom, BossAnimations anims, float spawnWorldX, float spawnWorldY) {
         this.maze = maze;
         this.bossRoom = bossRoom;
         this.anims = anims;
 
+        this.TILE = maze.getTileSize();
+
+        this.DRAW_W = 10f * TILE;
+        this.DRAW_H = 10f * TILE;
+
+        this.HIT_W = 7f * TILE;
+        this.HIT_H = 7f * TILE;
+
         this.pos.set(spawnWorldX, spawnWorldY);
-        // hitbox: tweak to match your sprite scale
-        this.hitbox.set(pos.x - 18, pos.y - 18, 36, 36);
+
+        this.hitbox.set(
+                pos.x - HIT_W / 2f,
+                pos.y - HIT_H / 2f,
+                HIT_W,
+                HIT_H
+        );
     }
 
-    public boolean isDead() { return state == BossState.DEAD; }
+    // =========================
+    // PUBLIC API
+    // =========================
+    public boolean isDead() {
+        return state == BossState.DEATH && anims.death.isAnimationFinished(stateTime);
+    }
 
-    public Rectangle getHitbox() { return new Rectangle(hitbox); }
+
+    public Rectangle getHitbox() {
+        return new Rectangle(hitbox);
+    }
+
+    public Vector2 getPosition() {
+        return new Vector2(pos);
+    }
+
+    public int getHp() {
+        return hp;
+    }
+
+    public int getMaxHp() {
+        return MAX_HP;
+    }
+
+    public float getHpPct() {
+        return (MAX_HP <= 0) ? 0f : (hp / (float) MAX_HP);
+    }
 
     public void damage(int dmg) {
-        if (state == BossState.DEAD) return;
+        if (state == BossState.DEATH) return;
+
         hp -= dmg;
         if (hp <= 0) {
             hp = 0;
-            state = BossState.DEAD;
+            state = BossState.DEATH;
             stateTime = 0f;
             vel.setZero();
-        }
-    }
-
-    public void update(float dt, PlayerLike player) {
-        if (state == BossState.DEAD) return;
-
-        // cooldowns tick
-        meleeCd = Math.max(0, meleeCd - dt);
-        lineCd  = Math.max(0, lineCd  - dt);
-        aoeCd   = Math.max(0, aoeCd   - dt);
-        dashCd  = Math.max(0, dashCd  - dt);
-
-        stateTime += dt;
-
-        // update facing toward player (most states)
-        Vector2 toPlayer = tmp(player.getPosition()).sub(pos);
-        updateFacing(toPlayer);
-
-        switch (state) {
-            case IDLE, CHASE -> updateChase(dt, player, toPlayer);
-            case MELEE_WINDUP -> updateMeleeWindup(dt, player);
-            case MELEE_ATTACK -> updateMeleeAttack(dt, player);
-
-            case LINE_WINDUP -> updateLineWindup(dt, player);
-            case LINE_ATTACK -> updateLineAttack(dt, player);
-
-            case AOE_WINDUP -> updateAoeWindup(dt, player);
-            case AOE_ATTACK -> updateAoeAttack(dt, player);
-
-            case DASH_WINDUP -> updateDashWindup(dt);
-            case DASHING -> updateDashing(dt, player);
-
-            case RECOVER -> updateRecover(dt);
-
-            default -> { /* ignore */ }
-        }
-    }
-
-    // =======================================================
-    // CHASE / DECISION LOGIC
-    // =======================================================
-    private void updateChase(float dt, PlayerLike player, Vector2 toPlayer) {
-        float dist = toPlayer.len();
-
-        // Decide an action when not moving/locked
-        if (state == BossState.IDLE) {
-            state = BossState.CHASE;
-            stateTime = 0f;
-        }
-
-        // Priority:
-        // close => AOE or melee
-        // far => line
-        // sometimes dash
-        if (dist < AOE_RADIUS * 0.85f && aoeCd <= 0f) {
-            startAOE();
             return;
         }
 
-        if (dist < MELEE_RANGE && meleeCd <= 0f) {
-            startMelee();
-            return;
-        }
-
-        if (dist > MELEE_RANGE * 2.0f && lineCd <= 0f) {
-            startLine();
-            return;
-        }
-
-        if (dashCd <= 0f && rng.nextFloat() < 0.012f) { // small chance per frame
-            startDash();
-            return;
-        }
-
-        // Otherwise chase / reposition
-        moveToward(dt, player.getPosition(), MOVE_SPEED);
-    }
-
-    // =======================================================
-    // MELEE
-    // =======================================================
-    private void startMelee() {
-        state = BossState.MELEE_WINDUP;
+        // hit reaction
+        state = BossState.HIT;
         stateTime = 0f;
-        meleeDamageApplied = false;
         vel.setZero();
     }
 
-    private void updateMeleeWindup(float dt, PlayerLike player) {
-        if (stateTime >= MELEE_WINDUP_T) {
-            state = BossState.MELEE_ATTACK;
+    public void update(float dt, PlayerLike player) {
+        if (state == BossState.DEATH) {
+            stateTime += dt;
+            return;
+        }
+
+        stateTime += dt;
+
+        attackCd = Math.max(0f, attackCd - dt);
+        comboCd  = Math.max(0f, comboCd - dt);
+
+        // face player
+        tmp1.set(player.getPosition()).sub(pos);
+        updateFacing(tmp1);
+
+        // phase swap (only if in movement states)
+        ensureRunStateByHp();
+
+        switch (state) {
+            case IDLE -> updateIdle(player);
+            case WALK -> updateWalk(dt, player);
+            case RUN -> updateRun(dt, player, RUN_SPEED_TPS * TILE);
+            case RUN_2 -> updateRun(dt, player, RUN2_SPEED_TPS * TILE);
+            case ATTACK -> updateAttack(player);
+            case COMBO -> updateCombo(dt, player);
+            case HIT -> updateHit();
+            case DEATH -> { }
+        }
+    }
+
+    public void render(Batch batch) {
+        Animation<TextureRegion> a = currentAnim();
+
+        boolean loop = switch (state) {
+            case IDLE, WALK, RUN, RUN_2 -> true;
+            case ATTACK, COMBO, HIT, DEATH -> false;
+        };
+
+        TextureRegion frame = a.getKeyFrame(stateTime, loop);
+
+        batch.draw(frame,
+                pos.x - DRAW_W / 2f,
+                pos.y - DRAW_H / 2f,
+                DRAW_W,
+                DRAW_H
+        );
+    }
+
+
+    // =========================
+    // STATE LOGIC
+    // =========================
+    private void updateIdle(PlayerLike player) {
+        // immediately start pursuing
+        state = (getHpPct() <= RUN2_HP_PCT) ? BossState.RUN_2 : BossState.RUN;
+        stateTime = 0f;
+    }
+
+    private void updateWalk(float dt, PlayerLike player) {
+        float dist = tmp1.set(player.getPosition()).sub(pos).len();
+
+        if (dist <= ATTACK_START_DIST_T * TILE && attackCd <= 0f) {
+            startAttack();
+            return;
+        }
+
+        // slow stalking
+        moveToward(dt, player.getPosition(), WALK_SPEED_TPS * TILE);
+
+        // if player is far, go to running chase
+        if (dist > 7.5f * TILE) {
+            state = (getHpPct() <= RUN2_HP_PCT) ? BossState.RUN_2 : BossState.RUN;
             stateTime = 0f;
         }
     }
 
-    private void updateMeleeAttack(float dt, PlayerLike player) {
-        // apply damage once near mid animation
-        if (!meleeDamageApplied && stateTime >= 0.10f) {
-            meleeDamageApplied = true;
+    private void updateRun(float dt, PlayerLike player, float runSpeed) {
+        float dist = tmp1.set(player.getPosition()).sub(pos).len();
 
-            Rectangle atk = meleeRect();
+        if (dist <= ATTACK_START_DIST_T * TILE && attackCd <= 0f) {
+            startAttack();
+            return;
+        }
+
+        // combo sometimes when far
+        if (dist >= COMBO_START_DIST_T * TILE && comboCd <= 0f && rng.nextFloat() < 0.015f) {
+            startComboDashTowardPlayer(player);
+            return;
+        }
+
+        moveToward(dt, player.getPosition(), runSpeed);
+
+        // if close, switch to walk for nicer motion (unless attacking)
+        if (dist < 6.8f * TILE) {
+            state = BossState.WALK;
+            stateTime = 0f;
+        }
+    }
+
+    private void startAttack() {
+        state = BossState.ATTACK;
+        stateTime = 0f;
+        vel.setZero();
+        attackDamageApplied = false;
+    }
+
+    private void updateAttack(PlayerLike player) {
+        // windup
+        if (stateTime < ATTACK_WINDUP_T) return;
+
+        // damage once
+        if (!attackDamageApplied && stateTime >= ATTACK_WINDUP_T + 0.05f) {
+            attackDamageApplied = true;
+
+            Rectangle atk = attackRect();
             if (atk.overlaps(player.getHitbox())) {
-                player.damage(MELEE_DMG);
+                player.damage(ATTACK_DMG);
             }
         }
 
         // end
-        if (stateTime >= 0.25f) {
-            meleeCd = MELEE_CD;
-            goRecover();
+        if (stateTime >= ATTACK_WINDUP_T + ATTACK_ACTIVE_T) {
+            attackCd = ATTACK_CD;
+            // return to chase (phase-aware)
+            state = (getHpPct() <= RUN2_HP_PCT) ? BossState.RUN_2 : BossState.RUN;
+            stateTime = 0f;
         }
     }
 
-    private Rectangle meleeRect() {
-        // small rectangle in front of boss
-        float w = 44, h = 36;
+    private void startComboDashTowardPlayer(PlayerLike player) {
+        state = BossState.COMBO;
+        stateTime = 0f;
+        comboHitApplied = false;
+
+        Vector2 playerPos = player.getPosition();
+        Vector2 dir = tmp1.set(playerPos).sub(pos);
+        if (dir.len2() < 1f) dir.set(1, 0);
+        dir.nor();
+
+        // aim past player
+        comboTarget.set(playerPos).mulAdd(dir, COMBO_OVERSHOOT_T * TILE);
+        clampToBossRoom(comboTarget);
+
+        vel.set(tmp2.set(comboTarget).sub(pos).nor().scl(COMBO_SPEED_TPS * TILE));
+    }
+
+    private void updateCombo(float dt, PlayerLike player) {
+        moveWithCollision(dt, vel);
+
+        if (!comboHitApplied && hitbox.overlaps(player.getHitbox())) {
+            comboHitApplied = true;
+            player.damage(COMBO_DMG);
+        }
+
+        boolean reached = pos.dst2(comboTarget) < (COMBO_STOP_DIST_T * TILE) * (COMBO_STOP_DIST_T * TILE);
+        boolean timedOut = stateTime >= COMBO_MAX_TIME;
+
+        if (reached || timedOut) {
+            vel.setZero();
+            comboCd = COMBO_CD;
+            state = (getHpPct() <= RUN2_HP_PCT) ? BossState.RUN_2 : BossState.RUN;
+            stateTime = 0f;
+        }
+    }
+
+    private void updateHit() {
+        if (stateTime >= HIT_STUN_T) {
+            state = (getHpPct() <= RUN2_HP_PCT) ? BossState.RUN_2 : BossState.RUN;
+            stateTime = 0f;
+        }
+    }
+
+    private void ensureRunStateByHp() {
+        boolean low = getHpPct() <= RUN2_HP_PCT;
+        if (state == BossState.WALK || state == BossState.RUN || state == BossState.RUN_2) {
+            BossState desired = low ? BossState.RUN_2 : BossState.RUN;
+            if (state != desired) {
+                state = desired;
+                stateTime = 0f;
+            }
+        }
+    }
+
+    // =========================
+    // ATTACK RECT
+    // =========================
+    private Rectangle attackRect() {
+        float w = 6f * TILE;
+        float h = 4f * TILE;
         float cx = pos.x, cy = pos.y;
 
         return switch (facing) {
-            case UP    -> new Rectangle(cx - w/2f, cy + 16, w, h);
-            case DOWN  -> new Rectangle(cx - w/2f, cy - 16 - h, w, h);
-            case LEFT  -> new Rectangle(cx - 16 - w, cy - h/2f, w, h);
-            case RIGHT -> new Rectangle(cx + 16, cy - h/2f, w, h);
+            case UP -> new Rectangle(cx - w / 2f, cy + HIT_H / 2f, w, h);
+            case DOWN -> new Rectangle(cx - w / 2f, cy - HIT_H / 2f - h, w, h);
+            case LEFT -> new Rectangle(cx - HIT_W / 2f - w, cy - h / 2f, w, h);
+            case RIGHT -> new Rectangle(cx + HIT_W / 2f, cy - h / 2f, w, h);
         };
     }
 
-    // =======================================================
-    // LINE ATTACK
-    // =======================================================
-    private void startLine() {
-        state = BossState.LINE_WINDUP;
-        stateTime = 0f;
-        lineDamageApplied = false;
-        vel.setZero();
-    }
-
-    private void updateLineWindup(float dt, PlayerLike player) {
-        if (stateTime >= LINE_WINDUP_T) {
-            state = BossState.LINE_ATTACK;
-            stateTime = 0f;
-        }
-    }
-
-    private void updateLineAttack(float dt, PlayerLike player) {
-        // apply once shortly after attack begins
-        if (!lineDamageApplied && stateTime >= 0.10f) {
-            lineDamageApplied = true;
-            performLineDamage(player);
-        }
-
-        if (stateTime >= 0.35f) {
-            lineCd = LINE_CD;
-            goRecover();
-        }
-    }
-
-    private void performLineDamage(PlayerLike player) {
-        // Create a thick rectangle that extends until a wall
-        float range = computeLineRangeUntilWall();
-        buildLineRect(range);
-
-        if (lineRect.overlaps(player.getHitbox())) {
-            player.damage(LINE_DMG);
-        }
-    }
-
-    private float computeLineRangeUntilWall() {
-        // step forward in small increments until wall
-        float step = 8f;
-        float max = LINE_RANGE;
-
-        Vector2 dir = facingDir();
-        float traveled = 0f;
-
-        while (traveled < max) {
-            traveled += step;
-
-            float sx = pos.x + dir.x * traveled;
-            float sy = pos.y + dir.y * traveled;
-
-            // wall check using a small rect around sample point
-            Rectangle probe = new Rectangle(sx - 6, sy - 6, 12, 12);
-            if (maze.isWallRect(probe)) {
-                traveled -= step;
-                break;
-            }
-        }
-        return Math.max(0, traveled);
-    }
-
-    private void buildLineRect(float range) {
-        float cx = pos.x, cy = pos.y;
-        float w = LINE_WIDTH;
-
-        switch (facing) {
-            case UP -> {
-                lineRect.set(cx - w/2f, cy, w, range);
-            }
-            case DOWN -> {
-                lineRect.set(cx - w/2f, cy - range, w, range);
-            }
-            case LEFT -> {
-                lineRect.set(cx - range, cy - w/2f, range, w);
-            }
-            case RIGHT -> {
-                lineRect.set(cx, cy - w/2f, range, w);
-            }
-        }
-    }
-
-    // =======================================================
-    // AOE
-    // =======================================================
-    private void startAOE() {
-        state = BossState.AOE_WINDUP;
-        stateTime = 0f;
-        aoeDamageApplied = false;
-        vel.setZero();
-    }
-
-    private void updateAoeWindup(float dt, PlayerLike player) {
-        if (stateTime >= AOE_WINDUP_T) {
-            state = BossState.AOE_ATTACK;
-            stateTime = 0f;
-        }
-    }
-
-    private void updateAoeAttack(float dt, PlayerLike player) {
-        if (!aoeDamageApplied && stateTime >= 0.05f) {
-            aoeDamageApplied = true;
-
-            float px = player.getPosition().x;
-            float py = player.getPosition().y;
-
-            float dx = px - pos.x;
-            float dy = py - pos.y;
-
-            if (dx*dx + dy*dy <= AOE_RADIUS*AOE_RADIUS) {
-                player.damage(AOE_DMG);
-            }
-        }
-
-        if (stateTime >= 0.25f) {
-            aoeCd = AOE_CD;
-            goRecover();
-        }
-    }
-
-    // =======================================================
-    // DASH
-    // =======================================================
-    private void startDash() {
-        state = BossState.DASH_WINDUP;
-        stateTime = 0f;
-        vel.setZero();
-
-        // pick random target inside boss room (world coords)
-        float tx = roomWorldX(bossRoom.x() + 2 + rng.nextInt(Math.max(1, bossRoom.w() - 4)));
-        float ty = roomWorldY(bossRoom.y() + 2 + rng.nextInt(Math.max(1, bossRoom.h() - 4)));
-        dashTarget.set(tx, ty);
-    }
-
-    private void updateDashWindup(float dt) {
-        if (stateTime >= DASH_WINDUP_T) {
-            state = BossState.DASHING;
-            stateTime = 0f;
-
-            Vector2 dir = tmp(dashTarget).sub(pos);
-            if (dir.len2() < 1f) dir.set(1, 0);
-            dir.nor();
-
-            vel.set(dir).scl(DASH_SPEED);
-        }
-    }
-
-    private void updateDashing(float dt, PlayerLike player) {
-        // move with collision
-        moveWithCollision(dt, vel);
-
-        // optional contact damage
-        if (hitbox.overlaps(player.getHitbox())) {
-            player.damage(8);
-        }
-
-        // stop if reached target or timed out
-        if (pos.dst2(dashTarget) < 18*18 || stateTime >= 0.45f) {
-            vel.setZero();
-            dashCd = DASH_CD;
-            goRecover();
-        }
-    }
-
-    // =======================================================
-    // RECOVER
-    // =======================================================
-    private void goRecover() {
-        state = BossState.RECOVER;
-        stateTime = 0f;
-        vel.setZero();
-    }
-
-    private void updateRecover(float dt) {
-        if (stateTime >= RECOVER_T) {
-            state = BossState.CHASE;
-            stateTime = 0f;
-        }
-    }
-
-    // =======================================================
+    // =========================
     // MOVEMENT + COLLISION
-    // =======================================================
+    // =========================
     private void moveToward(float dt, Vector2 target, float speed) {
-        Vector2 d = tmp(target).sub(pos);
+        Vector2 d = tmp1.set(target).sub(pos);
         if (d.len2() < 1f) {
             vel.setZero();
             return;
         }
         d.nor().scl(speed);
         vel.set(d);
-
         moveWithCollision(dt, vel);
     }
 
@@ -436,56 +377,42 @@ public class Boss {
         float nx = pos.x + velocity.x * dt;
         float ny = pos.y + velocity.y * dt;
 
-        // try x
-        Rectangle nextX = new Rectangle(hitbox);
-        nextX.x = (nx - hitbox.width/2f);
-        if (!maze.isWallRect(nextX)) {
+        // try X
+        tmpRect1.set(hitbox);
+        tmpRect1.x = (nx - HIT_W / 2f);
+        if (!maze.isWallRect(tmpRect1)) {
             pos.x = nx;
-            hitbox.x = nextX.x;
+            hitbox.x = tmpRect1.x;
         }
 
-        // try y
-        Rectangle nextY = new Rectangle(hitbox);
-        nextY.y = (ny - hitbox.height/2f);
-        if (!maze.isWallRect(nextY)) {
+        // try Y
+        tmpRect2.set(hitbox);
+        tmpRect2.y = (ny - HIT_H / 2f);
+        if (!maze.isWallRect(tmpRect2)) {
             pos.y = ny;
-            hitbox.y = nextY.y;
+            hitbox.y = tmpRect2.y;
         }
     }
 
-    // =======================================================
-    // RENDERING
-    // =======================================================
-    public void render(Batch batch) {
-        Animation<TextureRegion> a = currentAnim();
-        TextureRegion frame = a.getKeyFrame(stateTime, true);
-
-        // Draw centered on pos
-        float drawW = 64; // tweak to match your frame scale
-        float drawH = 64;
-
-        batch.draw(frame,
-                pos.x - drawW/2f,
-                pos.y - drawH/2f,
-                drawW, drawH
-        );
-    }
-
+    // =========================
+    // ANIM SELECTION
+    // =========================
     private Animation<TextureRegion> currentAnim() {
         return switch (state) {
-            case MELEE_WINDUP, MELEE_ATTACK -> anims.melee;
-            case LINE_WINDUP, LINE_ATTACK -> anims.line;
-            case AOE_WINDUP, AOE_ATTACK -> anims.aoe;
-            case DASH_WINDUP, DASHING -> anims.dash;
-            case CHASE -> anims.run;
-            case IDLE, RECOVER -> anims.idle;
-            default -> anims.idle;
+            case IDLE -> anims.idle;
+            case WALK -> anims.walk;
+            case RUN -> anims.run;
+            case RUN_2 -> anims.run2;
+            case ATTACK -> anims.attack;
+            case COMBO -> anims.combo;
+            case HIT -> anims.hit;
+            case DEATH -> anims.death;
         };
     }
 
-    // =======================================================
+    // =========================
     // HELPERS
-    // =======================================================
+    // =========================
     private void updateFacing(Vector2 toPlayer) {
         if (Math.abs(toPlayer.x) > Math.abs(toPlayer.y)) {
             facing = (toPlayer.x >= 0) ? Facing.RIGHT : Facing.LEFT;
@@ -494,24 +421,15 @@ public class Boss {
         }
     }
 
-    private Vector2 facingDir() {
-        return switch (facing) {
-            case UP -> new Vector2(0, 1);
-            case DOWN -> new Vector2(0, -1);
-            case LEFT -> new Vector2(-1, 0);
-            case RIGHT -> new Vector2(1, 0);
-        };
+    private void clampToBossRoom(Vector2 worldPos) {
+        int padTiles = 3;
+
+        float minX = (bossRoom.x() + padTiles) * TILE;
+        float minY = (bossRoom.y() + padTiles) * TILE;
+        float maxX = (bossRoom.x() + bossRoom.w() - padTiles) * TILE;
+        float maxY = (bossRoom.y() + bossRoom.h() - padTiles) * TILE;
+
+        worldPos.x = Math.max(minX, Math.min(maxX, worldPos.x));
+        worldPos.y = Math.max(minY, Math.min(maxY, worldPos.y));
     }
-
-
-    public int getHp() { return hp; }
-    public int getMaxHp() { return maxHp; }
-    public float getHpPct() { return (maxHp <= 0) ? 0f : (hp / (float)maxHp); }
-
-
-    private float roomWorldX(int tileX) { return tileX * maze.getTileSize() + maze.getTileSize() / 2f; }
-    private float roomWorldY(int tileY) { return tileY * maze.getTileSize() + maze.getTileSize() / 2f; }
-
-    private static final Vector2 TMP = new Vector2();
-    private static Vector2 tmp(Vector2 v) { return TMP.set(v); }
 }

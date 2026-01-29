@@ -25,7 +25,11 @@ public class Player {
 
     // Stats
     private int lives;
-    private static final int BASE_LIVES = 20;
+    private static final int BASE_LIVES = 5;
+
+    // ✅ NEW: Permanent bonus hearts (from Gambling / Progression)
+    private int permanentHeartsBonus = 0;
+
     private boolean hasKey = false;
     private int score = 0;
 
@@ -179,6 +183,13 @@ public class Player {
 
         this.bulletRegion = game.getBulletRegion();
 
+        // ✅ NEW: Load permanent rewards into this run
+        // (Requires MazeRunnerGame.getProgression() from earlier)
+        if (game.getProgression() != null) {
+            this.permanentHeartsBonus = game.getProgression().getPermanentHearts();
+            this.skillPoints += game.getProgression().getPermanentSkillPoints();
+        }
+
         this.lives = getMaxLives();
     }
 
@@ -251,6 +262,7 @@ public class Player {
         if (!isParalyzed() && Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             attack();
         }
+        // -------------------------------------
 
         // 5. Shooting Input
         if (!isParalyzed()
@@ -478,10 +490,10 @@ public class Player {
 
     private boolean canOccupy(float testX, float testY, Maze maze) {
         if (noClip) return true;
-        float left   = testX + COLLISION_INSET;
-        float right  = testX + WIDTH - COLLISION_INSET;
+        float left = testX + COLLISION_INSET;
+        float right = testX + WIDTH - COLLISION_INSET;
         float bottom = testY + COLLISION_INSET;
-        float top    = testY + HEIGHT - COLLISION_INSET;
+        float top = testY + HEIGHT - COLLISION_INSET;
 
         return !isBlocked(left, bottom, maze) && !isBlocked(right, bottom, maze)
                 && !isBlocked(left, top, maze) && !isBlocked(right, top, maze);
@@ -513,7 +525,7 @@ public class Player {
     private void updateAttackHitbox() {
         float range = 40f;
         if (attackHitbox == null) attackHitbox = new Rectangle();
-        attackHitbox.set(x - range/2, y - range/2, WIDTH + range, HEIGHT + range);
+        attackHitbox.set(x - range / 2, y - range / 2, WIDTH + range, HEIGHT + range);
     }
 
     public boolean isAttacking() { return isAttacking; }
@@ -597,7 +609,6 @@ public class Player {
             xpNeeded = playerLevel * XP_PER_LEVEL_BASE;
         }
     }
-
 
     public boolean upgradeSpeed() {
         if (skillPoints > 0 && skillSpeedLevel < 5) {
@@ -800,7 +811,8 @@ public class Player {
 
     public void setLives(int lives) { this.lives = lives; }
     public int getLives() { return lives; }
-    public int getMaxLives() { return BASE_LIVES + skillHealthLevel; }
+
+    public int getMaxLives() { return BASE_LIVES + skillHealthLevel + permanentHeartsBonus; }
 
     public void setExperience(int experience) { this.experience = experience; }
     public int getExperience() { return experience; }

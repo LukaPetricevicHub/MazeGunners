@@ -68,6 +68,7 @@ public class MazeLoader {
             int x = e.getKey().x;
             int y = e.getKey().y;
             maze.setTile(x, y, e.getValue());
+
         }
 
         return maze;
