@@ -4,36 +4,75 @@ import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.map.Room;
 import de.tum.cit.fop.maze.map.RoomType;
 
-public final class BossSpawner {
+import java.awt.Point;
+import java.util.List;
+import java.util.Random;
 
-    private BossSpawner() {}
+public class BossSpawner {
 
     public static Boss spawnBossIfFinalLevel(Maze maze, int level, BossAnimations anims) {
-        boolean isFinalLevel = (Math.max(1, Math.min(5, level)) == 5);
-        if (!isFinalLevel) return null;
+        if (maze == null || anims == null) return null;
+        if (level != 5) return null;
 
-        Room bossRoom = null;
-        for (Room r : maze.getRooms()) {
-            if (r.getType() == RoomType.BOSS) { bossRoom = r; break; }
+        List<Room> rooms = maze.getRooms();
+        if (rooms == null || rooms.isEmpty()) {
+            System.out.println("[BOSS] maze.getRooms() is null/empty -> cannot spawn boss.");
+            return null;
         }
-        if (bossRoom == null) return null;
 
-        float tile = maze.getTileSize();
+        Room bossRoom = findBossRoomOrFallbackBiggest(rooms);
+        if (bossRoom == null) {
+            System.out.println("[BOSS] No valid boss room found.");
+            return null;
+        }
 
-        // room center in world coords
-        float cx = (bossRoom.centerX() + 0.5f) * tile;
-        float cy = (bossRoom.centerY() + 0.5f) * tile;
+        // Pick a random interior tile in the boss room
+        Random rng = new Random();
+        Point tile = bossRoom.randomInterior(rng);
 
-        // Keep spawn safely inside room (padding in tiles)
-        int padTiles = 3; // because boss is huge
-        float minX = (bossRoom.x() + padTiles) * tile;
-        float minY = (bossRoom.y() + padTiles) * tile;
-        float maxX = (bossRoom.x() + bossRoom.w() - padTiles) * tile;
-        float maxY = (bossRoom.y() + bossRoom.h() - padTiles) * tile;
+        float spawnX = tile.x * maze.getTileSize() + maze.getTileSize() / 2f;
+        float spawnY = tile.y * maze.getTileSize() + maze.getTileSize() / 2f;
 
-        cx = Math.max(minX, Math.min(maxX, cx));
-        cy = Math.max(minY, Math.min(maxY, cy));
+        System.out.println("[BOSS] Spawning in room type=" + bossRoom.getType()
+                + " tile=(" + tile.x + "," + tile.y + ") world=(" + spawnX + "," + spawnY + ")");
 
-        return new Boss(maze, bossRoom, anims, cx, cy);
+        return new Boss(maze, bossRoom, anims, spawnX, spawnY);
+    }
+
+    private static Room findBossRoomOrFallbackBiggest(List<Room> rooms) {
+        // 1) Prefer explicit boss room
+        for (Room r : rooms) {
+            if (r != null && r.getType() == RoomType.BOSS) return r;
+        }
+
+        // 2) Fallback: biggest non-spawn/exit/key
+        Room best = null;
+        int bestArea = -1;
+
+        for (Room r : rooms) {
+            if (r == null) continue;
+            RoomType t = r.getType();
+            if (t == RoomType.SPAWN || t == RoomType.EXIT || t == RoomType.KEY) continue;
+
+            int area = r.w() * r.h();
+            if (area > bestArea) {
+                bestArea = area;
+                best = r;
+            }
+        }
+
+        // 3) Absolute fallback: biggest room of anything
+        if (best == null) {
+            for (Room r : rooms) {
+                if (r == null) continue;
+                int area = r.w() * r.h();
+                if (area > bestArea) {
+                    bestArea = area;
+                    best = r;
+                }
+            }
+        }
+
+        return best;
     }
 }

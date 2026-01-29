@@ -19,6 +19,8 @@ import java.util.List;
 
 public class Player {
 
+
+
     // --- ATTRIBUTES ---
     private float x;
     private float y;
@@ -26,6 +28,9 @@ public class Player {
     // Stats
     private int lives;
     private static final int BASE_LIVES = 5;
+
+    // CURRENCY
+    private int coins = 0;
 
     // ✅ NEW: Permanent bonus hearts (from Gambling / Progression)
     private int permanentHeartsBonus = 0;
@@ -115,7 +120,6 @@ public class Player {
     private boolean isRepulsing = false; // Flag to tell CombatSystem to push
     private float repulseCooldownTimer = 0f;
 
-
     private enum Facing { UP, DOWN, LEFT, RIGHT }
     private Facing currentFacing = Facing.DOWN;
 
@@ -192,7 +196,6 @@ public class Player {
 
         this.lives = getMaxLives();
     }
-
 
     // --- MAIN UPDATE LOOP ---
     public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker, Camera camera) {
@@ -753,6 +756,20 @@ public class Player {
         batch.setColor(oldColor);
     }
 
+
+    public void addCoins(int amount) {
+        coins = Math.max(0, coins + amount);
+    }
+
+    public boolean spendCoins(int amount) {
+        if (coins < amount) return false;
+        coins -= amount;
+        return true;
+    }
+
+    // Hearts shown in HUD are ceil(lives/20). This is the same logic:
+
+
     private float computeLaserGlowAlpha() {
         // laserHeat already = clamp(chargeTime / 3f)
         float chargeTime = laserHeat * 3f;
@@ -802,6 +819,10 @@ public class Player {
 
 
     // --- GETTERS & SETTERS ---
+    public int getCoins() { return coins; }
+    public int getHeartsCount() {
+        return MathUtils.clamp((int) Math.ceil(lives / 20f), 0, 5);
+    }
     public void setPlayerLevel(int level) { this.playerLevel = level; }
     public int getPlayerLevel() { return playerLevel; }
 

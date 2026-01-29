@@ -13,7 +13,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.ui.AchievementScreen;
-import de.tum.cit.fop.maze.ui.GamblingScreen;
 import de.tum.cit.fop.maze.ui.LeaderboardScreen;
 
 public class MenuScreen implements Screen {
@@ -40,7 +39,6 @@ public class MenuScreen implements Screen {
         title.setFontScale(1.2f);
         table.add(title).padBottom(60).row();
 
-        // 1) NEW GAME -> ModeSelectScreen
         TextButton goToGameButton = new TextButton("New Game", game.getSkin());
         table.add(goToGameButton).width(300).padBottom(10).row();
         goToGameButton.addListener(new ChangeListener() {
@@ -51,7 +49,6 @@ public class MenuScreen implements Screen {
             }
         });
 
-        // 2) LOAD GAME
         TextButton loadButton = new TextButton("Load Game", game.getSkin());
         table.add(loadButton).width(300).padBottom(10).row();
         loadButton.addListener(new ChangeListener() {
@@ -66,18 +63,17 @@ public class MenuScreen implements Screen {
             }
         });
 
-        // 3) GAMBLING (NEW)
+        // ✅ FIXED: GAMBLING BUTTON
         TextButton gamblingBtn = new TextButton("Gambling", game.getSkin());
         table.add(gamblingBtn).width(300).padBottom(10).row();
         gamblingBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 playClickSound();
-                game.setScreen(new GamblingScreen(game));
+                game.goToGambling(); // ✅ this opens the GamblingScreen
             }
         });
 
-        // 4) ACHIEVEMENTS
         TextButton achievementBtn = new TextButton("Achievements", game.getSkin());
         achievementBtn.addListener(new ChangeListener() {
             @Override
@@ -88,7 +84,6 @@ public class MenuScreen implements Screen {
         });
         table.add(achievementBtn).width(300).padBottom(10).row();
 
-        // 5) LEADERBOARD
         TextButton leaderboardBtn = new TextButton("Leaderboard", game.getSkin());
         leaderboardBtn.addListener(new ChangeListener() {
             @Override
@@ -99,7 +94,6 @@ public class MenuScreen implements Screen {
         });
         table.add(leaderboardBtn).width(300).padBottom(20).row();
 
-        // 6) SETTINGS
         TextButton settingsButton = new TextButton("Settings", game.getSkin());
         table.add(settingsButton).width(300).padBottom(10).row();
         settingsButton.addListener(new ChangeListener() {
@@ -110,7 +104,6 @@ public class MenuScreen implements Screen {
             }
         });
 
-        // 7) EXIT
         TextButton exitButton = new TextButton("Exit", game.getSkin());
         table.add(exitButton).width(300).row();
         exitButton.addListener(new ChangeListener() {
@@ -144,15 +137,9 @@ public class MenuScreen implements Screen {
         stage.draw();
     }
 
-    @Override
-    public void resize(int width, int height) {
-        stage.getViewport().update(width, height, true);
-    }
 
-    @Override
-    public void dispose() {
-        stage.dispose();
-    }
+    @Override public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
+    @Override public void dispose() { stage.dispose(); }
 
     @Override
     public void show() {

@@ -9,9 +9,11 @@ public class ItemSpawner {
 
     private final Random random = new Random();
 
+
     public List<Collectable> spawnItems(Maze maze, int count) {
         List<Collectable> items = new ArrayList<>();
         int tileSize = (int) maze.getTileSize();
+
 
         // --- 1. SPAWN ONE GUARANTEED GUN ---
         spawnSingleItem(maze, items, 3); // Type 3 = Gun
@@ -21,7 +23,7 @@ public class ItemSpawner {
         for (int i = 0; i < count - 1; i++) {
             // Random type between 0 and 2 (Heart, Speed, Shield)
             // We exclude 3 so we don't spawn extra guns
-            int type = random.nextInt(3);
+            int type = random.nextInt(4); // 0..3
             spawnSingleItem(maze, items, type);
         }
 
@@ -50,7 +52,8 @@ public class ItemSpawner {
             case 0 -> items.add(new HeartItem(worldX, worldY));
             case 1 -> items.add(new SpeedItem(worldX, worldY));
             case 2 -> items.add(new ShieldItem(worldX, worldY));
-            case 3 -> items.add(new GunCollectable(worldX, worldY));
+            case 3 -> items.add(new Coin(worldX, worldY,1));
+            case 4 -> items.add(new GunCollectable(worldX, worldY)); // keep gun as special if you want
         }
     }
 }
