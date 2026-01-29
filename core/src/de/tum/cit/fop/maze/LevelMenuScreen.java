@@ -6,13 +6,14 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.*;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
-
-import de.tum.cit.fop.maze.LevelDiscovery;
 
 public class LevelMenuScreen implements Screen {
 
@@ -27,7 +28,7 @@ public class LevelMenuScreen implements Screen {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
-        buildUI(); // rebuild every time you open the screen
+        buildUI();
     }
 
     private void buildUI() {
@@ -37,7 +38,7 @@ public class LevelMenuScreen implements Screen {
         root.setFillParent(true);
         stage.addActor(root);
 
-        Label title = new Label("Select Level", game.getSkin(), "title");
+        Label title = new Label("Story Mode - Select Level", game.getSkin(), "title");
         title.setAlignment(Align.center);
         root.add(title).padBottom(25).row();
 
@@ -59,32 +60,21 @@ public class LevelMenuScreen implements Screen {
                 btn.addListener(new ChangeListener() {
                     @Override
                     public void changed(ChangeEvent event, Actor actor) {
-                        game.setScreen(new GameScreen(game, lvl, levelFile));
+                        // Your MazeRunnerGame uses: new GameScreen(game, mapPathString)
+                        game.setScreen(new GameScreen(game, levelFile.path()));
                     }
                 });
 
                 listTable.add(btn).width(360).pad(6).row();
             }
-
         }
 
         root.add(scroll).width(440).height(460).row();
 
-        TextButton endlessBtn = new TextButton("Endless Mode", game.getSkin());
-        endlessBtn.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                // start at floor 1
-                game.setScreen(new GameScreen(game, 1, null, true, 1));
-            }
-        });
-        root.add(endlessBtn).width(360).padTop(12).row();
-
-
         TextButton back = new TextButton("Back", game.getSkin());
         back.addListener(new ChangeListener() {
             @Override public void changed(ChangeEvent event, Actor actor) {
-                game.setScreen(new MenuScreen(game));
+                game.setScreen(new ModeSelectScreen(game));
             }
         });
         root.add(back).width(200).padTop(18).row();
@@ -99,7 +89,7 @@ public class LevelMenuScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        ScreenUtils.clear(0,0,0,1);
+        ScreenUtils.clear(0, 0, 0, 1);
         stage.act(delta);
         stage.draw();
     }

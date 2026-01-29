@@ -10,9 +10,9 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin; // Keep Skin
-// REMOVED: import com.badlogic.gdx.scenes.scene2d.ui.List; <--- THIS WAS THE ERROR
-import java.util.List; // <--- ADDED CORRECT IMPORT
+import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+
+import java.util.List;
 
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Json;
@@ -21,30 +21,24 @@ import de.tum.cit.fop.maze.enemies.FlyingDrone;
 import de.tum.cit.fop.maze.enemies.MutantWorker;
 import de.tum.cit.fop.maze.enemies.RobotGuard;
 import de.tum.cit.fop.maze.items.*;
+import de.tum.cit.fop.maze.player.Player;
+import de.tum.cit.fop.maze.progress.Progression;
+import de.tum.cit.fop.maze.score.LeaderboardManager;
 import de.tum.cit.fop.maze.util.AchievementManager;
-import games.spooky.gdx.nativefilechooser.NativeFileChooser;
 import de.tum.cit.fop.maze.util.AudioManager;
 import de.tum.cit.fop.maze.util.GamePreferences;
-import de.tum.cit.fop.maze.player.Player;
-import de.tum.cit.fop.maze.score.LeaderboardManager;
+import games.spooky.gdx.nativefilechooser.NativeFileChooser;
 
-/**
- * The MazeRunnerGame class represents the core of the Maze Runner game.
- * It manages the screens and global resources like SpriteBatch and Skin.
- */
 public class MazeRunnerGame extends Game {
-    // Screens
-    private MenuScreen menuScreen;
-    private GameScreen gameScreen;
 
-    // Sprite Batch for rendering
     private SpriteBatch spriteBatch;
-
-    // UI Skin
     private Skin skin;
 
     private AudioManager audioManager;
     private GamePreferences preferences;
+
+    // NEW: Permanent progression (endless unlock + gambling rewards)
+    private Progression progression;
 
     // Standard Walking Animations
     private Animation<TextureRegion> animDown, animUp, animLeft, animRight;
@@ -58,20 +52,13 @@ public class MazeRunnerGame extends Game {
     private Texture tileset;
     private TextureRegion[][] tiles;
 
-    // Sound
     private Sound wallHitSound;
 
     private AchievementManager achievementManager;
 
-    // Variable to temporarily hold loaded data until GameScreen is ready
     private GameState pendingSaveState = null;
     private LeaderboardManager leaderboardManager;
 
-
-    /**
-     * Constructor for MazeRunnerGame.
-     * @param fileChooser The file chooser for the game.
-     */
     public MazeRunnerGame(NativeFileChooser fileChooser) {
         super();
     }
@@ -84,26 +71,27 @@ public class MazeRunnerGame extends Game {
         preferences = new GamePreferences();
         audioManager = new AudioManager();
 
+        // NEW
+        progression = new Progression();
+
         audioManager.playBackgroundMusic("music/background.mp3");
 
-        // Load animations and create bullet texture
         this.loadCharacterAnimation();
         this.createBulletTexture();
 
         achievementManager = new AchievementManager();
         leaderboardManager = new LeaderboardManager();
 
-        goToMenu(); // Start at Main Menu
+        goToMenu();
 
         tileset = new Texture(Gdx.files.internal("basictiles.png"));
         tiles = TextureRegion.split(tileset, 16, 16);
-        if(tiles.length < 2 || tiles[0].length < 4){
+        if (tiles.length < 2 || tiles[0].length < 4) {
             throw new IllegalStateException("basictiles.png doesn't have enough tiles!");
         }
     }
 
     private void createBulletTexture() {
-        // Generate a 4x4 yellow pixel texture
         Pixmap pixmap = new Pixmap(4, 4, Pixmap.Format.RGBA8888);
         pixmap.setColor(Color.YELLOW);
         pixmap.fill();
@@ -111,44 +99,48 @@ public class MazeRunnerGame extends Game {
         pixmap.dispose();
     }
 
-    public void playWallHitSound(){
-        if(wallHitSound != null){
+    public void playWallHitSound() {
+        if (wallHitSound != null) {
             wallHitSound.play(0.6f);
         }
     }
 
+    // FIXED: no double setScreen
     public void goToMenu() {
         if (audioManager != null) {
             audioManager.playBackgroundMusic("music/background.mp3");
         }
-        this.setScreen(new MenuScreen(this));
-        if (gameScreen != null) {
-            gameScreen.dispose();
-            gameScreen = null;
-        }
-        this.setScreen(new MenuScreen(this));
+        setScreen(new MenuScreen(this));
     }
 
-    public void goToGame() {
-        this.setScreen(new LevelMenuScreen(this));
-        if (menuScreen != null) {
-            menuScreen.dispose();
-            menuScreen = null;
+    public boolean loadGame() {
+        FileHandle file = Gdx.files.local("saves/save.json");
+        if (!file.exists()) {
+            System.out.println("No save file found!");
+            return false;
+        }
+
+        try {
+            Json json = new Json();
+            GameState state = json.fromJson(GameState.class, file.readString());
+            this.pendingSaveState = state;
+
+            getPreferences().setMaxLevel(Math.max(getPreferences().getMaxLevel(), state.level));
+
+            if (state.isEndless) {
+                setScreen(new GameScreen(this, 1, null, true, state.currentFloor));
+            } else {
+                String mapFile = "maps/level-" + state.level + ".properties";
+                setScreen(new GameScreen(this, mapFile));
+            }
+
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
     }
 
-    public void goToLevel(int levelNumber) {
-        String mapPath = "maps/level-" + levelNumber + ".properties";
-        if (menuScreen != null) {
-            menuScreen.dispose();
-            menuScreen = null;
-        }
-        this.setScreen(new GameScreen(this, mapPath));
-    }
-
-    /**
-     * SAVES the game, including Player stats, Enemies, and Items.
-     */
     public void saveGame(
             Player player,
             int currentLevel,
@@ -172,11 +164,10 @@ public class MazeRunnerGame extends Game {
         state.skillThorns = player.hasThorns();
         state.skillRepulse = player.hasRepulse();
 
-        state.isEndless = endlessMode; // Save this!
+        state.isEndless = endlessMode;
         state.currentFloor = floor;
         state.mazeSeed = currentSeed;
 
-        // 1. Save Player Data
         state.level = currentLevel;
         state.playerLevel = player.getPlayerLevel();
         state.score = player.getScore();
@@ -191,11 +182,10 @@ public class MazeRunnerGame extends Game {
         state.playerY = player.getY();
         state.shouldRestorePosition = true;
 
-        // 2. Save Enemies
         if (enemies != null) {
             for (Enemy e : enemies) {
                 GameState.EnemyState es = new GameState.EnemyState();
-                es.x = e.getPosition().x; // Fixed getX() issue
+                es.x = e.getPosition().x;
                 es.y = e.getPosition().y;
 
                 if (e instanceof MutantWorker) es.type = "slime";
@@ -207,7 +197,6 @@ public class MazeRunnerGame extends Game {
             }
         }
 
-        // 3. Save Items
         if (items != null) {
             for (Collectable i : items) {
                 if (!i.isActive()) continue;
@@ -225,51 +214,12 @@ public class MazeRunnerGame extends Game {
             }
         }
 
-        // 4. Write to File
         String text = json.toJson(state);
         FileHandle file = Gdx.files.local("saves/save.json");
         file.parent().mkdirs();
         file.writeString(text, false);
 
         System.out.println("GAME SAVED! (Enemies: " + state.enemies.size() + ", Items: " + state.items.size() + ")");
-    }
-
-    /**
-     * LOADS the game state from "save.json".
-     */
-    public boolean loadGame() {
-        FileHandle file = Gdx.files.local("saves/save.json");
-        if (!file.exists()) {
-            System.out.println("No save file found!");
-            return false;
-        }
-
-        try {
-            Json json = new Json();
-            // Read the file exactly once
-            GameState state = json.fromJson(GameState.class, file.readString());
-            this.pendingSaveState = state;
-
-            // Update preferences, but DO NOT start the level yet
-            getPreferences().setMaxLevel(Math.max(getPreferences().getMaxLevel(), state.level));
-
-            // --- REMOVED THIS LINE: goToLevel(pendingSaveState.level); ---
-            // This line was "stealing" the save data before the real screen could use it.
-
-            if (state.isEndless) {
-                // Now we create the CORRECT screen with the saved Floor
-                setScreen(new GameScreen(this, 1, null, true, state.currentFloor));
-            } else {
-                // Story Mode
-                String mapFile = "maps/level-" + state.level + ".properties";
-                setScreen(new GameScreen(this, mapFile));
-            }
-
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
     }
 
     public void handleLevelTransition(Player player) {
@@ -298,31 +248,31 @@ public class MazeRunnerGame extends Game {
 
         TextureRegion[][] tmp = TextureRegion.split(walkSheet, frameWidth, frameHeight);
 
-        // Row 0: Down
         Array<TextureRegion> framesDown = new Array<>();
         for (int i = 0; i < 4; i++) framesDown.add(tmp[0][i]);
         animDown = new Animation<>(0.15f, framesDown, Animation.PlayMode.LOOP);
 
-        // Row 1: Right
         Array<TextureRegion> framesRight = new Array<>();
         for (int i = 0; i < 4; i++) framesRight.add(tmp[1][i]);
         animRight = new Animation<>(0.15f, framesRight, Animation.PlayMode.LOOP);
 
-        // Row 2: Up
         Array<TextureRegion> framesUp = new Array<>();
         for (int i = 0; i < 4; i++) framesUp.add(tmp[2][i]);
         animUp = new Animation<>(0.15f, framesUp, Animation.PlayMode.LOOP);
 
-        // Row 3: Left
         Array<TextureRegion> framesLeft = new Array<>();
         for (int i = 0; i < 4; i++) framesLeft.add(tmp[3][i]);
         animLeft = new Animation<>(0.15f, framesLeft, Animation.PlayMode.LOOP);
 
-        // --- SETUP SHOOTING ANIMATIONS ---
         shootDownAnim = animDown;
         shootUpAnim = animUp;
         shootLeftAnim = animLeft;
         shootRightAnim = animRight;
+    }
+
+    // NEW: call this when story final level is beaten
+    public void markStoryCompleted() {
+        progression.setStoryCompleted(true);
     }
 
     @Override
@@ -332,14 +282,13 @@ public class MazeRunnerGame extends Game {
         spriteBatch.dispose();
         skin.dispose();
         tileset.dispose();
-        if(wallHitSound != null) wallHitSound.dispose();
+        if (wallHitSound != null) wallHitSound.dispose();
         if (audioManager != null) audioManager.dispose();
     }
 
-    // Getters
     public Skin getSkin() { return skin; }
     public SpriteBatch getSpriteBatch() { return spriteBatch; }
-    public TextureRegion getTile(int row, int col){ return tiles[row][col]; }
+    public TextureRegion getTile(int row, int col) { return tiles[row][col]; }
     public AudioManager getAudioManager() { return audioManager; }
     public GamePreferences getPreferences() { return preferences; }
     public AchievementManager getAchievementManager() { return achievementManager; }
@@ -349,10 +298,11 @@ public class MazeRunnerGame extends Game {
     public Animation<TextureRegion> getAnimRight() { return animRight; }
     public LeaderboardManager getLeaderboardManager() { return leaderboardManager; }
 
-    // --- NEW GETTERS FOR PLAYER CLASS ---
     public Animation<TextureRegion> getShootDownAnim() { return shootDownAnim; }
     public Animation<TextureRegion> getShootUpAnim() { return shootUpAnim; }
     public Animation<TextureRegion> getShootLeftAnim() { return shootLeftAnim; }
     public Animation<TextureRegion> getShootRightAnim() { return shootRightAnim; }
     public TextureRegion getBulletRegion() { return bulletRegion; }
+
+    public Progression getProgression() { return progression; }
 }

@@ -26,6 +26,10 @@ public class Player {
     // Stats
     private int lives;
     private static final int BASE_LIVES = 100;
+
+    // ✅ NEW: Permanent bonus hearts (from Gambling / Progression)
+    private int permanentHeartsBonus = 0;
+
     private boolean hasKey = false;
     private int score = 0;
 
@@ -93,7 +97,6 @@ public class Player {
     private boolean isRepulsing = false; // Flag to tell CombatSystem to push
     private float repulseCooldownTimer = 0f;
 
-
     private enum Facing { UP, DOWN, LEFT, RIGHT }
     private Facing currentFacing = Facing.DOWN;
 
@@ -153,9 +156,15 @@ public class Player {
 
         this.bulletRegion = game.getBulletRegion();
 
+        // ✅ NEW: Load permanent rewards into this run
+        // (Requires MazeRunnerGame.getProgression() from earlier)
+        if (game.getProgression() != null) {
+            this.permanentHeartsBonus = game.getProgression().getPermanentHearts();
+            this.skillPoints += game.getProgression().getPermanentSkillPoints();
+        }
+
         this.lives = getMaxLives();
     }
-
 
     // --- MAIN UPDATE LOOP ---
     public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker, Camera camera) {
@@ -193,11 +202,10 @@ public class Player {
             repulseCooldownTimer = 5.0f; // 5 Seconds Cooldown
         }
 
-        // --- FIX: RESTORE MELEE INPUT HERE ---
+        // Melee
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             attack();
         }
-        // -------------------------------------
 
         // 5. Shooting Input
         if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && hasGun) {
@@ -326,8 +334,8 @@ public class Player {
         Vector3 mousePos = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
         camera.unproject(mousePos);
 
-        float diffX = mousePos.x - (x + WIDTH/2f);
-        float diffY = mousePos.y - (y + HEIGHT/2f);
+        float diffX = mousePos.x - (x + WIDTH / 2f);
+        float diffY = mousePos.y - (y + HEIGHT / 2f);
 
         float angle = MathUtils.atan2(diffY, diffX) * MathUtils.radiansToDegrees;
         if (angle < 0) angle += 360f;
@@ -359,10 +367,10 @@ public class Player {
 
     private boolean canOccupy(float testX, float testY, Maze maze) {
         if (noClip) return true;
-        float left   = testX + COLLISION_INSET;
-        float right  = testX + WIDTH - COLLISION_INSET;
+        float left = testX + COLLISION_INSET;
+        float right = testX + WIDTH - COLLISION_INSET;
         float bottom = testY + COLLISION_INSET;
-        float top    = testY + HEIGHT - COLLISION_INSET;
+        float top = testY + HEIGHT - COLLISION_INSET;
 
         return !isBlocked(left, bottom, maze) && !isBlocked(right, bottom, maze)
                 && !isBlocked(left, top, maze) && !isBlocked(right, top, maze);
@@ -394,7 +402,7 @@ public class Player {
     private void updateAttackHitbox() {
         float range = 40f;
         if (attackHitbox == null) attackHitbox = new Rectangle();
-        attackHitbox.set(x - range/2, y - range/2, WIDTH + range, HEIGHT + range);
+        attackHitbox.set(x - range / 2, y - range / 2, WIDTH + range, HEIGHT + range);
     }
 
     public boolean isAttacking() { return isAttacking; }
@@ -521,12 +529,10 @@ public class Player {
 
         if (isShielded) {
             batch.setColor(0.5f, 0.5f, 1f, 1f);
-        }
-        else if (damageFlash) {
+        } else if (damageFlash) {
             batch.setColor(1f, 0f, 0f, 1f);
-        }
-        else if (isAttacking) {
-            batch.setColor(1f, 1f, 0f, 1f); // YELLOW/ORANGE for Melee Attack
+        } else if (isAttacking) {
+            batch.setColor(1f, 1f, 0f, 1f);
         }
 
         batch.draw(frame, x, y, 52f, 52f);
@@ -543,7 +549,9 @@ public class Player {
 
     public void setLives(int lives) { this.lives = lives; }
     public int getLives() { return lives; }
-    public int getMaxLives() { return BASE_LIVES + skillHealthLevel; }
+
+    // ✅ UPDATED: max lives includes permanent hearts
+    public int getMaxLives() { return BASE_LIVES + skillHealthLevel + permanentHeartsBonus; }
 
     public void setExperience(int experience) { this.experience = experience; }
     public int getExperience() { return experience; }
