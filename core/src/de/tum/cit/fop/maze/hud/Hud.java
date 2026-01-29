@@ -120,7 +120,7 @@ public class Hud {
         // =========================
         // TOP-CENTER (BOSS HUD) - pinned to TOP, hidden unless boss exists
         // =========================
-        bossLabel = new Label("BOSS", skin);
+        bossLabel = new Label("SWORD", skin);
         bossLabel.setAlignment(Align.center);
         bossLabel.setColor(Color.WHITE);
 
