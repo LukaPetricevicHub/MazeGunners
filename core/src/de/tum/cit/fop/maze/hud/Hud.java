@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
@@ -37,13 +38,13 @@ public class Hud {
     // --- UI ELEMENTS ---
     private final Image[] heartImages;
 
-    private final Label floorLabel;       // "Floor: 1" or "Round: 1"
-    private final Label hintLabel;        // "Hint: Cold/Warm/Hot"
-    private final Label keyLabel;         // "Key: YES/NO"
+    private final Label floorLabel;
+    private final Label hintLabel;
+    private final Label keyLabel;
 
-    private final Label levelLabel;       // "LEVEL 3"
-    private final ProgressBar xpBar;      // 0..1
-    private final Label xpTextLabel;      // "50 / 100 XP"
+    private final Label levelLabel;
+    private final ProgressBar xpBar;
+    private final Label xpTextLabel;
 
     private final Label notificationLabel;
 
@@ -52,7 +53,8 @@ public class Hud {
     private float exitX, exitY;
     private boolean hasExitTarget = false;
 
-    // Boss bar (top-center)
+    // Boss HUD (overlay group so it never drifts)
+    private Group bossGroup;
     private Table bossTable;
     private final Label bossLabel;
     private final ProgressBar bossHpBar;
@@ -61,7 +63,7 @@ public class Hud {
     private float lastBossRatio = -1f;
     private boolean bossShakeEnabled = true;
 
-    // Minimap container pinned bottom-right (optional: you can insert an actor)
+    // Minimap container pinned bottom-right (optional)
     private final Table minimapContainer;
 
     // Timer for notifications
@@ -118,9 +120,9 @@ public class Hud {
         stage.addActor(topLeftWrap);
 
         // =========================
-        // TOP-CENTER (BOSS HUD) - pinned to TOP, hidden unless boss exists
+        // TOP-CENTER (BOSS HUD) - OVERLAY GROUP (NO LAYOUT DRIFT)
         // =========================
-        bossLabel = new Label("SWORD", skin);
+        bossLabel = new Label("BOSS", skin);
         bossLabel.setAlignment(Align.center);
         bossLabel.setColor(Color.WHITE);
 
@@ -144,17 +146,16 @@ public class Hud {
         bossTable.pad(8);
         bossTable.add(bossLabel).padBottom(4).row();
 
-        // ✅ Wider bar (change 520 to what you want)
-        bossTable.add(bossHpBar).width(520).height(14);
+        // ✅ wider bar
+        bossTable.add(bossHpBar).width(700).height(14);
 
         bossTable.setVisible(false);
 
-        // ✅ This is the key: a fill-parent root aligned TOP
-        Table bossRoot = new Table();
-        bossRoot.setFillParent(true);
-        bossRoot.top();
-        bossRoot.add(bossTable).padTop(12).center();
-        stage.addActor(bossRoot);
+        bossGroup = new Group();
+        stage.addActor(bossGroup);
+        bossGroup.addActor(bossTable);
+
+        layoutBossHud();
 
         // =========================
         // BOTTOM-LEFT (Level + XP + Hint)
@@ -235,6 +236,18 @@ public class Hud {
         // Console
         devConsole = new DevConsole(skin, (MazeRunnerGame) Gdx.app.getApplicationListener());
         stage.addActor(devConsole);
+    }
+
+    private void layoutBossHud() {
+        bossTable.pack();
+
+        float worldW = stage.getViewport().getWorldWidth();
+        float worldH = stage.getViewport().getWorldHeight();
+
+        float x = (worldW - bossTable.getWidth()) / 2f;
+        float y = worldH - bossTable.getHeight() - 12f;
+
+        bossGroup.setPosition(x, y);
     }
 
     /**
@@ -332,6 +345,7 @@ public class Hud {
 
     public void resize(int width, int height, boolean centerCamera) {
         stage.getViewport().update(width, height, centerCamera);
+        layoutBossHud();
     }
 
     public void showNotification(String text) {
@@ -344,20 +358,9 @@ public class Hud {
         floorLabel.setText(text);
     }
 
-    // Backwards-compatible with your GameScreen call:
     public void setExitTarget(float x, float y) {
         this.exitX = x;
         this.exitY = y;
-        this.hasExitTarget = true;
-    }
-
-    public void setExitTargetWorld(float worldX, float worldY) {
-        setExitTarget(worldX, worldY);
-    }
-
-    public void setExitTargetTile(int tileX, int tileY) {
-        this.exitX = tileX * TILE_SIZE + TILE_SIZE / 2f;
-        this.exitY = tileY * TILE_SIZE + TILE_SIZE / 2f;
         this.hasExitTarget = true;
     }
 
@@ -366,14 +369,13 @@ public class Hud {
         arrow.setVisible(false);
     }
 
-    // Boss HP control (call from GameScreen)
+    // Boss control (call from GameScreen)
     public void setBossHp(float current, float max) {
         if (max <= 0f) return;
 
         float ratio = MathUtils.clamp(current / max, 0f, 1f);
         bossHpBar.setValue(ratio);
 
-        // Shake only when boss loses HP
         if (bossShakeEnabled && lastBossRatio >= 0f && ratio < lastBossRatio - 0.0001f) {
             triggerBossShake();
         }
@@ -384,18 +386,25 @@ public class Hud {
         bossTable.setVisible(visible);
         if (!visible) {
             lastBossRatio = -1f;
-            bossTable.clearActions();
+            bossGroup.clearActions();
+            layoutBossHud();
+            return;
         }
+        layoutBossHud();
     }
 
     private void triggerBossShake() {
-        // shake the table itself (safe because it's in a top-root table)
-        bossTable.clearActions();
+        if (bossGroup == null) return;
+
+        final float ox = bossGroup.getX();
+        final float oy = bossGroup.getY();
+
+        bossGroup.clearActions();
 
         float a = 4f;
-        float step = 0.03f;
+        float step = 0.025f;
 
-        bossTable.addAction(Actions.sequence(
+        bossGroup.addAction(Actions.sequence(
                 Actions.moveBy(-a, 0f, step),
                 Actions.moveBy(a * 2f, 0f, step),
                 Actions.moveBy(-a, 0f, step),
@@ -404,15 +413,10 @@ public class Hud {
                 Actions.moveBy(0f, a * 2f, step),
                 Actions.moveBy(0f, -a, step),
 
-                Actions.moveBy(-a, -a, step),
-                Actions.moveBy(a * 2f, a * 2f, step),
-                Actions.moveBy(-a, -a, step),
-
-                Actions.moveTo(0f, 0f, 0f)
+                Actions.run(() -> bossGroup.setPosition(ox, oy))
         ));
     }
 
-    // Minimap container helper
     public void setMinimapActor(Actor minimapActor, float width, float height) {
         minimapContainer.clearChildren();
         minimapContainer.add(minimapActor).size(width, height);
