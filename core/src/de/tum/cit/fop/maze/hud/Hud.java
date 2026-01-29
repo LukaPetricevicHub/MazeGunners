@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
@@ -55,6 +56,10 @@ public class Hud {
     private Table bossTable;
     private final Label bossLabel;
     private final ProgressBar bossHpBar;
+
+    // Boss shake
+    private float lastBossRatio = -1f;
+    private boolean bossShakeEnabled = true;
 
     // Minimap container pinned bottom-right (optional: you can insert an actor)
     private final Table minimapContainer;
@@ -113,35 +118,43 @@ public class Hud {
         stage.addActor(topLeftWrap);
 
         // =========================
-        // TOP-CENTER (BOSS HP) - hidden unless boss exists
+        // TOP-CENTER (BOSS HUD) - pinned to TOP, hidden unless boss exists
         // =========================
+        bossLabel = new Label("BOSS", skin);
+        bossLabel.setAlignment(Align.center);
+        bossLabel.setColor(Color.WHITE);
+
         ProgressBar.ProgressBarStyle bossStyle = new ProgressBar.ProgressBarStyle();
-        bossStyle.background = new TextureRegionDrawable(new TextureRegion(pixelTexture)).tint(Color.DARK_GRAY);
-        bossStyle.knobBefore = new TextureRegionDrawable(new TextureRegion(pixelTexture)).tint(Color.RED);
+        bossStyle.background =
+                new TextureRegionDrawable(new TextureRegion(pixelTexture))
+                        .tint(new Color(0f, 0f, 0f, 0.70f));
+        bossStyle.knobBefore =
+                new TextureRegionDrawable(new TextureRegion(pixelTexture))
+                        .tint(Color.RED);
 
         bossHpBar = new ProgressBar(0f, 1f, 0.001f, false, bossStyle);
         bossHpBar.setValue(1f);
         bossHpBar.setAnimateDuration(0.15f);
 
-        bossLabel = new Label("BOSS", skin);
-        bossLabel.setAlignment(Align.center);
-        bossLabel.setColor(Color.WHITE);
-
         bossTable = new Table();
         bossTable.setBackground(
                 new TextureRegionDrawable(new TextureRegion(pixelTexture))
-                        .tint(new Color(0f, 0f, 0f, 0.65f))
+                        .tint(new Color(0f, 0f, 0f, 0.60f))
         );
-        bossTable.pad(6);
-        bossTable.add(bossLabel).center().row();
-        bossTable.add(bossHpBar).width(900).height(14);
-        bossTable.setVisible(false); // IMPORTANT: hide by default
+        bossTable.pad(8);
+        bossTable.add(bossLabel).padBottom(4).row();
 
-        Table bossWrapper = new Table();
-        bossWrapper.setFillParent(true);
-        bossWrapper.top().center().padTop(4); // higher up at the top
-        bossWrapper.add(bossTable);
-        stage.addActor(bossWrapper);
+        // ✅ Wider bar (change 520 to what you want)
+        bossTable.add(bossHpBar).width(520).height(14);
+
+        bossTable.setVisible(false);
+
+        // ✅ This is the key: a fill-parent root aligned TOP
+        Table bossRoot = new Table();
+        bossRoot.setFillParent(true);
+        bossRoot.top();
+        bossRoot.add(bossTable).padTop(12).center();
+        stage.addActor(bossRoot);
 
         // =========================
         // BOTTOM-LEFT (Level + XP + Hint)
@@ -356,11 +369,47 @@ public class Hud {
     // Boss HP control (call from GameScreen)
     public void setBossHp(float current, float max) {
         if (max <= 0f) return;
-        bossHpBar.setValue(MathUtils.clamp(current / max, 0f, 1f));
+
+        float ratio = MathUtils.clamp(current / max, 0f, 1f);
+        bossHpBar.setValue(ratio);
+
+        // Shake only when boss loses HP
+        if (bossShakeEnabled && lastBossRatio >= 0f && ratio < lastBossRatio - 0.0001f) {
+            triggerBossShake();
+        }
+        lastBossRatio = ratio;
     }
 
     public void setBossVisible(boolean visible) {
         bossTable.setVisible(visible);
+        if (!visible) {
+            lastBossRatio = -1f;
+            bossTable.clearActions();
+        }
+    }
+
+    private void triggerBossShake() {
+        // shake the table itself (safe because it's in a top-root table)
+        bossTable.clearActions();
+
+        float a = 4f;
+        float step = 0.03f;
+
+        bossTable.addAction(Actions.sequence(
+                Actions.moveBy(-a, 0f, step),
+                Actions.moveBy(a * 2f, 0f, step),
+                Actions.moveBy(-a, 0f, step),
+
+                Actions.moveBy(0f, -a, step),
+                Actions.moveBy(0f, a * 2f, step),
+                Actions.moveBy(0f, -a, step),
+
+                Actions.moveBy(-a, -a, step),
+                Actions.moveBy(a * 2f, a * 2f, step),
+                Actions.moveBy(-a, -a, step),
+
+                Actions.moveTo(0f, 0f, 0f)
+        ));
     }
 
     // Minimap container helper
