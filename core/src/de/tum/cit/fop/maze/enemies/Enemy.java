@@ -139,7 +139,6 @@ public abstract class Enemy {
         if (dying) return;
         dying = true;
 
-        // Default: enemies WITHOUT death animation die immediately
         finalizeDeath();
     }
 
@@ -235,11 +234,11 @@ public abstract class Enemy {
             case NONE -> { }
 
             case ATTACKING -> {
-                if (combatLockTimer > 0f) {
+                if (combatLockTimer > 0f)
                     combatLockTimer -= deltaTime;
-                }
 
-                if (!touchingPlayer && combatLockTimer <= 0f) {
+
+                if(!touchingPlayer && combatLockTimer <= 0f) {
                     combatLockState = CombatLockState.POST_ATTACK_DELAY;
                     combatLockTimer = postAttackDelay();
                 }
@@ -258,7 +257,7 @@ public abstract class Enemy {
     public void onPlayerContact() {
         touchingPlayer = true;
 
-        if (combatLockState == CombatLockState.NONE) {
+        if(combatLockState == CombatLockState.NONE) {
             combatLockState = CombatLockState.ATTACKING;
             combatLockTimer = minAttackCommitTime();
         }

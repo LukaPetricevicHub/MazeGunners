@@ -10,16 +10,20 @@ public class FloorHazard extends Obstacle {
     // Attributes
     private static final float SPEED_UP_FACTOR = 1.6f;
     private static final float MAX_BOOST_TIME = 2.5f;
+
     private float activeBoostTimer = 0f;
+
     private static final Texture HAZARD_TEX = new Texture("hazard.png");
     private final TextureRegion hazardSprite;
+
     private boolean playerWasOn = false;
 
 
     // Constructor
     public FloorHazard(Vector2 spawnPos) {
         super(spawnPos, 0, 2f, 16f, 16f);
-        hazardSprite = new TextureRegion(HAZARD_TEX); // ✅ FULL IMAGE
+
+        hazardSprite = new TextureRegion(HAZARD_TEX);
     }
 
 
@@ -38,12 +42,15 @@ public class FloorHazard extends Obstacle {
 
     }
 
+
     public boolean justEntered(Rectangle playerFeet) {
         boolean on = collisionBounds.overlaps(playerFeet);
         boolean entered = on && !playerWasOn;
+
         playerWasOn = on;
         return entered;
     }
+
 
     public boolean isPlayerInRange(float px, float py, float tileSize) {
         float radius = 3f * tileSize;
@@ -63,11 +70,14 @@ public class FloorHazard extends Obstacle {
         return activeBoostTimer > 0f;
     }
 
+
     public float getSpeedBoost() {
         return SPEED_UP_FACTOR;
     }
 
+
     public TextureRegion getSprite() {
         return hazardSprite;
     }
+
 }

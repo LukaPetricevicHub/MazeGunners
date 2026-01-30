@@ -29,28 +29,24 @@ public class CombatSystem {
 
     public CombatSystem() {}
 
-    public void update(
-            float deltaTime,
-            Player player,
-            PlayerLike bossTarget,
-            Boss boss,
-            Maze maze,
-            List<Enemy> enemies,
-            List<Obstacle> obstacles,
-            GameCamera gameCamera
-    ) {
+
+    public void update(float deltaTime, Player player, PlayerLike bossTarget, Boss boss, Maze maze, List<Enemy> enemies, List<Obstacle> obstacles, GameCamera gameCamera) {
+
         this.enemies = enemies;
 
         if (maze != null && enemies != null) {
             maze.updateEnemyOccupancy(enemies);
         }
 
-        // 1) BULLETS
 
+        // 1) BULLETS
         if (player.getBullets() != null) {
+
             Iterator<Bullet> bIter = player.getBullets().iterator();
-            while (bIter.hasNext()) {
+            while(bIter.hasNext()) {
+
                 Bullet b = bIter.next();
+
                 if (!b.isAlive()) {
                     bIter.remove();
                     continue;
@@ -61,9 +57,9 @@ public class CombatSystem {
                     float hitX = b.getBounds().x + b.getBounds().width * 0.5f;
                     float hitY = b.getBounds().y + b.getBounds().height * 0.5f;
 
-                    for (Obstacle obs : obstacles) {
-                        if (obs instanceof LightningTrap lightning) {
-                            if (lightning.isHitByBullet(hitX, hitY)) {
+                    for(Obstacle obs : obstacles) {
+                        if(obs instanceof LightningTrap lightning) {
+                            if(lightning.isHitByBullet(hitX, hitY)) {
                                 lightning.disable();
                             }
                         }
@@ -73,18 +69,15 @@ public class CombatSystem {
                     continue;
                 }
 
-
-
-                if (boss != null && !boss.isDead()
-                        && b.getBounds().overlaps(boss.getHitbox())) {
+                if (boss != null && !boss.isDead() && b.getBounds().overlaps(boss.getHitbox())) {
                     boss.damage(5);
                     b.setDead();
                     continue;
                 }
 
                 for (Enemy e : enemies) {
-                    if (b.getBounds().overlaps(e.getCollisionBox())) {
-                        if (!e.isDying()) {
+                    if(b.getBounds().overlaps(e.getCollisionBox())) {
+                        if(!e.isDying()) {
                             e.takeDamage(5);
                         }
                         b.setDead();
@@ -94,7 +87,6 @@ public class CombatSystem {
             }
         }
 
-        // 1b) DRONE LASERS
 
         // 1b) DRONE LASERS
         boolean playerHitByAnyLaser = false;
@@ -106,9 +98,9 @@ public class CombatSystem {
             boolean hitPlayerThisFrame = false;
 
             Iterator<DroneLaser> lIter = drone.getLasers().iterator();
-            while (lIter.hasNext()) {
-                DroneLaser laser = lIter.next();
+            while(lIter.hasNext()) {
 
+                DroneLaser laser = lIter.next();
                 laser.update(deltaTime);
 
                 if (!laser.isAlive()) {
@@ -121,8 +113,7 @@ public class CombatSystem {
                     continue;
                 }
 
-                Rectangle playerHitbox =
-                        new Rectangle(player.getX(), player.getY(), 32f, 64f);
+                Rectangle playerHitbox = new Rectangle(player.getX(), player.getY(), 32f, 64f);
 
                 if (laser.getBounds().overlaps(playerHitbox)) {
                     hitPlayerThisFrame = true;
@@ -131,10 +122,8 @@ public class CombatSystem {
                     drone.increaseLaserLock(deltaTime);
                     player.onLaserHit(drone.getLaserLockTime(), deltaTime);
                 }
-
             }
 
-            // 🔥 THIS IS THE IMPORTANT PART 🔥
             if (!hitPlayerThisFrame) {
                 drone.resetLaserLock();
             }
@@ -146,10 +135,7 @@ public class CombatSystem {
 
 
         // 2) PLAYER MELEE → BOSS
-        if (boss != null && !boss.isDead()
-                && player.isAttacking()
-                && player.getAttackHitbox() != null
-                && player.getAttackHitbox().overlaps(boss.getHitbox())) {
+        if (boss != null && !boss.isDead() && player.isAttacking() && player.getAttackHitbox() != null && player.getAttackHitbox().overlaps(boss.getHitbox())) {
             boss.damage(2);
         }
 
@@ -162,13 +148,16 @@ public class CombatSystem {
 
         // 4) REPULSE SKILL
         if (player.isRepulseActive()) {
+
             float repulseRange = 200f;
             float pushForce = 300f;
             Vector2 playerPos = new Vector2(player.getX(), player.getY());
 
             for (Enemy e : enemies) {
+
                 Vector2 enemyPos = e.getPosition();
-                if (playerPos.dst(enemyPos) < repulseRange) {
+                if(playerPos.dst(enemyPos) < repulseRange) {
+
                     Vector2 push = enemyPos.cpy().sub(playerPos).nor().scl(pushForce);
                     e.getPosition().add(push.x * deltaTime * 5, push.y * deltaTime * 5);
                     e.takeDamage(2);
@@ -176,7 +165,8 @@ public class CombatSystem {
             }
         }
 
-        // 5) ENEMIES (OLD LOGIC RESTORED)
+
+        // 5) ENEMIES
         Rectangle playerHitbox = new Rectangle(player.getX(), player.getY(), 32f, 64f);
         Rectangle playerFeetHitbox = new Rectangle(player.getX(), player.getY(), 32f, 8f);
 
@@ -186,16 +176,15 @@ public class CombatSystem {
 
         Iterator<Enemy> iter = enemies.iterator();
         while (iter.hasNext()) {
+
             Enemy enemy = iter.next();
 
             float dx = enemy.getPosition().x - centerX;
             float dy = enemy.getPosition().y - centerY;
             boolean tooFar = (dx * dx + dy * dy) > detectionRangeSq;
 
-            if (tooFar && !enemy.isAggroLocked())
-                continue;
+            if (tooFar && !enemy.isAggroLocked()) continue;
 
-            // FIRST: detect contact
             if (playerHitbox.overlaps(enemy.getCollisionBox())) {
                 enemy.onPlayerContact();
             }
@@ -203,25 +192,21 @@ public class CombatSystem {
             enemy.update(deltaTime, maze);
             enemy.applyEnemySeparation(enemies, player, deltaTime, maze);
 
-            if (playerHitbox.overlaps(enemy.getCollisionBox())) {
+            if(playerHitbox.overlaps(enemy.getCollisionBox())) {
                 player.takeDamage(1);
             }
 
-            if (player.isAttacking()
-                    && enemy.canBeHitByMelee()
-                    && player.getAttackHitbox() != null
-                    && player.getAttackHitbox().overlaps(enemy.getCollisionBox())) {
+            if (player.isAttacking() && enemy.canBeHitByMelee() && player.getAttackHitbox() != null && player.getAttackHitbox().overlaps(enemy.getCollisionBox())) {
                 enemy.takeDamage(1);
             }
 
-
             if (enemy.isDead()) {
+
                 player.addExperience(50);
                 player.addScore(100);
 
-                MazeRunnerGame game =
-                        (MazeRunnerGame) Gdx.app.getApplicationListener();
-                if (game.getAchievementManager() != null) {
+                MazeRunnerGame game = (MazeRunnerGame) Gdx.app.getApplicationListener();
+                if(game.getAchievementManager() != null) {
                     game.getAchievementManager().unlock("first_blood");
                 }
 
@@ -230,7 +215,7 @@ public class CombatSystem {
         }
 
 
-        // 6) OBSTACLES (OLD LOGIC)
+        // 6) OBSTACLES
         float speedModifier = 1f;
         float visibilityFactor = 1f;
 
@@ -244,35 +229,28 @@ public class CombatSystem {
         float tileSize = maze.getTileSize();
 
 
-        for (Obstacle obs : obstacles) {
+        for(Obstacle obs : obstacles) {
 
-            if (obs instanceof FloorHazard hazard) {
+            if(obs instanceof FloorHazard hazard) {
 
                 if (hazard.justEntered(playerFeetHitbox)) {
-                    player.activateFloorHazard(
-                            2.5f,
-                            hazard.getSpeedBoost()
-                    );
+                    player.activateFloorHazard(2.5f, hazard.getSpeedBoost());
                 }
-
                 if (hazard.isPlayerInRange(playerX, playerY, tileSize)) {
                     nearAnyFloorHazard = true;
                 }
-
                 continue;
             }
 
 
-
-
             if (obs instanceof SpikeTrap spike) {
+
                 boolean onTrap = spike.getCollisionBox().overlaps(playerFeetHitbox);
                 spike.setPlayerOnTrap(onTrap);
                 spike.update(deltaTime);
 
-                if (spike.shouldDamagePlayerThisFrame()) {
-                    player.takeDamage(1); // SPIKE_DAMAGE
-                }
+                if(spike.shouldDamagePlayerThisFrame())
+                    player.takeDamage(1);
                 continue;
             }
 
@@ -282,10 +260,6 @@ public class CombatSystem {
             }
 
             if (obs instanceof LightningTrap lightning) {
-
-                if (lightning.disabled) {
-                    continue;
-                }
 
                 boolean onTrap = lightning.containsPoint(playerCenterX, playerCenterY);
                 lightning.setPlayerOnTrap(onTrap);
@@ -305,15 +279,14 @@ public class CombatSystem {
                     visibilityFactor = lightning.getVisionMultiplier();
                 }
 
-
                 continue;
             }
 
 
             obs.updateCooldown(deltaTime);
 
-
             if (obs.tryActivate(playerHitbox)) {
+
                 boolean isTrap = (obs instanceof SpikeTrap || obs instanceof LightningTrap);
 
                 if (!isTrap || !player.hasGhost()) {
@@ -323,11 +296,11 @@ public class CombatSystem {
             }
         }
 
+
         if (nearAnyFloorHazard && !floorHazardSoundPlaying) {
             floorHazardSoundId = ObstacleAudioManager.playFloorHazardLoop(0.6f);
             floorHazardSoundPlaying = true;
-        }
-        else if (!nearAnyFloorHazard && floorHazardSoundPlaying) {
+        } else if (!nearAnyFloorHazard && floorHazardSoundPlaying) {
             ObstacleAudioManager.stopFloorHazard(floorHazardSoundId);
             floorHazardSoundId = -1;
             floorHazardSoundPlaying = false;
@@ -337,57 +310,49 @@ public class CombatSystem {
         gameCamera.setZoomMultiplier(visibilityFactor);
     }
 
-    // Drone render bullets
+
     public void renderProjectiles(SpriteBatch batch) {
+
         if (enemies == null) return;
 
         ensureDroneLaserTextureLoaded();
 
-        for (Enemy enemy : enemies) {
-            if (!(enemy instanceof FlyingDrone drone)) continue;
-            if (!drone.isLaserActive()) continue;
+        for(Enemy enemy : enemies) {
+
+            if(!(enemy instanceof FlyingDrone drone)) continue;
+            if(!drone.isLaserActive()) continue;
 
             Vector2 start = drone.getLaserStart();
-            Vector2 end   = drone.getLaserEnd();
+            Vector2 end = drone.getLaserEnd();
 
             Vector2 dir = end.cpy().sub(start);
             float length = dir.len();
-            if (length < 1f) continue;
+            if(length < 1f) continue;
 
             float angleDeg = dir.angleDeg();
-
-            float charge = drone.getLaserCharge(); // 0 → 1
-
-            float beamThickness =
-                    MathUtils.lerp(12f, 30f, charge * charge);
-
+            float charge = drone.getLaserCharge();
+            float beamThickness = MathUtils.lerp(12f, 30f, charge * charge);
             float glowAlpha = MathUtils.lerp(0.4f, 1f, charge);
-            batch.setColor(1f, 0.3f, 0.3f, glowAlpha);
 
+            batch.setColor(1f, 0.3f, 0.3f, glowAlpha);
             batch.draw(droneLaserTexture, start.x, start.y - beamThickness * 0.5f, 0f, beamThickness * 0.5f, length, beamThickness, 1f, 1f, angleDeg, 0, 0, droneLaserTexture.getWidth(), droneLaserTexture.getHeight(), false, false);
             batch.setColor(1f, 1f, 1f, 1f);
-
         }
     }
 
 
-
-
     private boolean isWall(Rectangle rect, Maze maze) {
-        int cx = (int) (rect.x / maze.getTileSize());
-        int cy = (int) (rect.y / maze.getTileSize());
+        int cx = (int)(rect.x / maze.getTileSize());
+        int cy = (int)(rect.y / maze.getTileSize());
         return maze.isWallCell(cx, cy);
     }
 
     private void ensureDroneLaserTextureLoaded() {
         if (droneLaserTexture == null) {
             droneLaserTexture = new Texture("Enemies/FlyingDrone/Laser.png");
-            droneLaserTexture.setFilter(
-                    Texture.TextureFilter.Nearest,
-                    Texture.TextureFilter.Nearest
-            );
+            droneLaserTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
         }
     }
 
-
 }
+

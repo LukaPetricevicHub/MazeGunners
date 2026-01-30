@@ -21,13 +21,12 @@ public class RobotGuard extends Enemy {
     private static final float WALK_FRAME_DURATION = 0.15f;
     private static final float ATTACK_FRAME_DURATION = 0.12f;
 
-    private static final float ATTACK_RANGE_X = 24f; // left/right
-    private static final float ATTACK_RANGE_Y = 36f; // up/down (taller player)
+    private static final float ATTACK_RANGE_X = 24f;
+    private static final float ATTACK_RANGE_Y = 36f;
 
-    private static final float MIN_SAFE_RANGE_X = 12f; // left/right
+    private static final float MIN_SAFE_RANGE_X = 12f;
     private static final float MIN_SAFE_RANGE_DOWN = 18f;
     private static final float MIN_SAFE_RANGE_UP   = 24f;
-
 
     private static final int SHEET_COLS = 5;
     private static final int SHEET_ROWS = 22;
@@ -35,9 +34,7 @@ public class RobotGuard extends Enemy {
     private static final int WALK_ROW = 4;
     private static final int ATTACK_ROW = 6;
 
-    private enum Direction {
-        DOWN, LEFT, RIGHT, UP
-    }
+    private enum Direction { DOWN, LEFT, RIGHT, UP }
 
     private Direction currentDirection = Direction.DOWN;
 
@@ -64,6 +61,7 @@ public class RobotGuard extends Enemy {
 
     private final Vector2 lastPosition = new Vector2();
 
+    // Initialize robot guard
     public RobotGuard(
             Vector2 startWorldPosition,
             float movementSpeed,
@@ -71,14 +69,16 @@ public class RobotGuard extends Enemy {
             Player targetPlayer
     ) {
         super(startWorldPosition, movementSpeed, new PatrolBehavior(patrolWorldPositions), targetPlayer);
-        this.defaultPatrol = (PatrolBehavior) activeBehavior;
-        this.chaseRadius = 0f;
+        defaultPatrol = (PatrolBehavior) activeBehavior;
+        chaseRadius = 0f;
+
         lastPosition.set(startWorldPosition);
         ensureAnimationsLoaded();
     }
 
+    // Load robot animations once
     private static void ensureAnimationsLoaded() {
-        if (walkDown != null) return;
+        if(walkDown != null) return;
 
         sheetDown  = new Texture("Enemies/RobotGuard/RobotGuardDown.png");
         sheetUp    = new Texture("Enemies/RobotGuard/RobotGuardUp.png");
@@ -90,33 +90,29 @@ public class RobotGuard extends Enemy {
         setNearest(sheetLeft);
         setNearest(sheetRight);
 
-        walkDown  = buildRowAnim(sheetDown,  WALK_ROW, WALK_FRAMES, WALK_FRAME_DURATION, true);
-        walkUp    = buildRowAnim(sheetUp,    WALK_ROW, WALK_FRAMES, WALK_FRAME_DURATION, true);
-        walkLeft  = buildRowAnim(sheetLeft,  WALK_ROW, WALK_FRAMES, WALK_FRAME_DURATION, true);
-        walkRight = buildRowAnim(sheetRight, WALK_ROW, WALK_FRAMES, WALK_FRAME_DURATION, true);
+        walkDown  = buildRowAnim(sheetDown,WALK_ROW,WALK_FRAMES,WALK_FRAME_DURATION,true);
+        walkUp    = buildRowAnim(sheetUp,WALK_ROW,WALK_FRAMES,WALK_FRAME_DURATION,true);
+        walkLeft  = buildRowAnim(sheetLeft,WALK_ROW,WALK_FRAMES,WALK_FRAME_DURATION,true);
+        walkRight = buildRowAnim(sheetRight,WALK_ROW,WALK_FRAMES,WALK_FRAME_DURATION,true);
 
-        attackDown  = buildRowAnim(sheetDown,  ATTACK_ROW, ATTACK_FRAMES, ATTACK_FRAME_DURATION, false);
-        attackUp    = buildRowAnim(sheetUp,    ATTACK_ROW, ATTACK_FRAMES, ATTACK_FRAME_DURATION, false);
-        attackLeft  = buildRowAnim(sheetLeft,  ATTACK_ROW, ATTACK_FRAMES, ATTACK_FRAME_DURATION, false);
-        attackRight = buildRowAnim(sheetRight, ATTACK_ROW, ATTACK_FRAMES, ATTACK_FRAME_DURATION, false);
+        attackDown  = buildRowAnim(sheetDown,ATTACK_ROW,ATTACK_FRAMES,ATTACK_FRAME_DURATION,false);
+        attackUp    = buildRowAnim(sheetUp,ATTACK_ROW,ATTACK_FRAMES,ATTACK_FRAME_DURATION,false);
+        attackLeft  = buildRowAnim(sheetLeft,ATTACK_ROW,ATTACK_FRAMES,ATTACK_FRAME_DURATION,false);
+        attackRight = buildRowAnim(sheetRight,ATTACK_ROW,ATTACK_FRAMES,ATTACK_FRAME_DURATION,false);
     }
 
+    // Nearest filtering
     private static void setNearest(Texture t) {
         t.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
     }
 
-    private static Animation<TextureRegion> buildRowAnim(
-            Texture sheet,
-            int row,
-            int frames,
-            float frameDuration,
-            boolean loop
-    ) {
+    // Build animation from sheet row
+    private static Animation<TextureRegion> buildRowAnim(Texture sheet, int row, int frames, float frameDuration, boolean loop) {
         int frameWidth  = sheet.getWidth() / SHEET_COLS;
         int frameHeight = sheet.getHeight() / SHEET_ROWS;
 
         Array<TextureRegion> regions = new Array<>(frames);
-        for (int col = 0; col < frames; col++) {
+        for(int col = 0; col < frames; col++) {
             regions.add(new TextureRegion(
                     sheet,
                     col * frameWidth,
@@ -141,82 +137,87 @@ public class RobotGuard extends Enemy {
         return defaultPatrol;
     }
 
+    // Main behavior update
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
 
-        if (isPlayerInAttackRangeDirectional()) {
+        if(isPlayerInAttackRangeDirectional()) {
 
-            if (!attacking) {
+            if(!attacking) {
                 attacking = true;
                 attackTimer = 0f;
             }
 
             attackTimer += deltaTime;
-            if (getAttackAnimation().isAnimationFinished(attackTimer)) {
+            if(getAttackAnimation().isAnimationFinished(attackTimer)) {
                 attackTimer = 0f;
             }
 
-            if (isPlayerTooCloseDirectional()) {
-                stepBackFromPlayer(deltaTime, maze);
+            if(isPlayerTooCloseDirectional()) {
+                stepBackFromPlayer(deltaTime,maze);
             }
 
             return;
         }
 
-
-        if (attacking) {
+        if(attacking) {
             attacking = false;
             attackTimer = 0f;
             animationTimer = 0f;
         }
 
         animationTimer += deltaTime;
-        defaultPatrol.execute(this, deltaTime, maze);
+        defaultPatrol.execute(this,deltaTime,maze);
         updateDirectionFromMovement();
     }
 
+    // Update facing from movement
     private void updateDirectionFromMovement() {
         Vector2 pos = getPosition();
         float dx = pos.x - lastPosition.x;
         float dy = pos.y - lastPosition.y;
 
-        if (Math.abs(dx) > Math.abs(dy)) {
-            currentDirection = dx > 0 ? Direction.RIGHT : Direction.LEFT;
+        if(Math.abs(dx) > Math.abs(dy)) {
+            if(dx > 0) currentDirection = Direction.RIGHT;
+            else currentDirection = Direction.LEFT;
         } else {
-            currentDirection = dy > 0 ? Direction.UP : Direction.DOWN;
+            if(dy > 0) currentDirection = Direction.UP;
+            else currentDirection = Direction.DOWN;
         }
 
         lastPosition.set(pos);
     }
 
+    // Get current sprite frame
     public TextureRegion getCurrentFrame() {
-        if (attacking) {
-            return getAttackAnimation().getKeyFrame(attackTimer, false);
+        if(attacking) {
+            return getAttackAnimation().getKeyFrame(attackTimer,false);
         }
 
-        return switch (currentDirection) {
-            case LEFT  -> walkLeft.getKeyFrame(animationTimer, true);
-            case RIGHT -> walkRight.getKeyFrame(animationTimer, true);
-            case UP    -> walkUp.getKeyFrame(animationTimer, true);
-            case DOWN  -> walkDown.getKeyFrame(animationTimer, true);
-        };
+        switch(currentDirection) {
+            case LEFT:  return walkLeft.getKeyFrame(animationTimer,true);
+            case RIGHT: return walkRight.getKeyFrame(animationTimer,true);
+            case UP:    return walkUp.getKeyFrame(animationTimer,true);
+            default:    return walkDown.getKeyFrame(animationTimer,true);
+        }
     }
 
-    private void stepBackFromPlayer(float deltaTime, Maze maze) {
+    // Step back when too close
+    private void stepBackFromPlayer(float deltaTime,Maze maze) {
         Vector2 pos = getPosition();
         Vector2 playerPos = getPlayerPosition();
 
         Vector2 dir = new Vector2();
 
-        switch (currentDirection) {
-            case LEFT  -> dir.set(-1, 0);
-            case RIGHT -> dir.set(1, 0);
-            case UP    -> dir.set(0, 1);
-            case DOWN  -> dir.set(0, -1);
+        switch(currentDirection) {
+            case LEFT:  dir.set(-1,0); break;
+            case RIGHT: dir.set(1,0);  break;
+            case UP:    dir.set(0,1);  break;
+            case DOWN:  dir.set(0,-1); break;
         }
 
         Vector2 away = pos.cpy().sub(playerPos);
-        if (away.dot(dir) < 0) {
+        if(away.dot(dir) < 0) {
             dir.scl(-1);
         }
 
@@ -230,14 +231,14 @@ public class RobotGuard extends Enemy {
         );
     }
 
-
+    // Get attack animation
     private Animation<TextureRegion> getAttackAnimation() {
-        return switch (getAttackDirection()) {
-            case LEFT  -> attackLeft;
-            case RIGHT -> attackRight;
-            case UP    -> attackUp;
-            case DOWN  -> attackDown;
-        };
+        switch(getAttackDirection()) {
+            case LEFT:  return attackLeft;
+            case RIGHT: return attackRight;
+            case UP:    return attackUp;
+            default:    return attackDown;
+        }
     }
 
     private boolean isPlayerInAttackRangeDirectional() {
@@ -247,10 +248,15 @@ public class RobotGuard extends Enemy {
         float dx = Math.abs(p.x - pos.x);
         float dy = Math.abs(p.y - pos.y);
 
-        return switch (getAttackDirection()) {
-            case LEFT, RIGHT -> dx <= ATTACK_RANGE_X && dy <= ATTACK_RANGE_Y * 0.6f;
-            case UP, DOWN    -> dy <= ATTACK_RANGE_Y && dx <= ATTACK_RANGE_X * 0.6f;
-        };
+        switch(getAttackDirection()) {
+            case LEFT:
+            case RIGHT:
+                return dx <= ATTACK_RANGE_X && dy <= ATTACK_RANGE_Y * 0.6f;
+            case UP:
+            case DOWN:
+                return dy <= ATTACK_RANGE_Y && dx <= ATTACK_RANGE_X * 0.6f;
+        }
+        return false;
     }
 
     private boolean isPlayerTooCloseDirectional() {
@@ -260,15 +266,19 @@ public class RobotGuard extends Enemy {
         float dx = Math.abs(p.x - pos.x);
         float dy = Math.abs(p.y - pos.y);
 
-        return switch (getAttackDirection()) {
-            case LEFT, RIGHT -> dx <= MIN_SAFE_RANGE_X;
-            case DOWN        -> dy <= MIN_SAFE_RANGE_DOWN;
-            case UP          -> dy <= MIN_SAFE_RANGE_UP;
-        };
+        switch(getAttackDirection()) {
+            case LEFT:
+            case RIGHT:
+                return dx <= MIN_SAFE_RANGE_X;
+            case DOWN:
+                return dy <= MIN_SAFE_RANGE_DOWN;
+            case UP:
+                return dy <= MIN_SAFE_RANGE_UP;
+        }
+        return false;
     }
 
-
-
+    // Decide attack direction
     private Direction getAttackDirection() {
         Vector2 pos = getPosition();
         Vector2 p = getPlayerPosition();
@@ -276,10 +286,12 @@ public class RobotGuard extends Enemy {
         float dx = p.x - pos.x;
         float dy = p.y - pos.y;
 
-        if (Math.abs(dx) > Math.abs(dy)) {
-            return dx > 0 ? Direction.RIGHT : Direction.LEFT;
+        if(Math.abs(dx) > Math.abs(dy)) {
+            if(dx > 0) return Direction.RIGHT;
+            return Direction.LEFT;
         } else {
-            return dy > 0 ? Direction.UP : Direction.DOWN;
+            if(dy > 0) return Direction.UP;
+            return Direction.DOWN;
         }
     }
 
@@ -302,6 +314,4 @@ public class RobotGuard extends Enemy {
     public float getSeparationRadius() {
         return 20f;
     }
-
-
 }

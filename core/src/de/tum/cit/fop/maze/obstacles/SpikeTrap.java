@@ -23,8 +23,7 @@ public class SpikeTrap extends Obstacle {
 
 
 
-    private static final Texture SPIKE_TEXTURE =
-            new Texture("assets/Traps/SpikeTrap.png");
+    private static final Texture SPIKE_TEXTURE = new Texture("assets/Traps/SpikeTrap.png");
 
     private final TextureRegion[] frames;
 
@@ -32,69 +31,65 @@ public class SpikeTrap extends Obstacle {
     private float frameTimer = 0f;
     private boolean activating = false;
 
+
     public SpikeTrap(Vector2 spawnPosition) {
         super(spawnPosition, SPIKE_DAMAGE, RESET_COOLDOWN, HITBOX_SIZE, HITBOX_SIZE);
 
-        int frameWidth  = SPIKE_TEXTURE.getWidth() / FRAME_COLS;
+        int frameWidth = SPIKE_TEXTURE.getWidth() / FRAME_COLS;
         int frameHeight = SPIKE_TEXTURE.getHeight() / FRAME_ROWS;
 
         TextureRegion[][] split = TextureRegion.split(SPIKE_TEXTURE, frameWidth, frameHeight);
 
-        frames = split[0]; // 14 frames (1 row)
+        frames = split[0]; // 14 frames
 
-        if (frames.length != FRAME_COLS) {
-            throw new IllegalStateException(
-                    "SpikeTrap.png must have exactly " + FRAME_COLS +
-                            " frames, but has " + frames.length
-            );
+        if(frames.length != FRAME_COLS) {
+            throw new IllegalStateException("SpikeTrap.png must have exactly " + FRAME_COLS + " frames, but has " + frames.length);
         }
+
         System.out.println("[SpikeTrap] texture size = " + SPIKE_TEXTURE.getWidth() + "x" + SPIKE_TEXTURE.getHeight());
     }
 
+
     // Called every frame
     public void update(float delta) {
+
         frameTimer += delta;
 
-        // cooldown always ticks
-        // cooldown ticks ONCE
-        if (cooldownTimer > 0f) {
+        // cooldown ticks
+        if(cooldownTimer > 0f) {
             cooldownTimer -= delta;
 
             if (cooldownTimer <= 0f) {
                 cooldownTimer = 0f;
                 currentFrame = 0;
-                damageDealtThisCycle = false; // 🔥 RESET DAMAGE FLAG
+                damageDealtThisCycle = false;
             }
         }
 
-
-
-
         // activation condition
-        if (playerOnTrap && cooldownTimer <= 0f && !activating && currentFrame == 0) {
+        if(playerOnTrap && cooldownTimer <= 0f && !activating && currentFrame == 0) {
             activate();
             cooldownTimer = RESET_COOLDOWN;
         }
 
 
-
-
-        // === EXTENDING ===
+        // extending
         if (activating) {
-            if (frameTimer >= FRAME_TIME) {
+
+            if(frameTimer >= FRAME_TIME) {
                 frameTimer = 0f;
 
-                if (currentFrame < frames.length - 1) {
+                if(currentFrame < frames.length - 1) {
                     currentFrame++;
-                } else {
-                    activating = false;
-                    currentFrame = frames.length - 1; // STAY extended until next trigger
                 }
-
+                else {
+                    activating = false;
+                    currentFrame = frames.length - 1;
+                }
             }
+
             return;
         }
-
 
     }
 
@@ -106,9 +101,8 @@ public class SpikeTrap extends Obstacle {
         frameTimer = 0f;
         currentFrame = 0;
 
-        ObstacleAudioManager.playSpikeTrap(); // 🔊 ADD
+        ObstacleAudioManager.playSpikeTrap(); // sound
     }
-
 
 
 
@@ -117,12 +111,13 @@ public class SpikeTrap extends Obstacle {
         return frames[currentFrame];
     }
 
-    public boolean shouldDamagePlayerThisFrame() {
-        if (!playerOnTrap) return false;
 
+    public boolean shouldDamagePlayerThisFrame() {
+
+        if (!playerOnTrap) return false;
         if (damageDealtThisCycle) return false;
 
-        if (currentFrame >= DAMAGE_START_FRAME) {
+        if(currentFrame >= DAMAGE_START_FRAME) {
             damageDealtThisCycle = true;
             return true;
         }
@@ -143,6 +138,5 @@ public class SpikeTrap extends Obstacle {
     public float getRenderY() {
         return getCollisionBox().y + VISUAL_Y_OFFSET;
     }
-
 
 }

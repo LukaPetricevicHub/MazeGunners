@@ -8,24 +8,22 @@ public class DroneLaser {
     private final Vector2 position;
     private final Vector2 velocity;
     private boolean alive = true;
-    private float lifeTime = 1.5f; // seconds
+    private float lifeTime = 1.5f;
 
     private static final float SPEED = 450f;
     private static final float SIZE = 4f;
 
     public DroneLaser(float startX, float startY, float targetX, float targetY) {
         this.position = new Vector2(startX, startY);
-        this.velocity = new Vector2(targetX - startX, targetY - startY)
-                .nor()
-                .scl(SPEED);
+        this.velocity = new Vector2(targetX - startX, targetY - startY).nor().scl(SPEED);
     }
 
     public void update(float dt) {
         position.mulAdd(velocity, dt);
         lifeTime -= dt;
-        if (lifeTime <= 0f) {
+        if(lifeTime <= 0f)
             alive = false;
-        }
+
     }
 
 

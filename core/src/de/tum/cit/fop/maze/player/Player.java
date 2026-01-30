@@ -19,13 +19,13 @@ import java.util.List;
 
 public class Player {
 
-    // --- ATTRIBUTES ---
+    // Position attributes
     private float x;
     private float y;
 
     // Stats
     private int lives;
-    private static final int BASE_LIVES = 5;
+    private static final int BASE_LIVES = 100;
 
     // ✅ NEW: Permanent bonus hearts (from Gambling / Progression)
     private int permanentHeartsBonus = 0;
@@ -93,7 +93,7 @@ public class Player {
     // Direction Logic
     private Vector2 facingDirection = new Vector2(0, -1);
 
-    // FLOOR HAZARD EFFECT
+    // Floor Hazard effect constants
     private float hazardWallDamageTimer = 0f;
     private static final int HAZARD_WALL_DAMAGE = 1;
     private float controlMultiplier = 1f;
@@ -102,13 +102,11 @@ public class Player {
     private final Vector2 lastMovementDir = new Vector2(0, 1);
     private boolean hazardWallDamageUsed = false;
 
-    // LightningTrap visual effect
+    // LightningTrap visual effect constants
     private boolean lightningSlowed = false;
     private float lightningTimer = 0f;
     private float lightningAnimTime = 0f;
     private float lightningDebuffTimer = 0f;
-
-
 
 
     // Repulse Skill
