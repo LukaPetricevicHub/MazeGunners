@@ -62,6 +62,11 @@ public class Progression {
         return true;
     }
 
+    public void setCoins(int amount){
+        prefs.putInteger(KEY_COINS, Math.max(0, amount));
+        prefs.flush();
+    }
+
     // =========================
     // PERMANENT REWARDS
     // =========================
@@ -94,6 +99,8 @@ public class Progression {
         prefs.putInteger(KEY_ATTACK_GLOVE_LEVEL, getAttackGloveLevel() + amount);
         prefs.flush();
     }
+
+
 
     public boolean hasOldGamblerUnlocked() {
         return prefs.getBoolean(KEY_OLD_GAMBLER, false);

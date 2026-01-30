@@ -561,6 +561,7 @@ public class GameScreen implements Screen {
         player = new Player(
                 safeSpawn.x * TILE_SIZE,
                 safeSpawn.y * TILE_SIZE,
+                game.getProgression(),
                 game.getAnimDown(),
                 game.getAnimUp(),
                 game.getAnimLeft(),

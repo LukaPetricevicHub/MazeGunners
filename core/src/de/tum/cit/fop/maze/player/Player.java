@@ -12,6 +12,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.map.Maze;
+import de.tum.cit.fop.maze.progress.Progression;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -19,22 +20,38 @@ import java.util.List;
 
 public class Player {
 
-    // Position attributes
+    // --- POSITION ---
     private float x;
     private float y;
 
-    // Stats
-    private int lives;
-    private static final int BASE_LIVES = 100;
+    // =========================
+    // GAMBLING BUFFS (apply immediately)
+    // =========================
+    private float damageMult = 1.0f;       // affects bullets + melee (CombatSystem must use)
+    private float bonusSpeedMult = 1.0f;   // permanent-ish speed buff (always applied)
 
-    // CURRENCY
+    // Shoes: trap immunity
+    // Gloves: knockback enemies
+    private boolean hasShoes = false;
+    private boolean hasGloves = false;
+
+    // =========================
+    // STATS
+    // =========================
+    private int lives;
+    private static final int BASE_LIVES = 5;
+
+    // Coins (persisted)
     private int coins = 0;
+    private final Progression progression;
+
+    // Permanent hearts (from Progression)
     private int permanentHeartsBonus = 0;
 
     private boolean hasKey = false;
     private int score = 0;
 
-    // Status Effects
+    // Status
     private boolean invulnerable = false;
     private float invulnTimeLeft = 0f;
     private boolean damageFlash = false;
@@ -43,7 +60,8 @@ public class Player {
     // Movement
     private static final float WALK_SPEED_BASE = 450f;
     private static final float RUN_MULTIPLIER = 1.7f;
-    private float speedMultiplier = 1f;
+
+    private float speedMultiplier = 1f; // temporary speed powerups + slow debuffs
     private float speedTimer = 0f;
 
     // Dimensions
@@ -91,77 +109,73 @@ public class Player {
     private float attackCooldownTimer = 0f;
     private Rectangle attackHitbox;
 
-    // Direction Logic
-    private Vector2 facingDirection = new Vector2(0, -1);
+    // Direction
+    private final Vector2 facingDirection = new Vector2(0, -1);
 
     // FLOOR HAZARD EFFECT
     private float hazardWallDamageTimer = 0f;
     private static final int HAZARD_WALL_DAMAGE = 1;
     private float controlMultiplier = 1f;
-    private Vector2 slideVelocity = new Vector2();
+
+    private final Vector2 slideVelocity = new Vector2();
     private boolean isSliding = false;
     private final Vector2 lastMovementDir = new Vector2(0, 1);
     private boolean hazardWallDamageUsed = false;
 
-    // LightningTrap visual effect constants
+    // Lightning trap visuals/debuff
     private boolean lightningSlowed = false;
-    private float lightningTimer = 0f;
     private float lightningAnimTime = 0f;
     private float lightningDebuffTimer = 0f;
 
-
     // Repulse Skill
-    private boolean isRepulsing = false; // Flag to tell CombatSystem to push
+    private boolean isRepulsing = false;
     private float repulseCooldownTimer = 0f;
 
     private enum Facing { UP, DOWN, LEFT, RIGHT }
     private Facing currentFacing = Facing.DOWN;
 
-    // Bullet Logic
+    // Bullets
     private final List<Bullet> bullets = new ArrayList<>();
     private final TextureRegion bulletRegion;
 
-
-    // Path 1: Gunner
+    // --- SKILL FLAGS ---
     private boolean skillRapidFire = false;
     private boolean skillShotgun = false;
     private boolean skillPiercing = false;
 
-    // Path 2: Speedster
     private boolean skillDash = false;
     private boolean skillGhost = false;
 
-    // Path 3: Tank
     private boolean skillThorns = false;
     private boolean skillRepulse = false;
 
-    // Dash Logic variables
+    // Dash
     private boolean isDashing = false;
     private float dashTimer = 0f;
     private float dashCooldown = 0f;
-    private Vector2 dashDirection = new Vector2();
+    private final Vector2 dashDirection = new Vector2();
     private static final float DASH_DURATION = 0.15f;
     private static final float DASH_SPEED = 1200f;
     private static final float DASH_COOLDOWN_MAX = 1.0f;
 
-    // Shooting Cooldown
+    // Shooting cooldown
     private float shootTimer = 0f;
 
-    // Drone shoots me
-    private int laserHitCounter = 0;
-    private static final int LASER_HITS_PER_HEART = 50; // 1 heart per second @ 0.02s
+    // Drone laser
     private float laserDamageAccumulator = 0f;
     private float laserHeat = 0f;
-
-
 
     @FunctionalInterface
     public interface BlockChecker {
         boolean isBlocked(Rectangle playerRect);
     }
 
-    // Constructor
-    public Player(float startX, float startY, Animation<TextureRegion> down, Animation<TextureRegion> up, Animation<TextureRegion> left, Animation<TextureRegion> right, MazeRunnerGame game) {
+    // --- CONSTRUCTOR ---
+    public Player(float startX, float startY, Progression progression,
+                  Animation<TextureRegion> down, Animation<TextureRegion> up,
+                  Animation<TextureRegion> left, Animation<TextureRegion> right,
+                  MazeRunnerGame game) {
+
         this.x = startX;
         this.y = startY;
 
@@ -178,34 +192,46 @@ public class Player {
 
         this.bulletRegion = game.getBulletRegion();
 
-        // ✅ NEW: Load permanent rewards into this run
-        // (Requires MazeRunnerGame.getProgression() from earlier)
-        if (game.getProgression() != null) {
-            this.permanentHeartsBonus = game.getProgression().getPermanentHearts();
-            this.skillPoints += game.getProgression().getPermanentSkillPoints();
+        this.progression = progression;
+
+        if (this.progression != null) {
+            this.coins = this.progression.getCoins();
+            this.permanentHeartsBonus = this.progression.getPermanentHearts();
+            this.skillPoints += this.progression.getPermanentSkillPoints();
         }
 
         this.lives = getMaxLives();
     }
 
-    // Update loop
+    // If permanent hearts updated while running
+    public void refreshPermanentProgression(MazeRunnerGame game) {
+        if (game.getProgression() == null) return;
+
+        this.permanentHeartsBonus = game.getProgression().getPermanentHearts();
+
+        int max = getMaxLives();
+        if (lives > max) lives = max;
+    }
+
+    // --- MAIN UPDATE LOOP ---
     public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker, Camera camera) {
         updateTimers(dt);
+
         if (attackCooldownTimer > 0) attackCooldownTimer -= dt;
         if (dashCooldown > 0) dashCooldown -= dt;
         if (shootTimer > 0) shootTimer -= dt;
+        if (repulseCooldownTimer > 0) repulseCooldownTimer -= dt;
 
         // Dash
-        if(isDashing) {
+        if (isDashing) {
             dashTimer -= dt;
             attemptMove(dashDirection.x * DASH_SPEED * dt, dashDirection.y * DASH_SPEED * dt, maze, game, null);
             if (dashTimer <= 0) isDashing = false;
             return;
         }
-        if (repulseCooldownTimer > 0) repulseCooldownTimer -= dt;
+
         isRepulsing = false;
 
-        // Input Reading
         MovementInput input = readMovementInput(dt, game);
         boolean moving = (input.dx != 0f || input.dy != 0f);
 
@@ -216,78 +242,60 @@ public class Player {
             lastMovementDir.set(moveDx, moveDy).nor();
         }
 
-        // Facing Direction
         if (hasGun) updateFacingToMouse(camera);
         else updateFacingDirection(game);
 
         // Sliding
         if (isSliding) {
-
             if (input.dx != 0f || input.dy != 0f) {
-                Vector2 inputVelocity = new Vector2(
-                        input.dx / dt,
-                        input.dy / dt
-                );
-
-                slideVelocity.lerp(inputVelocity, 0.08f); // steering strength
+                Vector2 inputVelocity = new Vector2(input.dx / dt, input.dy / dt);
+                slideVelocity.lerp(inputVelocity, 0.08f);
             }
-
-            // Always move using slide velocity
             moveDx = slideVelocity.x * dt;
             moveDy = slideVelocity.y * dt;
         }
 
-
-        // 4. Skills Input (Dash)
+        // Dash skill
         if (skillDash && Gdx.input.isKeyJustPressed(Input.Keys.E) && dashCooldown <= 0 && moving) {
             startDash(input.dx, input.dy);
         }
 
+        // Repulse skill
         if (skillRepulse && Gdx.input.isKeyJustPressed(Input.Keys.Q) && repulseCooldownTimer <= 0) {
             isRepulsing = true;
             repulseCooldownTimer = 5.0f;
         }
 
+        // Melee
         if (!isParalyzed() && Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             attack();
         }
 
-        // Shooting Input
-        if (!isParalyzed()
-                && Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)
-                && hasGun) {
-
-            if(shootTimer <= 0) {
+        // Shooting
+        if (!isParalyzed() && Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && hasGun) {
+            if (shootTimer <= 0) {
                 spawnBullet(camera);
                 shootTimer = skillRapidFire ? 0.2f : 0.4f;
                 shooting = true;
             }
-        } else
+        } else {
             shooting = false;
-
-
-        // 6. Animation Selection
-        if (shooting) {
-            selectShootingAnimation();
-        } else {
-            selectWalkAnimation(moving);
         }
 
-        if(moving || shooting) {
-            animTime += dt;
-        } else {
-            animTime = 0f;
-        }
+        // Anim
+        if (shooting) selectShootingAnimation();
+        else selectWalkAnimation(moving);
 
+        if (moving || shooting) animTime += dt;
+        else animTime = 0f;
 
-        // Movement & Bullets
-        if (!isDashing) {
-            attemptMove(moveDx, moveDy, maze, game, blockChecker);
-        }
+        // Movement
+        attemptMove(moveDx, moveDy, maze, game, blockChecker);
 
+        // Bullets
         updateBullets(dt);
 
-        // Melee Hitbox Update
+        // Melee window
         if (isAttacking) {
             attackTimer -= dt;
             if (attackTimer <= 0) isAttacking = false;
@@ -301,11 +309,7 @@ public class Player {
         dashCooldown = DASH_COOLDOWN_MAX;
 
         dashDirection.set(moveDx, moveDy).nor();
-
-        if (dashDirection.isZero()) {
-            dashDirection.set(1, 0);
-        }
-        System.out.println("DASH!");
+        if (dashDirection.isZero()) dashDirection.set(1, 0);
     }
 
     private void updateTimers(float dt) {
@@ -327,21 +331,17 @@ public class Player {
         }
         if (hazardWallDamageTimer > 0f) {
             hazardWallDamageTimer -= dt;
-
-            if (hazardWallDamageTimer <= 0f) {
-                controlMultiplier = 1f;
-            }
+            if (hazardWallDamageTimer <= 0f) controlMultiplier = 1f;
         }
 
         if (isSliding) {
             slideVelocity.scl(0.98f);
-
             if (slideVelocity.len() < 50f) {
                 slideVelocity.setZero();
                 isSliding = false;
             }
         }
-        // LightningTrap debuff timer
+
         if (lightningDebuffTimer > 0f) {
             lightningDebuffTimer -= dt;
             lightningAnimTime += dt;
@@ -349,16 +349,10 @@ public class Player {
         } else {
             lightningSlowed = false;
         }
-
     }
 
-    public boolean isLightningDebuffed() {
-        return lightningDebuffTimer > 0f;
-    }
-
-    public boolean isParalyzed() {
-        return lightningDebuffTimer > 0f;
-    }
+    public boolean isLightningDebuffed() { return lightningDebuffTimer > 0f; }
+    public boolean isParalyzed() { return lightningDebuffTimer > 0f; }
 
     private record MovementInput(float dx, float dy) {}
 
@@ -370,11 +364,16 @@ public class Player {
 
         boolean run = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
 
-        float currentSpeed = getWalkSpeed() * (run ? RUN_MULTIPLIER : 1f) * speedMultiplier * controlMultiplier;
-        float move = currentSpeed * dt;
-        float dx = 0f;
-        float dy = 0f;
+        float currentSpeed =
+                getWalkSpeed()
+                        * (run ? RUN_MULTIPLIER : 1f)
+                        * speedMultiplier
+                        * bonusSpeedMult
+                        * controlMultiplier;
 
+        float move = currentSpeed * dt;
+
+        float dx = 0f, dy = 0f;
         if (Gdx.input.isKeyPressed(keyLeft))  dx -= move;
         if (Gdx.input.isKeyPressed(keyRight)) dx += move;
         if (Gdx.input.isKeyPressed(keyUp))    dy += move;
@@ -404,20 +403,12 @@ public class Player {
         }
     }
 
-    public boolean spendSkillPoint() {
-        if (skillPoints > 0) {
-            skillPoints--;
-            return true;
-        }
-        return false;
-    }
-
     private void updateFacingToMouse(Camera camera) {
         Vector3 mousePos = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
         camera.unproject(mousePos);
 
-        float diffX = mousePos.x - (x + WIDTH/2f);
-        float diffY = mousePos.y - (y + HEIGHT/2f);
+        float diffX = mousePos.x - (x + WIDTH / 2f);
+        float diffY = mousePos.y - (y + HEIGHT / 2f);
 
         float angle = MathUtils.atan2(diffY, diffX) * MathUtils.radiansToDegrees;
         if (angle < 0) angle += 360f;
@@ -432,27 +423,17 @@ public class Player {
         if (dx != 0f) {
             float nextX = x + dx;
             if (canOccupy(nextX, y, maze)) {
-                if (blockChecker == null || !blockChecker.isBlocked(makeRect(nextX, y))) {
-                    x = nextX;
-                } else {
-                    onWallHit(game);
-                }
-            } else {
-                onWallHit(game);
-            }
+                if (blockChecker == null || !blockChecker.isBlocked(makeRect(nextX, y))) x = nextX;
+                else onWallHit(game);
+            } else onWallHit(game);
         }
 
         if (dy != 0f) {
             float nextY = y + dy;
             if (canOccupy(x, nextY, maze)) {
-                if (blockChecker == null || !blockChecker.isBlocked(makeRect(x, nextY))) {
-                    y = nextY;
-                } else {
-                    onWallHit(game);
-                }
-            } else {
-                onWallHit(game);
-            }
+                if (blockChecker == null || !blockChecker.isBlocked(makeRect(x, nextY))) y = nextY;
+                else onWallHit(game);
+            } else onWallHit(game);
         }
     }
 
@@ -461,10 +442,9 @@ public class Player {
 
         if (hazardWallDamageTimer > 0f && !hazardWallDamageUsed) {
             takeDamage(HAZARD_WALL_DAMAGE);
-            hazardWallDamageUsed = true; // consume
+            hazardWallDamageUsed = true;
         }
     }
-
 
     private boolean canOccupy(float testX, float testY, Maze maze) {
         if (noClip) return true;
@@ -473,24 +453,28 @@ public class Player {
         float bottom = testY + COLLISION_INSET;
         float top = testY + HEIGHT - COLLISION_INSET;
 
-        return !isBlocked(left, bottom, maze) && !isBlocked(right, bottom, maze) && !isBlocked(left, top, maze) && !isBlocked(right, top, maze);
+        return !isBlocked(left, bottom, maze)
+                && !isBlocked(right, bottom, maze)
+                && !isBlocked(left, top, maze)
+                && !isBlocked(right, top, maze);
     }
 
     private boolean isBlocked(float worldX, float worldY, Maze maze) {
         int cx = (int) (worldX / maze.getTileSize());
         int cy = (int) (worldY / maze.getTileSize());
         if (maze.isWallCell(cx, cy)) return true;
-        if (maze.isBlockedExit(cx, cy, hasKey)) return true;
-        return false;
+        return maze.isBlockedExit(cx, cy, hasKey);
     }
 
     private Rectangle makeRect(float px, float py) {
         return new Rectangle(px, py, WIDTH, HEIGHT);
     }
 
+    // =========================
+    // ATTACK (melee)
+    // =========================
     public boolean attack() {
         if (attackCooldownTimer <= 0 && !isAttacking) {
-            System.out.println("Melee Attack Triggered!");
             isAttacking = true;
             attackTimer = ATTACK_DURATION;
             attackCooldownTimer = ATTACK_COOLDOWN;
@@ -502,15 +486,18 @@ public class Player {
     private void updateAttackHitbox() {
         float range = 40f;
         if (attackHitbox == null) attackHitbox = new Rectangle();
-        attackHitbox.set(x - range / 2, y - range / 2, WIDTH + range, HEIGHT + range);
+        attackHitbox.set(x - range / 2f, y - range / 2f, WIDTH + range, HEIGHT + range);
     }
 
     public boolean isAttacking() { return isAttacking; }
     public Rectangle getAttackHitbox() { return attackHitbox; }
-    public Vector2 getFacingDirection() { return facingDirection; }
 
+    // =========================
+    // BULLETS
+    // =========================
     private void spawnBullet(Camera camera) {
         if (!hasGun) return;
+
         float cx = x + WIDTH / 2f;
         float cy = y + HEIGHT / 2f;
 
@@ -570,8 +557,121 @@ public class Player {
         }
     }
 
+    // =========================
+    // DAMAGE / TRAPS / LASER
+    // =========================
+    public void takeDamage(int amount) {
+        if (godMode || isShielded || invulnerable) return;
+
+        lives = Math.max(0, lives - amount);
+
+        invulnerable = true;
+        invulnTimeLeft = 0.8f;
+        damageFlash = true;
+        flashTimeLeft = 0.25f;
+    }
+
+    public boolean canIgnoreTrapDamage() {
+        return hasShoes;
+    }
+
+    public void onLaserHit(float chargeTime, float dt) {
+        if (godMode || isShielded) return;
+
+        float dps;
+        if (chargeTime < 1f) dps = 0f;
+        else if (chargeTime < 3f) dps = 0.5f;
+        else dps = 1f;
+
+        laserDamageAccumulator += dps * dt;
+        laserHeat = MathUtils.clamp(chargeTime / 3f, 0f, 1f);
+
+        if (laserDamageAccumulator >= 1f) {
+            takeDamage(1);
+            laserDamageAccumulator -= 1f;
+        }
+    }
+
+    public void resetLaserHeat() {
+        laserHeat = 0f;
+        laserDamageAccumulator = 0f;
+    }
+
+    private float computeLaserGlowAlpha() {
+        float chargeTime = laserHeat * 3f;
+
+        if (chargeTime < 1f) return 0f;
+        if (chargeTime < 2f) return 0.5f + 0.5f * MathUtils.sin(animTime * MathUtils.PI);
+        if (chargeTime < 3f) return 0.5f + 0.5f * MathUtils.sin(animTime * MathUtils.PI * 3f);
+        return 1f;
+    }
+
+    // =========================
+    // DRAW
+    // =========================
+    public void draw(SpriteBatch batch) {
+        for (Bullet b : bullets) b.draw(batch, bulletRegion);
+
+        TextureRegion frame = currentAnimation.getKeyFrame(animTime, true);
+        com.badlogic.gdx.graphics.Color oldColor = batch.getColor();
+
+        if (isShielded) {
+            batch.setColor(0.5f, 0.5f, 1f, 1f);
+        } else if (laserHeat > 0f) {
+            float glow = computeLaserGlowAlpha();
+            if (glow > 0f) {
+                batch.setColor(1f,
+                        MathUtils.lerp(1f, 0.2f, glow),
+                        MathUtils.lerp(1f, 0.2f, glow),
+                        1f);
+            }
+        } else if (lightningSlowed) {
+            float pulse = 0.6f + 0.4f * MathUtils.sin(lightningAnimTime * MathUtils.PI * 6f);
+            batch.setColor(0.5f, 0.8f, 1.0f, pulse);
+        } else if (damageFlash) {
+            batch.setColor(1f, 0f, 0f, 1f);
+        } else if (isAttacking) {
+            batch.setColor(1f, 1f, 0f, 1f);
+        }
+
+        batch.draw(frame, x, y, 52f, 52f);
+        batch.setColor(oldColor);
+    }
+
+    // =========================
+    // POWERUPS / STATUS
+    // =========================
+    public void activateSpeedBoost(float duration, float multiplier) {
+        this.speedTimer = duration;
+        this.speedMultiplier = multiplier;
+    }
+
+    public void activateShield(float duration) {
+        this.shieldTimer = duration;
+        this.isShielded = true;
+    }
+
+    public void applyLightningDebuff(float duration) {
+        lightningDebuffTimer = Math.max(lightningDebuffTimer, duration);
+        lightningSlowed = true;
+        lightningAnimTime = 0f;
+    }
+
+    public void activateFloorHazard(float speedDuration, float speedBoost) {
+        this.speedTimer = speedDuration;
+        this.speedMultiplier = speedBoost;
+        this.hazardWallDamageTimer = 3f;
+        this.hazardWallDamageUsed = false;
+
+        slideVelocity.set(lastMovementDir).nor().scl(getWalkSpeed() * speedBoost);
+        isSliding = true;
+    }
+
+    // =========================
+    // LEVELING
+    // =========================
     public void addExperience(int amount) {
-        this.experience += amount;
+        experience += amount;
         checkLevelUp();
     }
 
@@ -582,9 +682,16 @@ public class Player {
             playerLevel++;
             skillPoints++;
             lives = getMaxLives();
-            System.out.println("LEVEL UP! Lv " + playerLevel);
             xpNeeded = playerLevel * XP_PER_LEVEL_BASE;
         }
+    }
+
+    public boolean spendSkillPoint() {
+        if (skillPoints > 0) {
+            skillPoints--;
+            return true;
+        }
+        return false;
     }
 
     public boolean upgradeSpeed() {
@@ -606,187 +713,75 @@ public class Player {
         return false;
     }
 
-    public void takeDamage(int amount) {
-        if (godMode || isShielded || invulnerable) return;
+    // =========================
+    // GAMBLING BUFF API
+    // =========================
+    public float getDamageMult() { return damageMult; }
 
-        lives = Math.max(0, lives - amount);
-
-        laserHitCounter = 0;
-
-        invulnerable = true;
-        invulnTimeLeft = 0.8f;
-        damageFlash = true;
-        flashTimeLeft = 0.25f;
+    public void addDamageMult(float delta) {
+        damageMult = MathUtils.clamp(damageMult + delta, 0.5f, 3.0f);
     }
 
+    public float getBonusSpeedMult() { return bonusSpeedMult; }
 
-    public void takeLaserDamage(int amount) {
-        if (godMode || isShielded) return;
-
-        lives = Math.max(0, lives - amount);
-
-        // No invulnerability for laser
-        damageFlash = true;
-        flashTimeLeft = 0.1f;
+    public void addBonusSpeedMult(float delta) {
+        bonusSpeedMult = MathUtils.clamp(bonusSpeedMult + delta, 0.5f, 3.0f);
     }
 
-
-
-    public void onLaserHit(float chargeTime, float dt) {
-        if (godMode || isShielded) return;
-
-        float damagePerSecond = 0f;
-
-        if (chargeTime < 1f) {
-            damagePerSecond = 0f;
-        }
-        else if (chargeTime < 3f) {
-            damagePerSecond = 0.5f;
-        }
-        else {
-            damagePerSecond = 1f;
-        }
-
-        laserDamageAccumulator += damagePerSecond * dt;
-
-        laserHeat = MathUtils.clamp(chargeTime / 3f, 0f, 1f);
-
-        if (laserDamageAccumulator >= 1f) {
-            takeLaserDamage(1);
-            laserDamageAccumulator -= 1f;
-        }
-
+    public boolean hasShoes() { return hasShoes; }
+    public void giveShoes() {
+        hasShoes = true;
+        bonusSpeedMult = Math.max(bonusSpeedMult, 1.2f);
     }
 
+    public boolean hasGloves() { return hasGloves; }
+    public void giveGloves() { hasGloves = true; }
 
-    public void resetLaserHeat() {
-        laserHeat = 0f;
-        laserDamageAccumulator = 0f;
+    public float getGloveKnockbackStrength() {
+        return hasGloves ? 250f : 0f;
     }
 
+    // =========================
+    // COINS (persisted)
+    // =========================
+    public void addCoins(int amount) {
+        if (amount <= 0) return;
+        coins = Math.max(0, coins + amount);
+        if (progression != null) progression.setCoins(coins);
+    }
+
+    public boolean spendCoins(int amount) {
+        if (amount <= 0) return true;
+        if (coins < amount) return false;
+        coins -= amount;
+        if (progression != null) progression.setCoins(coins);
+        return true;
+    }
+
+    // =========================
+    // GETTERS / SETTERS
+    // =========================
+    public int getCoins() { return coins; }
+
+    public int getHeartsCount() {
+        return MathUtils.clamp((int) Math.ceil(lives / 20f), 0, 5);
+    }
+
+    public int getMaxLives() { return BASE_LIVES + skillHealthLevel + permanentHeartsBonus; }
 
     public void addLife() {
         if (lives < getMaxLives()) lives++;
     }
 
-    public void draw(SpriteBatch batch) {
-        for (Bullet b : bullets) {
-            b.draw(batch, bulletRegion);
-        }
-
-        TextureRegion frame = currentAnimation.getKeyFrame(animTime, true);
-        com.badlogic.gdx.graphics.Color oldColor = batch.getColor();
-
-        if (isShielded) {
-            batch.setColor(0.5f, 0.5f, 1f, 1f);
-        }
-        else if (laserHeat > 0f) {
-            float glow = computeLaserGlowAlpha();
-
-            if(glow > 0f) {
-                batch.setColor(1f, MathUtils.lerp(1f, 0.2f, glow), MathUtils.lerp(1f, 0.2f, glow), 1f);
-            }
-        }
-
-        else if (lightningSlowed) {
-            float pulse =
-                    0.6f + 0.4f * MathUtils.sin(lightningAnimTime * MathUtils.PI * 6f);
-
-            batch.setColor(0.5f, 0.8f, 1.0f, pulse);
-        }
-
-
-        else if (damageFlash) {
-            batch.setColor(1f, 0f, 0f, 1f);
-        }
-        else if (isAttacking) {
-            batch.setColor(1f, 1f, 0f, 1f);
-        }
-
-        float jitterX = 0f;
-        float jitterY = 0f;
-
-        if (lightningSlowed) {
-            float strength = 2.5f;
-            jitterX = MathUtils.sin(lightningAnimTime * 45f) * strength;
-            jitterY = MathUtils.cos(lightningAnimTime * 60f) * strength;
-        }
-
-
-
-        batch.draw(frame, x + jitterX, y + jitterY, 52f, 52f);
-
-        batch.setColor(oldColor);
-    }
-
-
-    public void addCoins(int amount) {
-        coins = Math.max(0, coins + amount);
-    }
-
-    public boolean spendCoins(int amount) {
-        if (coins < amount) return false;
-        coins -= amount;
-        return true;
-    }
-
-
-    private float computeLaserGlowAlpha() {
-        float chargeTime = laserHeat * 3f;
-
-        if (chargeTime < 1f) {
-            return 0f;
-        }
-        if (chargeTime < 2f) {
-            return 0.5f + 0.5f * MathUtils.sin(animTime * MathUtils.PI);
-        }
-
-        if (chargeTime < 3f) {
-            return 0.5f + 0.5f * MathUtils.sin(animTime * MathUtils.PI * 3f);
-        }
-
-        return 1f;
-    }
-
-    public void applyLightningDebuff(float duration) {
-        lightningDebuffTimer = Math.max(lightningDebuffTimer, duration);
-
-        lightningSlowed = true;
-        lightningAnimTime = 0f;
-    }
-
-
-    public void activateFloorHazard(float speedDuration, float speedBoost) {
-        this.speedTimer = speedDuration;
-        this.speedMultiplier = speedBoost;
-        this.hazardWallDamageTimer = 3f;
-
-        this.hazardWallDamageUsed = false;
-
-        slideVelocity.set(lastMovementDir).nor().scl(getWalkSpeed() * speedBoost);
-        isSliding = true;
-    }
-
-
-    // Getters & Setters
-    public int getCoins() { return coins; }
-    public int getHeartsCount() {
-        return MathUtils.clamp((int) Math.ceil(lives / 20f), 0, 5);
-    }
-    public void setPlayerLevel(int level) { this.playerLevel = level; }
-    public int getPlayerLevel() { return playerLevel; }
-
-    public void setScore(int score) { this.score = score; }
-    public void addScore(int amount) { this.score += amount; }
-    public int getScore() { return score; }
-
     public void setLives(int lives) { this.lives = lives; }
     public int getLives() { return lives; }
 
-    public int getMaxLives() { return BASE_LIVES + skillHealthLevel + permanentHeartsBonus; }
+    public void setPlayerLevel(int level) { this.playerLevel = level; }
+    public int getPlayerLevel() { return playerLevel; }
 
     public void setExperience(int experience) { this.experience = experience; }
     public int getExperience() { return experience; }
+
     public int getXpNeededForNextLevel() { return playerLevel * XP_PER_LEVEL_BASE; }
 
     public void setSkillSpeedLevel(int level) { this.skillSpeedLevel = level; }
@@ -794,6 +789,15 @@ public class Player {
 
     public void setSkillHealthLevel(int level) { this.skillHealthLevel = level; }
     public int getSkillHealthLevel() { return skillHealthLevel; }
+
+    public int getSkillPoints() { return skillPoints; }
+    public void setSkillPoints(int points) { this.skillPoints = points; }
+
+    public float getWalkSpeed() { return WALK_SPEED_BASE + (skillSpeedLevel * 50f); }
+
+    public void setSpeedMultiplier(float m) { this.speedMultiplier = Math.max(0.1f, m); }
+    public float getSpeedMultiplier() { return speedMultiplier; }
+    public void resetSpeedMultiplier() { this.speedMultiplier = 1f; }
 
     public void setPosition(float x, float y) { this.x = x; this.y = y; }
     public float getX() { return x; }
@@ -803,31 +807,22 @@ public class Player {
     public void giveKey() { hasKey = true; }
     public void clearKey() { hasKey = false; }
 
-    public void equipGun() {
-        this.hasGun = true;
-        System.out.println("Gun Equipped! Press S to shoot.");
-    }
+    public void setScore(int score) { this.score = score; }
+    public void addScore(int amount) { this.score += amount; }
+    public int getScore() { return score; }
+
+    public void equipGun() { hasGun = true; }
     public boolean hasGun() { return hasGun; }
 
     public boolean isDamageFlashing() { return damageFlash; }
+
     public boolean isGodMode() { return godMode; }
     public boolean isNoClip() { return noClip; }
     public void setGodMode(boolean v) { godMode = v; }
     public void setNoClip(boolean v) { noClip = v; }
-    public int getSkillPoints() { return skillPoints; }
 
-    public float getWalkSpeed() { return WALK_SPEED_BASE + (skillSpeedLevel * 50f); }
-    public void setSpeedMultiplier(float m) { this.speedMultiplier = m; }
-    public void resetSpeedMultiplier() { this.speedMultiplier = 1f; }
+    public boolean isRepulseActive() { return isRepulsing; }
 
-    public void activateSpeedBoost(float duration, float multiplier) {
-        this.speedTimer = duration;
-        this.speedMultiplier = multiplier;
-    }
-    public void activateShield(float duration) {
-        this.shieldTimer = duration;
-        this.isShielded = true;
-    }
     public void unlockRapidFire() { skillRapidFire = true; }
     public void unlockShotgun() { skillShotgun = true; }
     public void unlockPiercing() { skillPiercing = true; }
@@ -837,9 +832,6 @@ public class Player {
 
     public void unlockThorns() { skillThorns = true; }
     public void unlockRepulse() { skillRepulse = true; }
-    public boolean isRepulseActive() { return isRepulsing; }
-
-    public void setSkillPoints(int points) { this.skillPoints = points; }
 
     public boolean hasRapidFire() { return skillRapidFire; }
     public boolean hasShotgun() { return skillShotgun; }

@@ -157,7 +157,45 @@ public class DevConsole extends Table {
                     break;
 
                 case "help":
-                    log("cmds: god, ungod, noclip, clip, key, speed <x>, heal, xp <n>, level <n>");
+                    log("cmds: god, ungod, noclip, clip, key, speed <x>, heal, xp <n>, level <n>, coins [n], setcoins <n>, bankcoins [n], setbankcoins <n>");
+                    break;
+
+                case "coins":
+                    requirePlayer();
+                    int amountCoins = (parts.length > 1) ? Integer.parseInt(parts[1]) : 1_000_000;
+                    player.addCoins(amountCoins);
+                    log("Gave player " + amountCoins + " coins. Player now has: " + player.getCoins());
+                    break;
+
+                case "setcoins":
+                    requirePlayer();
+                    if (parts.length > 1) {
+                        int target = Integer.parseInt(parts[1]);
+                        int delta = target - player.getCoins();
+                        player.addCoins(delta);
+                        log("Set player coins to " + target);
+                    } else {
+                        log("Usage: setcoins <amount>");
+                    }
+                    break;
+
+                case "bankcoins":
+                    int bankAmount = (parts.length > 1) ? Integer.parseInt(parts[1]) : 1_000_000;
+                    game.getProgression().addCoins(bankAmount);
+                    log("Added " + bankAmount + " coins to BANK. Bank now has: " + game.getProgression().getCoins());
+                    break;
+
+                case "setbankcoins":
+                    if (parts.length > 1) {
+                        int target = Integer.parseInt(parts[1]);
+                        int current = game.getProgression().getCoins();
+                        int delta = target - current;
+                        if (delta >= 0) game.getProgression().addCoins(delta);
+                        else game.getProgression().spendCoins(-delta);
+                        log("Set BANK coins to " + target);
+                    } else {
+                        log("Usage: setbankcoins <amount>");
+                    }
                     break;
 
                 default:
