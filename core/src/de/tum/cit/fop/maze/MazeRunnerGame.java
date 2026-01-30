@@ -11,11 +11,11 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Json;
 
 import java.util.List;
 
-import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.Json;
 import de.tum.cit.fop.maze.enemies.Enemy;
 import de.tum.cit.fop.maze.enemies.FlyingDrone;
 import de.tum.cit.fop.maze.enemies.MutantWorker;
@@ -24,6 +24,7 @@ import de.tum.cit.fop.maze.items.*;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.progress.Progression;
 import de.tum.cit.fop.maze.score.LeaderboardManager;
+import de.tum.cit.fop.maze.ui.GamblingScreen;
 import de.tum.cit.fop.maze.util.AchievementManager;
 import de.tum.cit.fop.maze.util.AudioManager;
 import de.tum.cit.fop.maze.util.GamePreferences;
@@ -37,7 +38,7 @@ public class MazeRunnerGame extends Game {
     private AudioManager audioManager;
     private GamePreferences preferences;
 
-    // NEW: Permanent progression (endless unlock + gambling rewards)
+    // Permanent progression (endless unlock + gambling rewards)
     private Progression progression;
 
     // Standard Walking Animations
@@ -71,13 +72,12 @@ public class MazeRunnerGame extends Game {
         preferences = new GamePreferences();
         audioManager = new AudioManager();
 
-        // NEW
         progression = new Progression();
 
         audioManager.playBackgroundMusic("music/background.mp3");
 
-        this.loadCharacterAnimation();
-        this.createBulletTexture();
+        loadCharacterAnimation();
+        createBulletTexture();
 
         achievementManager = new AchievementManager();
         leaderboardManager = new LeaderboardManager();
@@ -105,12 +105,21 @@ public class MazeRunnerGame extends Game {
         }
     }
 
-    // FIXED: no double setScreen
     public void goToMenu() {
         if (audioManager != null) {
             audioManager.playBackgroundMusic("music/background.mp3");
         }
         setScreen(new MenuScreen(this));
+    }
+    public void goToGambling() {
+        setScreen(new GamblingScreen(this));
+    }
+
+    //  NEW: open gambling screen with the current Player
+
+
+    public void goToGambling(Player player) {
+        setScreen(new GamblingScreen(this, player));
     }
 
     public boolean loadGame() {
@@ -152,6 +161,7 @@ public class MazeRunnerGame extends Game {
     ) {
         Json json = new Json();
         GameState state = new GameState();
+
         state.skillPoints = player.getSkillPoints();
 
         state.skillRapidFire = player.hasRapidFire();
@@ -209,6 +219,8 @@ public class MazeRunnerGame extends Game {
                 else if (i instanceof HeartItem) is.type = "heart";
                 else if (i instanceof SpeedItem) is.type = "speed";
                 else if (i instanceof ShieldItem) is.type = "shield";
+                // If you add CoinItem and want to save them:
+                // else if (i instanceof CoinItem) is.type = "coin";
 
                 state.items.add(is);
             }
@@ -270,7 +282,6 @@ public class MazeRunnerGame extends Game {
         shootRightAnim = animRight;
     }
 
-    // NEW: call this when story final level is beaten
     public void markStoryCompleted() {
         progression.setStoryCompleted(true);
     }

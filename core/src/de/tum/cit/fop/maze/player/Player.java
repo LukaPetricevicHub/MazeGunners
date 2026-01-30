@@ -27,6 +27,9 @@ public class Player {
     private int lives;
     private static final int BASE_LIVES = 100;
 
+    // CURRENCY
+    private int coins = 0;
+
     // ✅ NEW: Permanent bonus hearts (from Gambling / Progression)
     private int permanentHeartsBonus = 0;
 
@@ -93,7 +96,7 @@ public class Player {
     // Direction Logic
     private Vector2 facingDirection = new Vector2(0, -1);
 
-    // Floor Hazard effect constants
+    // FLOOR HAZARD EFFECT
     private float hazardWallDamageTimer = 0f;
     private static final int HAZARD_WALL_DAMAGE = 1;
     private float controlMultiplier = 1f;
@@ -112,7 +115,6 @@ public class Player {
     // Repulse Skill
     private boolean isRepulsing = false; // Flag to tell CombatSystem to push
     private float repulseCooldownTimer = 0f;
-
 
     private enum Facing { UP, DOWN, LEFT, RIGHT }
     private Facing currentFacing = Facing.DOWN;
@@ -190,7 +192,6 @@ public class Player {
 
         this.lives = getMaxLives();
     }
-
 
     // --- MAIN UPDATE LOOP ---
     public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker, Camera camera) {
@@ -751,6 +752,20 @@ public class Player {
         batch.setColor(oldColor);
     }
 
+
+    public void addCoins(int amount) {
+        coins = Math.max(0, coins + amount);
+    }
+
+    public boolean spendCoins(int amount) {
+        if (coins < amount) return false;
+        coins -= amount;
+        return true;
+    }
+
+    // Hearts shown in HUD are ceil(lives/20). This is the same logic:
+
+
     private float computeLaserGlowAlpha() {
         // laserHeat already = clamp(chargeTime / 3f)
         float chargeTime = laserHeat * 3f;
@@ -800,6 +815,10 @@ public class Player {
 
 
     // --- GETTERS & SETTERS ---
+    public int getCoins() { return coins; }
+    public int getHeartsCount() {
+        return MathUtils.clamp((int) Math.ceil(lives / 20f), 0, 5);
+    }
     public void setPlayerLevel(int level) { this.playerLevel = level; }
     public int getPlayerLevel() { return playerLevel; }
 

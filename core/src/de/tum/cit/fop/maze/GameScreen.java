@@ -494,6 +494,12 @@ public class GameScreen implements Screen {
         itemCount  = ITEMS_PER_LEVEL[lv];
         propCount  = PROPS_PER_LEVEL[lv];
 
+        for (Room r : rooms) {
+            if (r.getType() == RoomType.BOSS) {
+                Gdx.app.log("BOSS", "Boss room: x=" + r.x() + " y=" + r.y() + " w=" + r.w() + " h=" + r.h());
+            }
+        }
+
         Gdx.app.log("SPAWN", "counts: enemies=" + enemyCount
                 + " traps=" + trapCount
                 + " items=" + itemCount

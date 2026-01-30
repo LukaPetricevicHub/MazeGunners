@@ -785,8 +785,11 @@ public class MazeGenerator {
         }
     }
 
-    private PlaceResult assignSpecialRoomsAndPlaceTiles_BORDER_EXIT(Maze maze, List<Room> rooms, Random rng, int hallWidth, int level) {
-        for (Room r : rooms) r.setType(RoomType.NORMAL);
+    private PlaceResult assignSpecialRoomsAndPlaceTiles_BORDER_EXIT(Maze maze, List<Room> rooms, Random rng, int hallWidth, int level) {for (Room r : rooms) {
+        if (r.getType() != RoomType.BOSS) {   // keep boss
+            r.setType(RoomType.NORMAL);
+        }
+    }
 
         Room spawnRoom = rooms.get(rng.nextInt(rooms.size()));
         Room exitRoom = farthestRoom(rooms, spawnRoom);
@@ -801,9 +804,17 @@ public class MazeGenerator {
 
         boolean isFinalLevel = (clampLevel(level) == 5);
         if (isFinalLevel) {
-            Room bossRoom = pickBossRoomNearExitFarFromSpawn(rooms, spawnRoom, exitRoom, rng);
-            if (bossRoom != null && bossRoom.getType() == RoomType.NORMAL) {
-                bossRoom.setType(RoomType.BOSS);
+            boolean hasBossAlready = false;
+            for (Room r : rooms) {
+                if (r.getType() == RoomType.BOSS) {
+                    hasBossAlready = true;
+                    break;
+                }
+            }
+
+            if (!hasBossAlready) {
+                Room bossRoom = pickBossRoomNearExitFarFromSpawn(rooms, spawnRoom, exitRoom, rng);
+                if (bossRoom != null) bossRoom.setType(RoomType.BOSS);
             }
         }
 

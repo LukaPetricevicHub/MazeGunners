@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -11,7 +12,7 @@ import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
-        import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
+import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.Viewport;
@@ -41,6 +42,9 @@ public class Hud {
     private final Label floorLabel;
     private final Label hintLabel;
     private final Label keyLabel;
+
+    // ✅ NEW: coins
+    private final Label coinsLabel;
 
     private final Label levelLabel;
     private final ProgressBar xpBar;
@@ -72,7 +76,8 @@ public class Hud {
     // Console
     private final DevConsole devConsole;
 
-    public Hud(Viewport viewport, com.badlogic.gdx.graphics.g2d.SpriteBatch batch, Skin skin) {
+    // ✅ FIXED: constructor back to 3 params (no Label passed in)
+    public Hud(Viewport viewport, SpriteBatch batch, Skin skin) {
         this.stage = new Stage(viewport, batch);
         this.skin = skin;
 
@@ -90,7 +95,7 @@ public class Hud {
                 .tint(new Color(0f, 0f, 0f, 0.55f));
 
         // =========================
-        // TOP-LEFT (Hearts + Key + Floor)
+        // TOP-LEFT (Hearts + Coins + Key + Floor)
         // =========================
         Table topLeft = new Table();
         topLeft.setBackground(panelBg);
@@ -106,11 +111,13 @@ public class Hud {
             heartsRow.add(heartImages[i]).size(16, 16).padRight(4);
         }
 
+        coinsLabel = new Label("Coins: 0", skin); // ✅ new
         keyLabel = new Label("Key: NO", skin);
         floorLabel = new Label("Floor: 1", skin);
 
         topLeft.add(heartsRow).left().row();
-        topLeft.add(keyLabel).left().padTop(4).row();
+        topLeft.add(coinsLabel).left().padTop(4).row(); // ✅ under hearts
+        topLeft.add(keyLabel).left().padTop(2).row();
         topLeft.add(floorLabel).left().padTop(2);
 
         Table topLeftWrap = new Table();
@@ -145,10 +152,7 @@ public class Hud {
         );
         bossTable.pad(8);
         bossTable.add(bossLabel).padBottom(4).row();
-
-        // ✅ wider bar
         bossTable.add(bossHpBar).width(700).height(14);
-
         bossTable.setVisible(false);
 
         bossGroup = new Group();
@@ -259,6 +263,9 @@ public class Hud {
         for (int i = 0; i < heartImages.length; i++) {
             heartImages[i].setVisible(i < heartsToShow);
         }
+
+        // ✅ Coins text
+        coinsLabel.setText("Coins: " + player.getCoins());
 
         // Key text
         keyLabel.setText(player.hasKey() ? "Key: YES" : "Key: NO");
