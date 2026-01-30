@@ -7,54 +7,29 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import de.tum.cit.fop.maze.player.Player;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class Coin extends Collectable {
 
     private final int amount;
-
-    // animation
-    private final Texture sheet;
-    private final Animation<TextureRegion> animation;
     private float stateTime = 0f;
 
-    /**
-     * Assumes coin.png is a spritesheet
-     * with frames of equal size.
-     */
-    public Coin(float x, float y) {
-        this(x, y, 1);
-    }
+    private static final Map<Integer, AnimBundle> CACHE = new HashMap<>();
+
+    private static final float DRAW_W = 32f;
+    private static final float DRAW_H = 32f;
 
     public Coin(float x, float y, int amount) {
-        super(x, y, "coin.png");
+        super(x, y, "coin5.png"); // placeholder
         this.amount = amount;
 
-        // We don't use Collectable.texture anymore
-        this.texture.dispose();
-        this.texture = null;
-
-        sheet = new Texture("coin.png");
-
-        //  IMPORTANT: CHANGE THESE VALUES
-        int FRAME_WIDTH = 16;   // ← adjust to your sprite
-        int FRAME_HEIGHT = 16;
-
-        TextureRegion[][] split = TextureRegion.split(sheet, FRAME_WIDTH, FRAME_HEIGHT);
-
-        // Flatten frames (supports multiple rows)
-        int rows = split.length;
-        int cols = split[0].length;
-
-        TextureRegion[] frames = new TextureRegion[rows * cols];
-        int index = 0;
-
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
-                frames[index++] = split[r][c];
-            }
+        if (this.texture != null) {
+            this.texture.dispose();
+            this.texture = null;
         }
 
-        animation = new Animation<>(0.10f, frames);
-        animation.setPlayMode(Animation.PlayMode.LOOP);
+        ensureLoaded(amount);
     }
 
     @Override
@@ -67,14 +42,59 @@ public class Coin extends Collectable {
     public void render(SpriteBatch batch) {
         if (!isActive()) return;
 
-        stateTime += Gdx.graphics.getDeltaTime();
-        TextureRegion frame = animation.getKeyFrame(stateTime, true);
+        AnimBundle b = CACHE.getOrDefault(amount, CACHE.get(1));
 
-        batch.draw(frame, bounds.x, bounds.y, 32, 32);
+        stateTime += Gdx.graphics.getDeltaTime();
+        TextureRegion frame = b.animation.getKeyFrame(stateTime, true);
+
+        batch.draw(frame, bounds.x, bounds.y, DRAW_W, DRAW_H);
     }
 
-    @Override
-    public void dispose() {
-        if (sheet != null) sheet.dispose();
+    private static class AnimBundle {
+        Texture sheet;
+        Animation<TextureRegion> animation;
+
+        AnimBundle(Texture s, Animation<TextureRegion> a) {
+            sheet = s;
+            animation = a;
+        }
+    }
+
+    private static void ensureLoaded(int amount) {
+        if (CACHE.containsKey(amount)) return;
+
+        String file = switch (amount) {
+            case 5 -> "coin5.png";
+            case 20 -> "coin20.png";
+            case 50 -> "coin50.png";
+            default -> "coin2.png";
+        };
+
+        int FRAME_W = 16;
+        int FRAME_H = 16;
+
+        Texture sheet = new Texture(file);
+        TextureRegion[][] split = TextureRegion.split(sheet, FRAME_W, FRAME_H);
+
+        TextureRegion[] frames = new TextureRegion[split.length * split[0].length];
+        int idx = 0;
+
+        for (TextureRegion[] row : split) {
+            for (TextureRegion r : row) {
+                frames[idx++] = r;
+            }
+        }
+
+        Animation<TextureRegion> anim = new Animation<>(0.10f, frames);
+        anim.setPlayMode(Animation.PlayMode.LOOP);
+
+        CACHE.put(amount, new AnimBundle(sheet, anim));
+    }
+
+    public static void disposeShared() {
+        for (AnimBundle b : CACHE.values()) {
+            b.sheet.dispose();
+        }
+        CACHE.clear();
     }
 }

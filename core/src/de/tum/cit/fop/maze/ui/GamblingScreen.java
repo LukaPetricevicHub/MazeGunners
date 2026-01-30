@@ -218,7 +218,7 @@ public class GamblingScreen implements Screen {
 
             sb.append("\nBuy what you need below.");
         } else {
-            sb.append("You're good to go.\nNo missing requirements right now.");
+            sb.append("You're good to go.\nLET'S GO GAMBLING!");
         }
 
         Label info = new Label(sb.toString(), game.getSkin());
