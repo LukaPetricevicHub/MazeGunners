@@ -31,19 +31,34 @@ public abstract class Enemy {
     private static final float CHASE_MEMORY_DURATION = 2.0f;
     protected boolean aggroLocked = false;
 
+    // =========================
+    // HEALTH
+    // =========================
     protected int health = 3;
+    protected int maxHealth = 3;
     protected boolean markedForRemoval = false;
+    protected boolean dying = false;
 
+    // =========================
+    // STATUS EFFECTS (FREEZE + POISON)
+    // =========================
+    private boolean frozen = false;
+    private float freezeTimer = 0f;
+
+    private float poisonTimer = 0f;
+    private float poisonDps = 0f;
+    private float poisonTickAccumulator = 0f;
+
+    // Stuck handling
     private final Vector2 prevPosition = new Vector2();
     private float stuckTimer = 0f;
     private static final float STUCK_TIME_THRESHOLD = 0.4f;
     private static final float MIN_MOVEMENT_EPSILON = 0.5f;
 
+    // Interaction
     private final Rectangle interactionRect = new Rectangle();
     protected static final float INTERACTION_MARGIN = 2f;
     protected static final float INTERACTION_BODY_HEIGHT = 32f;
-
-    protected boolean dying = false;
 
     protected enum CombatLockState {
         NONE,
@@ -63,29 +78,52 @@ public abstract class Enemy {
         this.activeBehavior = initialBehavior;
         this.targetPlayer = targetPlayer;
 
-        this.collisionBounds = new Rectangle(startWorldPosition.x + COLLISION_OFFSET, startWorldPosition.y + COLLISION_OFFSET, COLLISION_SIZE, COLLISION_SIZE);
+        this.collisionBounds = new Rectangle(
+                startWorldPosition.x + COLLISION_OFFSET,
+                startWorldPosition.y + COLLISION_OFFSET,
+                COLLISION_SIZE,
+                COLLISION_SIZE
+        );
         this.collisionHandler = new CollisionHandler(collisionBounds, COLLISION_INSET);
     }
 
-    // Enemy movement
+    // =====================================================
+    // HP INIT (so FlyingDrone/RobotGuard/MutantWorker compile)
+    // =====================================================
+    protected void initHp(int hp) {
+        this.maxHealth = Math.max(1, hp);
+        this.health = this.maxHealth;
+    }
+
+    // Enemy update loop
     public final void update(float deltaTime, Maze maze) {
         prevPosition.set(worldPosition);
+
+        // Tick status effects first
+        updateStatusEffects(deltaTime);
+
+        // If frozen, do nothing except keep collision box aligned
+        if (!dying && frozen) {
+            collisionBounds.setPosition(worldPosition.x + COLLISION_OFFSET, worldPosition.y + COLLISION_OFFSET);
+            return;
+        }
 
         updateCombatLock(deltaTime);
 
         if (combatLockState == CombatLockState.NONE) {
             updateAI(deltaTime);
         }
+
         updateBehavior(deltaTime, maze);
 
         collisionBounds.setPosition(worldPosition.x + COLLISION_OFFSET, worldPosition.y + COLLISION_OFFSET);
 
-        if(prevPosition.dst2(worldPosition) < MIN_MOVEMENT_EPSILON * MIN_MOVEMENT_EPSILON)
+        if (prevPosition.dst2(worldPosition) < MIN_MOVEMENT_EPSILON * MIN_MOVEMENT_EPSILON)
             stuckTimer += deltaTime;
         else
             stuckTimer = 0f;
 
-        if(stuckTimer >= STUCK_TIME_THRESHOLD) {
+        if (stuckTimer >= STUCK_TIME_THRESHOLD) {
             onStuck(maze);
             stuckTimer = 0f;
         }
@@ -93,18 +131,16 @@ public abstract class Enemy {
 
     // AI behavior
     protected void updateAI(float deltaTime) {
-        if (targetPlayer == null || activeBehavior == null) {
-            return;
-        }
+        if (targetPlayer == null || activeBehavior == null) return;
 
         float dist2 = worldPosition.dst2(getPlayerPosition());
         boolean playerInRange = dist2 <= chaseRadius * chaseRadius;
 
-        if(playerInRange && supportsAggroLock()) {
+        if (playerInRange && supportsAggroLock()) {
             aggroLocked = true;
         }
 
-        if(aggroLocked || playerInRange) {
+        if (aggroLocked || playerInRange) {
             chaseMemoryTimer = 0f;
 
             if (activeBehavior.getType() != BehaviorStateType.CHASE) {
@@ -112,6 +148,7 @@ public abstract class Enemy {
             }
             return;
         }
+
         chaseMemoryTimer += deltaTime;
 
         if (chaseMemoryTimer >= CHASE_MEMORY_DURATION && activeBehavior.getType() == BehaviorStateType.CHASE) {
@@ -120,16 +157,21 @@ public abstract class Enemy {
     }
 
     protected void updateBehavior(float deltaTime, Maze maze) {
-        if (activeBehavior != null)
+        if (activeBehavior != null) {
             activeBehavior.execute(this, deltaTime, maze);
+        }
     }
 
     protected abstract BehaviorState createChaseBehavior();
     protected abstract BehaviorState createDefaultBehavior();
 
-    // Health system
+    // =========================
+    // HEALTH SYSTEM
+    // =========================
     public void takeDamage(int amount) {
-        health -= amount;
+        if (dying) return;
+
+        health -= Math.max(0, amount);
         if (health <= 0) {
             die();
         }
@@ -138,10 +180,8 @@ public abstract class Enemy {
     protected void die() {
         if (dying) return;
         dying = true;
-
         finalizeDeath();
     }
-
 
     public boolean isDying() {
         return dying;
@@ -151,9 +191,60 @@ public abstract class Enemy {
         markedForRemoval = true;
     }
 
-
     public boolean isDead() {
         return markedForRemoval;
+    }
+
+    // =========================
+    // STATUS EFFECTS API
+    // =========================
+    public void applyFreeze(float duration) {
+        if (dying) return;
+        frozen = true;
+        freezeTimer = Math.max(freezeTimer, duration);
+    }
+
+    public void applyPoison(float duration, float dps) {
+        if (dying) return;
+        poisonTimer = Math.max(poisonTimer, duration);
+        poisonDps = Math.max(0f, dps);
+    }
+
+    public boolean isFrozen() {
+        return frozen;
+    }
+
+    private void updateStatusEffects(float dt) {
+        if (dying) return;
+
+        // Freeze timer
+        if (frozen) {
+            freezeTimer -= dt;
+            if (freezeTimer <= 0f) {
+                freezeTimer = 0f;
+                frozen = false;
+            }
+        }
+
+        // Poison
+        if (poisonTimer > 0f) {
+            poisonTimer -= dt;
+
+            poisonTickAccumulator += poisonDps * dt;
+
+            // deal damage as integer ticks
+            while (poisonTickAccumulator >= 1f) {
+                takeDamage(1);
+                poisonTickAccumulator -= 1f;
+                if (dying) break;
+            }
+
+            if (poisonTimer <= 0f) {
+                poisonTimer = 0f;
+                poisonDps = 0f;
+                poisonTickAccumulator = 0f;
+            }
+        }
     }
 
     // Getters
@@ -181,54 +272,55 @@ public abstract class Enemy {
 
     // Enemy - Enemy col
     public Rectangle getInteractionRect() {
-        interactionRect.set(worldPosition.x - INTERACTION_MARGIN, worldPosition.y - INTERACTION_MARGIN, getRenderWidth() + INTERACTION_MARGIN * 2, INTERACTION_BODY_HEIGHT + INTERACTION_MARGIN * 2);
+        interactionRect.set(
+                worldPosition.x - INTERACTION_MARGIN,
+                worldPosition.y - INTERACTION_MARGIN,
+                getRenderWidth() + INTERACTION_MARGIN * 2,
+                INTERACTION_BODY_HEIGHT + INTERACTION_MARGIN * 2
+        );
         return interactionRect;
     }
 
     public void applyEnemySeparation(List<Enemy> others, Player player, float deltaTime, Maze maze) {
-        if (combatLockState == CombatLockState.ATTACKING)
-            return;
+        if (combatLockState == CombatLockState.ATTACKING) return;
+        if (isFrozen()) return;
 
         Vector2 pos = getPosition();
         Rectangle myRect = getInteractionRect();
         Vector2 correction = new Vector2();
 
-        for(Enemy other : others) {
+        for (Enemy other : others) {
             if (other == this) continue;
             if (ignoresEnemyCollision() || other.ignoresEnemyCollision()) continue;
 
             Rectangle otherRect = other.getInteractionRect();
-            if(!myRect.overlaps(otherRect)) continue;
+            if (!myRect.overlaps(otherRect)) continue;
 
             float overlapX = Math.min(myRect.x + myRect.width - otherRect.x, otherRect.x + otherRect.width - myRect.x);
             float overlapY = Math.min(myRect.y + myRect.height - otherRect.y, otherRect.y + otherRect.height - myRect.y);
 
             float tolerance = maxAllowedOverlap();
-            if (overlapX < tolerance && overlapY < tolerance)
-                continue;
+            if (overlapX < tolerance && overlapY < tolerance) continue;
 
-            if(overlapX < overlapY) {
+            if (overlapX < overlapY) {
                 correction.x += (myRect.x + myRect.width * 0.5f <
                         otherRect.x + otherRect.width * 0.5f)
                         ? -overlapX : overlapX;
-            }else {
+            } else {
                 correction.y += (myRect.y + myRect.height * 0.5f <
                         otherRect.y + otherRect.height * 0.5f)
                         ? -overlapY : overlapY;
             }
         }
 
-        if (correction.len2() < 0.0001f)
-            return;
+        if (correction.len2() < 0.0001f) return;
 
         correction.nor().scl(getSpeed() * 0.95f);
         getCollisionHandler().move(pos, correction, deltaTime, maze);
     }
 
-
-    // Combat
+    // Combat lock
     protected void updateCombatLock(float deltaTime) {
-
         switch (combatLockState) {
 
             case NONE -> { }
@@ -237,8 +329,7 @@ public abstract class Enemy {
                 if (combatLockTimer > 0f)
                     combatLockTimer -= deltaTime;
 
-
-                if(!touchingPlayer && combatLockTimer <= 0f) {
+                if (!touchingPlayer && combatLockTimer <= 0f) {
                     combatLockState = CombatLockState.POST_ATTACK_DELAY;
                     combatLockTimer = postAttackDelay();
                 }
@@ -257,34 +348,27 @@ public abstract class Enemy {
     public void onPlayerContact() {
         touchingPlayer = true;
 
-        if(combatLockState == CombatLockState.NONE) {
+        if (combatLockState == CombatLockState.NONE) {
             combatLockState = CombatLockState.ATTACKING;
             combatLockTimer = minAttackCommitTime();
         }
     }
 
     protected float minAttackCommitTime() { return 0.25f; }
-    protected float attackLockDuration() { return 0.4f; }
     protected float postAttackDelay() { return 0.25f; }
 
     public boolean isAggroLocked() { return aggroLocked; }
     public boolean isAttackingLocked() { return combatLockState == CombatLockState.ATTACKING; }
 
     protected boolean supportsAggroLock() { return false; }
-    protected boolean usesAISwitching() { return true; }
     protected boolean shouldResetPatrolOnReturn() { return true; }
-    public boolean canBeHitByMelee() {
-        return true;
-    }
-
+    public boolean canBeHitByMelee() { return true; }
 
     public boolean ignoresEnemyCollision() { return false; }
 
-    public boolean isChasing() {
-        return activeBehavior != null && activeBehavior.getType() == BehaviorStateType.CHASE && (aggroLocked || isAggroLocked());
-    }
-
     protected void onStuck(Maze maze) {
+        if (isFrozen()) return;
+
         Vector2 escape = new Vector2((float) (Math.random() * 2 - 1), (float) (Math.random() * 2 - 1));
         if (escape.len2() < 0.001f) return;
         escape.nor().scl(getSpeed() * 0.5f);
@@ -293,7 +377,10 @@ public abstract class Enemy {
 
     protected boolean canMoveTo(float x, float y, Maze maze) {
         float inset = 2f;
-        return !maze.isWallWorld(x + inset, y + inset) && !maze.isWallWorld(x + 32f - inset, y + inset) && !maze.isWallWorld(x + inset, y + 32f - inset) && !maze.isWallWorld(x + 32f - inset, y + 32f - inset);
+        return !maze.isWallWorld(x + inset, y + inset)
+                && !maze.isWallWorld(x + 32f - inset, y + inset)
+                && !maze.isWallWorld(x + inset, y + 32f - inset)
+                && !maze.isWallWorld(x + 32f - inset, y + 32f - inset);
     }
 
     public int getPathfindingFootprint() { return 2; }

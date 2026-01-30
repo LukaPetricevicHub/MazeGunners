@@ -111,15 +111,13 @@ public class MazeRunnerGame extends Game {
         }
         setScreen(new MenuScreen(this));
     }
+
+    /**
+     * ✅ MENU-ONLY gambling.
+     * GamblingScreen must NOT require a Player instance.
+     */
     public void goToGambling() {
         setScreen(new GamblingScreen(this));
-    }
-
-    //  NEW: open gambling screen with the current Player
-
-
-    public void goToGambling(Player player) {
-        setScreen(new GamblingScreen(this, player));
     }
 
     public boolean loadGame() {
@@ -219,8 +217,6 @@ public class MazeRunnerGame extends Game {
                 else if (i instanceof HeartItem) is.type = "heart";
                 else if (i instanceof SpeedItem) is.type = "speed";
                 else if (i instanceof ShieldItem) is.type = "shield";
-                // If you add CoinItem and want to save them:
-                // else if (i instanceof CoinItem) is.type = "coin";
 
                 state.items.add(is);
             }
@@ -276,6 +272,7 @@ public class MazeRunnerGame extends Game {
         for (int i = 0; i < 4; i++) framesLeft.add(tmp[3][i]);
         animLeft = new Animation<>(0.15f, framesLeft, Animation.PlayMode.LOOP);
 
+        // Using same sheet for shooting until you add separate shooting sprites
         shootDownAnim = animDown;
         shootUpAnim = animUp;
         shootLeftAnim = animLeft;
@@ -288,11 +285,14 @@ public class MazeRunnerGame extends Game {
 
     @Override
     public void dispose() {
-        getScreen().hide();
-        getScreen().dispose();
-        spriteBatch.dispose();
-        skin.dispose();
-        tileset.dispose();
+        if (getScreen() != null) {
+            getScreen().hide();
+            getScreen().dispose();
+        }
+
+        if (spriteBatch != null) spriteBatch.dispose();
+        if (skin != null) skin.dispose();
+        if (tileset != null) tileset.dispose();
         if (wallHitSound != null) wallHitSound.dispose();
         if (audioManager != null) audioManager.dispose();
     }

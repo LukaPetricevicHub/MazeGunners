@@ -16,6 +16,9 @@ import de.tum.cit.fop.maze.player.Player;
 
 public class MutantWorker extends Enemy {
 
+    // --- HP ---
+    private static final int MAX_HP = 10; // tweak
+
     // Constants
     private static final float WALK_FRAME_DURATION = 0.12f;
     private static final float ATTACK_FRAME_DURATION = 0.10f;
@@ -63,6 +66,9 @@ public class MutantWorker extends Enemy {
     // Initialize mutant worker
     public MutantWorker(Vector2 startWorldPosition, float movementSpeed, Player targetPlayer) {
         super(startWorldPosition, movementSpeed, new ChaseBehavior(), targetPlayer);
+
+        initHp(MAX_HP); // ✅ NEW
+
         chaseRadius = 250f;
         lastPosition.set(startWorldPosition);
         ensureAnimationsLoaded();
@@ -89,9 +95,9 @@ public class MutantWorker extends Enemy {
 
         if (dying) {
             deathTimer += delta;
-            if(getDeathAnim().isAnimationFinished(deathTimer))
+            if (getDeathAnim().isAnimationFinished(deathTimer)) {
                 finalizeDeath();
-
+            }
             return;
         }
 
@@ -108,7 +114,7 @@ public class MutantWorker extends Enemy {
         animationTimer += delta;
         attackCooldownTimer -= delta;
 
-        if(isAttackingLocked()) {
+        if (isAttackingLocked()) {
             handleAttackLockedState(delta);
             return;
         }
@@ -130,7 +136,7 @@ public class MutantWorker extends Enemy {
             attackTimer = 0f;
             hitApplied = false;
 
-            if(attackSound != null && !attackSoundPlayed) {
+            if (attackSound != null && !attackSoundPlayed) {
                 attackSound.play(0.8f);
                 attackSoundPlayed = true;
             }
@@ -167,7 +173,6 @@ public class MutantWorker extends Enemy {
         if (!hitApplied && normalizedTime >= HIT_MOMENT)
             hitApplied = true;
 
-
         if (attackAnimation.isAnimationFinished(attackTimer)) {
             attacking = false;
             attackTimer = 0f;
@@ -179,29 +184,25 @@ public class MutantWorker extends Enemy {
         updateDirectionFromPlayer();
     }
 
-    // Moves enemy away from player
+    // Moves enemy away from player (not used, but kept)
     private void moveAwayFromPlayer(float delta, Maze maze) {
         Vector2 position = getPosition();
         Vector2 playerPosition = getPlayerPosition();
 
         Vector2 awayVector = position.cpy().sub(playerPosition);
-        if (awayVector.len2() < 0.001f) {
-            return;
-        }
+        if (awayVector.len2() < 0.001f) return;
 
         awayVector.nor().scl(getSpeed());
         getCollisionHandler().move(position, awayVector, delta, maze);
     }
 
-    // Attempt sidestep when blocked
+    // Attempt sidestep when blocked (not used, but kept)
     private void trySideStep(float delta, Maze maze) {
         Vector2 position = getPosition();
         Vector2 playerPosition = getPlayerPosition();
 
         Vector2 toPlayer = playerPosition.cpy().sub(position);
-        if(toPlayer.len2() < 0.001f) {
-            return;
-        }
+        if (toPlayer.len2() < 0.001f) return;
 
         Vector2 left = new Vector2(-toPlayer.y, toPlayer.x).nor();
         Vector2 right = new Vector2(toPlayer.y, -toPlayer.x).nor();
@@ -221,17 +222,9 @@ public class MutantWorker extends Enemy {
         float dy = playerPosition.y - position.y;
 
         if (Math.abs(dx) > Math.abs(dy)) {
-            if (dx > 0)
-                currentDirection = Direction.RIGHT;
-            else
-                currentDirection = Direction.LEFT;
-
+            currentDirection = (dx > 0) ? Direction.RIGHT : Direction.LEFT;
         } else {
-            if (dy > 0)
-                currentDirection = Direction.UP;
-            else
-                currentDirection = Direction.DOWN;
-
+            currentDirection = (dy > 0) ? Direction.UP : Direction.DOWN;
         }
     }
 
@@ -242,17 +235,11 @@ public class MutantWorker extends Enemy {
         float dy = position.y - lastPosition.y;
 
         if (Math.abs(dx) > Math.abs(dy)) {
-            if(dx > 0.01f) {
-                currentDirection = Direction.RIGHT;
-            } else if (dx < -0.01f) {
-                currentDirection = Direction.LEFT;
-            }
+            if (dx > 0.01f) currentDirection = Direction.RIGHT;
+            else if (dx < -0.01f) currentDirection = Direction.LEFT;
         } else {
-            if (dy > 0.01f) {
-                currentDirection = Direction.UP;
-            }else if (dy < -0.01f) {
-                currentDirection = Direction.DOWN;
-            }
+            if (dy > 0.01f) currentDirection = Direction.UP;
+            else if (dy < -0.01f) currentDirection = Direction.DOWN;
         }
 
         lastPosition.set(position);
@@ -268,12 +255,13 @@ public class MutantWorker extends Enemy {
         boolean notAggroLocked = !isAggroLocked();
         boolean notChasing = activeBehavior.getType() != BehaviorStateType.CHASE;
 
-        if(notAggroLocked && notChasing) {
+        if (notAggroLocked && notChasing) {
             return idleFrame;
         }
 
         if (attacking)
             return getAttackAnim().getKeyFrame(attackTimer, false);
+
         return getWalkAnim().getKeyFrame(animationTimer, true);
     }
 
@@ -295,15 +283,8 @@ public class MutantWorker extends Enemy {
 
     // Return death animation by direction
     private Animation<TextureRegion> getDeathAnim() {
-        if (currentDirection == Direction.LEFT) {
-            return deathLeft;
-        }
+        if (currentDirection == Direction.LEFT) return deathLeft;
         return deathRight;
-    }
-
-    private boolean isPlayerInAttackRange() {
-        float distanceSquared = getPosition().dst2(getPlayerPosition());
-        return distanceSquared <= ATTACK_RADIUS * ATTACK_RADIUS;
     }
 
     // Overrides
@@ -320,9 +301,7 @@ public class MutantWorker extends Enemy {
     // Animations
     private static void ensureAnimationsLoaded() {
 
-        if (walkDown != null) {
-            return;
-        }
+        if (walkDown != null) return;
 
         walkDown = loadStrip("Enemies/MutantWorker/MutantWorkerDown.png", 8, WALK_FRAME_DURATION, true);
         walkLeft = loadStrip("Enemies/MutantWorker/MutantWorkerLeft.png", 8, WALK_FRAME_DURATION, true);
@@ -351,15 +330,12 @@ public class MutantWorker extends Enemy {
         int frameHeight = texture.getHeight();
 
         Array<TextureRegion> regions = new Array<>(frames);
-        for(int i = 0; i < frames; i++) {
+        for (int i = 0; i < frames; i++) {
             regions.add(new TextureRegion(texture, i * frameWidth, 0, frameWidth, frameHeight));
         }
 
         Animation<TextureRegion> animation = new Animation<>(duration, regions);
-        if (loop)
-            animation.setPlayMode(Animation.PlayMode.LOOP);
-        else
-            animation.setPlayMode(Animation.PlayMode.NORMAL);
+        animation.setPlayMode(loop ? Animation.PlayMode.LOOP : Animation.PlayMode.NORMAL);
         return animation;
     }
 
@@ -369,7 +345,7 @@ public class MutantWorker extends Enemy {
         return 5f;
     }
 
-    @Override
+
     protected float attackLockDuration() {
         return 0.45f;
     }
@@ -381,16 +357,12 @@ public class MutantWorker extends Enemy {
 
     @Override
     protected void die() {
-
-        if (dying)
-            return;
-
+        if (dying) return;
 
         dying = true;
         deathTimer = 0f;
-        deathSoundPlayed = false;
 
-        if(deathSound != null) {
+        if (deathSound != null && !deathSoundPlayed) {
             deathSound.play(1.0f);
             deathSoundPlayed = true;
         }
@@ -401,11 +373,7 @@ public class MutantWorker extends Enemy {
         boolean verticalDirection = currentDirection == Direction.UP || currentDirection == Direction.DOWN;
         if (verticalDirection) {
             float dx = getPosition().x - getPlayerPosition().x;
-            if (dx >= 0) {
-                currentDirection = Direction.RIGHT;
-            } else{
-                currentDirection = Direction.LEFT;
-            }
+            currentDirection = (dx >= 0) ? Direction.RIGHT : Direction.LEFT;
         }
     }
 }

@@ -21,7 +21,7 @@ public class MenuScreen implements Screen {
     private final MazeRunnerGame game;
     private Texture background;
     private com.badlogic.gdx.audio.Sound clickSound;
-    private Viewport viewport;
+    private final Viewport viewport;
 
     public MenuScreen(MazeRunnerGame game) {
         this.game = game;
@@ -63,14 +63,14 @@ public class MenuScreen implements Screen {
             }
         });
 
-        // ✅ FIXED: GAMBLING BUTTON
-        TextButton gamblingBtn = new TextButton("Gambling", game.getSkin());
+        // ✅ Gambling is MENU-ONLY (no Player instance)
+        TextButton gamblingBtn = new TextButton("The Casino", game.getSkin());
         table.add(gamblingBtn).width(300).padBottom(10).row();
         gamblingBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 playClickSound();
-                game.goToGambling(); // ✅ this opens the GamblingScreen
+                game.goToGambling(); // opens menu-only GamblingScreen
             }
         });
 
@@ -137,9 +137,14 @@ public class MenuScreen implements Screen {
         stage.draw();
     }
 
-
     @Override public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
-    @Override public void dispose() { stage.dispose(); }
+
+    @Override
+    public void dispose() {
+        stage.dispose();
+        if (background != null) background.dispose();
+        if (clickSound != null) clickSound.dispose();
+    }
 
     @Override
     public void show() {

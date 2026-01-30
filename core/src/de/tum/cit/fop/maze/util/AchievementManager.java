@@ -18,6 +18,7 @@ public class AchievementManager {
         this.achievements = new HashMap<>();
 
         // Define your achievements here!
+        register("win_it_big", "High Roller", "Win a Blackjack hand with a bet over 1000 coins.");
         register("first_blood", "First Blood", "Kill your first enemy.");
         register("level_2", "Novice Runner", "Reach Level 2.");
         register("collector", "Keymaster", "Find the key.");

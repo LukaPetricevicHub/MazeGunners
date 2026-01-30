@@ -36,17 +36,35 @@ public class Player {
     private boolean hasGloves = false;
 
     // =========================
+    // NEW: SLOTS STATS + HIDDEN ITEMS (persisted)
+    // =========================
+    private int strengthStat = 5; // 1..10
+    private int speedStat = 5;    // 1..10
+    private boolean hasFreezeWeapon = false;
+    private boolean hasPoisonKnuckles = false;
+
+    // =========================
     // STATS
     // =========================
-    private int lives;
-    private static final int BASE_LIVES = 5;
+
+    // =========================
+    // HP / HEARTS SYSTEM
+    // =========================
+    // Each heart = 2 HP
+    private int hp;
+
+    // Start game with 5 hearts => 10 HP
+    private static final int BASE_HEARTS = 5;
+    private static final int HP_PER_HEART = 2;
+
+    // Permanent hearts bonus (from Progression) - counts as extra hearts
+    private int permanentHeartsBonus = 0;
+
 
     // Coins (persisted)
     private int coins = 0;
     private final Progression progression;
 
-    // Permanent hearts (from Progression)
-    private int permanentHeartsBonus = 0;
 
     private boolean hasKey = false;
     private int score = 0;
@@ -109,6 +127,7 @@ public class Player {
     private float attackCooldownTimer = 0f;
     private Rectangle attackHitbox;
 
+
     // Direction
     private final Vector2 facingDirection = new Vector2(0, -1);
 
@@ -164,6 +183,11 @@ public class Player {
     // Drone laser
     private float laserDamageAccumulator = 0f;
     private float laserHeat = 0f;
+    private int permanentStrength = 5; // starts playable
+    private int permanentSpeed = 5;
+
+    private boolean freezeWeapon = false;
+    private boolean poisonKnuckles = false;
 
     @FunctionalInterface
     public interface BlockChecker {
@@ -198,9 +222,24 @@ public class Player {
             this.coins = this.progression.getCoins();
             this.permanentHeartsBonus = this.progression.getPermanentHearts();
             this.skillPoints += this.progression.getPermanentSkillPoints();
+            this.damageMult = this.progression.getPermanentDamageMult();
+            this.bonusSpeedMult = this.progression.getPermanentSpeedMult();
+
+            // NEW (slots stats + hidden items)
+            this.strengthStat = this.progression.getPermanentStrength();
+            this.speedStat = this.progression.getPermanentSpeedStat();
+            this.hasFreezeWeapon = this.progression.hasFreezeWeapon();
+            this.hasPoisonKnuckles = this.progression.hasPoisonKnuckles();
         }
 
-        this.lives = getMaxLives();
+        // Clamp to avoid any “locked out” nonsense
+        this.damageMult = MathUtils.clamp(this.damageMult, 0.5f, 3.0f);
+        this.bonusSpeedMult = MathUtils.clamp(this.bonusSpeedMult, 0.5f, 3.0f);
+        this.strengthStat = MathUtils.clamp(this.strengthStat, 1, 10);
+        this.speedStat = MathUtils.clamp(this.speedStat, 1, 10);
+
+        this.hp = getMaxHp();
+
     }
 
     // If permanent hearts updated while running
@@ -209,8 +248,14 @@ public class Player {
 
         this.permanentHeartsBonus = game.getProgression().getPermanentHearts();
 
-        int max = getMaxLives();
-        if (lives > max) lives = max;
+        // also re-sync in case stats were changed in gambling
+        this.strengthStat = MathUtils.clamp(game.getProgression().getPermanentStrength(), 1, 10);
+        this.speedStat = MathUtils.clamp(game.getProgression().getPermanentSpeedStat(), 1, 10);
+        this.hasFreezeWeapon = game.getProgression().hasFreezeWeapon();
+        this.hasPoisonKnuckles = game.getProgression().hasPoisonKnuckles();
+
+        int max = getMaxHp();
+        if (hp > max) hp = max;
     }
 
     // --- MAIN UPDATE LOOP ---
@@ -364,8 +409,11 @@ public class Player {
 
         boolean run = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
 
+        // NOTE: speedStat influences base walk speed lightly (optional but sensible)
+        float statSpeedBonus = (speedStat - 5) * 15f; // -60..+75 approx
+
         float currentSpeed =
-                getWalkSpeed()
+                (getWalkSpeed() + statSpeedBonus)
                         * (run ? RUN_MULTIPLIER : 1f)
                         * speedMultiplier
                         * bonusSpeedMult
@@ -563,7 +611,7 @@ public class Player {
     public void takeDamage(int amount) {
         if (godMode || isShielded || invulnerable) return;
 
-        lives = Math.max(0, lives - amount);
+        hp = Math.max(0, hp - amount);
 
         invulnerable = true;
         invulnTimeLeft = 0.8f;
@@ -681,7 +729,7 @@ public class Player {
             experience -= xpNeeded;
             playerLevel++;
             skillPoints++;
-            lives = getMaxLives();
+            hp = getMaxHp();
             xpNeeded = playerLevel * XP_PER_LEVEL_BASE;
         }
     }
@@ -707,10 +755,18 @@ public class Player {
         if (skillPoints > 0 && skillHealthLevel < 5) {
             skillPoints--;
             skillHealthLevel++;
-            lives++;
+            hp++;
             return true;
         }
         return false;
+    }
+
+    public void addPermanentStrength(int delta) {
+        permanentStrength = MathUtils.clamp(permanentStrength + delta, 0, 10);
+    }
+
+    public void addPermanentSpeed(int delta) {
+        permanentSpeed = MathUtils.clamp(permanentSpeed + delta, 0, 10);
     }
 
     // =========================
@@ -720,18 +776,21 @@ public class Player {
 
     public void addDamageMult(float delta) {
         damageMult = MathUtils.clamp(damageMult + delta, 0.5f, 3.0f);
+        if (progression != null) progression.setPermanentDamageMult(damageMult);
     }
 
     public float getBonusSpeedMult() { return bonusSpeedMult; }
 
     public void addBonusSpeedMult(float delta) {
         bonusSpeedMult = MathUtils.clamp(bonusSpeedMult + delta, 0.5f, 3.0f);
+        if (progression != null) progression.setPermanentSpeedMult(bonusSpeedMult);
     }
 
     public boolean hasShoes() { return hasShoes; }
     public void giveShoes() {
         hasShoes = true;
         bonusSpeedMult = Math.max(bonusSpeedMult, 1.2f);
+        if (progression != null) progression.setPermanentSpeedMult(bonusSpeedMult);
     }
 
     public boolean hasGloves() { return hasGloves; }
@@ -739,6 +798,38 @@ public class Player {
 
     public float getGloveKnockbackStrength() {
         return hasGloves ? 250f : 0f;
+    }
+
+    // =========================
+    // NEW: SLOTS STATS + HIDDEN ITEMS API
+    // =========================
+    public int getStrengthStat() { return strengthStat; }
+    public int getSpeedStat() { return speedStat; }
+
+    public void setStrengthStat(int v) {
+        strengthStat = MathUtils.clamp(v, 1, 10);
+        if (progression != null) progression.setPermanentStrength(strengthStat);
+    }
+
+    public void setSpeedStat(int v) {
+        speedStat = MathUtils.clamp(v, 1, 10);
+        if (progression != null) progression.setPermanentSpeedStat(speedStat);
+    }
+
+    public void addStrengthStat(int delta) { setStrengthStat(strengthStat + delta); }
+    public void addSpeedStat(int delta) { setSpeedStat(speedStat + delta); }
+
+    public boolean hasFreezeWeapon() { return hasFreezeWeapon; }
+    public boolean hasPoisonKnuckles() { return hasPoisonKnuckles; }
+
+    public void unlockFreezeWeapon() {
+        hasFreezeWeapon = true;
+        if (progression != null) progression.setHasFreezeWeapon(true);
+    }
+
+    public void unlockPoisonKnuckles() {
+        hasPoisonKnuckles = true;
+        if (progression != null) progression.setHasPoisonKnuckles(true);
     }
 
     // =========================
@@ -763,35 +854,71 @@ public class Player {
     // =========================
     public int getCoins() { return coins; }
 
+    // UI hearts (you can change this later; currently this is just UI)
     public int getHeartsCount() {
-        return MathUtils.clamp((int) Math.ceil(lives / 20f), 0, 5);
+        return MathUtils.clamp((int) Math.ceil(hp / (float) HP_PER_HEART), 0, getMaxHearts());
     }
 
-    public int getMaxLives() { return BASE_LIVES + skillHealthLevel + permanentHeartsBonus; }
 
+    public int getMaxHearts() {
+        return BASE_HEARTS + skillHealthLevel + permanentHeartsBonus;
+    }
+
+    public int getMaxHp() {
+        return getMaxHearts() * HP_PER_HEART;
+    }
+
+    public int getHp() { return hp; }
+
+    public void setHp(int hp) {
+        this.hp = MathUtils.clamp(hp, 0, getMaxHp());
+    }
+
+    public void healHp(int amount) {
+        if (amount <= 0) return;
+        setHp(this.hp + amount);
+    }
+
+    // If you still want a “+1 heart container” effect in-game:
+    public void addHeartContainer(int hearts) {
+        if (hearts <= 0) return;
+        // increase permanent hearts bonus *for this run only*
+        permanentHeartsBonus += hearts;
+        // optionally fill the new HP
+        hp = getMaxHp();
+    }
+
+    public int getLives() {
+        return getHp(); // store hp in the old "lives" field everywhere
+    }
+
+    public void setLives(int lives) {
+        setHp(lives);
+    }
+
+    /**
+     * Old code called addLife() when picking up a heart.
+     * Since 1 heart = 2 HP in your new system, addLife() should heal 2 HP.
+     */
     public void addLife() {
-        if (lives < getMaxLives()) lives++;
+        healHp(HP_PER_HEART); // +2 hp
     }
-
-    public void setLives(int lives) { this.lives = lives; }
-    public int getLives() { return lives; }
-
-    public void setPlayerLevel(int level) { this.playerLevel = level; }
+    public void setPlayerLevel(int level) { this.playerLevel = Math.max(1, level); }
     public int getPlayerLevel() { return playerLevel; }
 
-    public void setExperience(int experience) { this.experience = experience; }
+    public void setExperience(int experience) { this.experience = Math.max(0, experience); }
     public int getExperience() { return experience; }
 
     public int getXpNeededForNextLevel() { return playerLevel * XP_PER_LEVEL_BASE; }
 
-    public void setSkillSpeedLevel(int level) { this.skillSpeedLevel = level; }
+    public void setSkillSpeedLevel(int level) { this.skillSpeedLevel = MathUtils.clamp(level, 0, 5); }
     public int getSkillSpeedLevel() { return skillSpeedLevel; }
 
-    public void setSkillHealthLevel(int level) { this.skillHealthLevel = level; }
+    public void setSkillHealthLevel(int level) { this.skillHealthLevel = MathUtils.clamp(level, 0, 5); }
     public int getSkillHealthLevel() { return skillHealthLevel; }
 
     public int getSkillPoints() { return skillPoints; }
-    public void setSkillPoints(int points) { this.skillPoints = points; }
+    public void setSkillPoints(int points) { this.skillPoints = Math.max(0, points); }
 
     public float getWalkSpeed() { return WALK_SPEED_BASE + (skillSpeedLevel * 50f); }
 

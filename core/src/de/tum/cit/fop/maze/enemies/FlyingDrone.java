@@ -17,6 +17,9 @@ import de.tum.cit.fop.maze.player.Player;
 
 public class FlyingDrone extends Enemy {
 
+    // --- HP ---
+    private static final int MAX_HP = 8; // tweak per enemy type
+
     public static final float RENDER_WIDTH  = 32f;
     public static final float RENDER_HEIGHT = 32f;
 
@@ -75,6 +78,10 @@ public class FlyingDrone extends Enemy {
     // Initialize flying drone
     public FlyingDrone(Vector2 startWorldPosition, float movementSpeed, Array<Vector2> patrolWorldPositions, Player targetPlayer) {
         super(startWorldPosition, movementSpeed, new PatrolBehavior(patrolWorldPositions), targetPlayer);
+
+        // ✅ health init from Enemy base
+        initHp(MAX_HP);
+
         patrolPoints = new Array<>(patrolWorldPositions);
         chaseRadius = 200f;
 
@@ -84,7 +91,7 @@ public class FlyingDrone extends Enemy {
 
     // Load drone assets once
     private static void ensureAnimationsLoaded() {
-        if(idle != null) return;
+        if (idle != null) return;
 
         Texture idleTex = new Texture("Enemies/FlyingDrone/FlyingDroneIdle.png");
         Texture patrolScanTex = new Texture("Enemies/FlyingDrone/FlyingDronePatrolScan.png");
@@ -98,11 +105,11 @@ public class FlyingDrone extends Enemy {
         setNearest(rightTex);
         setNearest(scanTex);
 
-        idle = buildStripAnim(idleTex,4,FLY_FRAME_DURATION);
-        flyLeft = buildStripAnim(leftTex,4,FLY_FRAME_DURATION);
-        flyRight = buildStripAnim(rightTex,4,FLY_FRAME_DURATION);
-        patrolScan = buildStripAnim(patrolScanTex,8,FLY_FRAME_DURATION);
-        scan = buildStripAnim(scanTex,8,FLY_FRAME_DURATION);
+        idle = buildStripAnim(idleTex, 4, FLY_FRAME_DURATION);
+        flyLeft = buildStripAnim(leftTex, 4, FLY_FRAME_DURATION);
+        flyRight = buildStripAnim(rightTex, 4, FLY_FRAME_DURATION);
+        patrolScan = buildStripAnim(patrolScanTex, 8, FLY_FRAME_DURATION);
+        scan = buildStripAnim(scanTex, 8, FLY_FRAME_DURATION);
 
         Texture deathTex = new Texture("Enemies/FlyingDrone/FlyingDroneDeath.png");
         setNearest(deathTex);
@@ -119,38 +126,38 @@ public class FlyingDrone extends Enemy {
         texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
     }
 
+    // Build looping animation strip
+    private static Animation<TextureRegion> buildStripAnim(Texture tex, int frames, float frameDuration) {
+        int frameWidth = tex.getWidth() / frames;
+        int frameHeight = tex.getHeight();
+
+        Array<TextureRegion> regions = new Array<>(frames);
+        for (int i = 0; i < frames; i++) {
+            regions.add(new TextureRegion(tex, i * frameWidth, 0, frameWidth, frameHeight));
+        }
+
+        Animation<TextureRegion> anim = new Animation<>(frameDuration, regions);
+        anim.setPlayMode(Animation.PlayMode.LOOP);
+        return anim;
+    }
+
     // Switch between patrol and chase
     @Override
     protected void updateAI(float deltaTime) {
         float dist2 = worldPosition.dst2(getPlayerPosition());
         boolean playerInRange = dist2 <= chaseRadius * chaseRadius;
 
-        if(playerInRange) {
-            if(activeBehavior.getType() != BehaviorStateType.CHASE) {
+        if (playerInRange) {
+            if (activeBehavior.getType() != BehaviorStateType.CHASE) {
                 snapToCenterOnChase = true;
                 setCurrentBehavior(createChaseBehavior());
             }
         } else {
-            if(activeBehavior.getType() == BehaviorStateType.CHASE) {
+            if (activeBehavior.getType() == BehaviorStateType.CHASE) {
                 snapToCenterOnReturn = true;
                 setCurrentBehavior(new ReturnToPatrolBehavior());
             }
         }
-    }
-
-    // Build looping animation strip
-    private static Animation<TextureRegion> buildStripAnim(Texture tex,int frames,float frameDuration) {
-        int frameWidth = tex.getWidth() / frames;
-        int frameHeight = tex.getHeight();
-
-        Array<TextureRegion> regions = new Array<>(frames);
-        for(int i = 0;i < frames;i++) {
-            regions.add(new TextureRegion(tex,i * frameWidth,0,frameWidth,frameHeight));
-        }
-
-        Animation<TextureRegion> anim = new Animation<>(frameDuration, regions);
-        anim.setPlayMode(Animation.PlayMode.LOOP);
-        return anim;
     }
 
     @Override
@@ -163,6 +170,27 @@ public class FlyingDrone extends Enemy {
         return new PatrolBehavior(patrolPoints);
     }
 
+    // ✅ REQUIRED BY ReturnToPatrolBehavior
+    public Vector2 getClosestPatrolPoint() {
+        Vector2 pos = getPosition();
+        Vector2 closest = patrolPoints.first();
+        float bestDist = pos.dst2(closest);
+
+        for (Vector2 p : patrolPoints) {
+            float d = pos.dst2(p);
+            if (d < bestDist) {
+                bestDist = d;
+                closest = p;
+            }
+        }
+        return closest;
+    }
+
+    // ✅ REQUIRED BY ReturnToPatrolBehavior
+    public BehaviorState createPatrolBehavior() {
+        return new PatrolBehavior(patrolPoints);
+    }
+
     // Main behavior update
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
@@ -170,23 +198,23 @@ public class FlyingDrone extends Enemy {
         if (dying) {
             deathTimer += deltaTime;
 
-            if(!deathSoundPlayed) {
-                deathSound.play(1f);
+            if (!deathSoundPlayed) {
+                if (deathSound != null) deathSound.play(1f);
                 deathSoundPlayed = true;
             }
 
-            if(deathAnim.isAnimationFinished(deathTimer)) {
+            if (deathAnim.isAnimationFinished(deathTimer)) {
                 finalizeDeath();
             }
             return;
         }
 
-        if(snapToCenterOnChase || snapToCenterOnReturn) {
+        if (snapToCenterOnChase || snapToCenterOnReturn) {
             float tileSize = maze.getTileSize();
             Vector2 pos = getPosition();
 
-            int tx = (int)(pos.x / tileSize);
-            int ty = (int)(pos.y / tileSize);
+            int tx = (int) (pos.x / tileSize);
+            int ty = (int) (pos.y / tileSize);
 
             if (maze.isRoomCell(tx, ty)) {
                 pos.set(tx * tileSize + tileSize * 0.5f, ty * tileSize + tileSize * 0.5f);
@@ -198,7 +226,8 @@ public class FlyingDrone extends Enemy {
 
         animationTimer += deltaTime;
 
-        if(isPlayerInAttackRange()) {
+        // ✅ REQUIRED: was missing in my broken version
+        if (isPlayerInAttackRange()) {
             float dist2 = getPosition().dst2(getPlayerPosition());
 
             if (dist2 <= ATTACK_RADIUS * ATTACK_RADIUS) {
@@ -211,13 +240,13 @@ public class FlyingDrone extends Enemy {
                 updateLaserSoundVolume();
 
                 laserCooldown -= deltaTime;
-                if(laserCooldown <= 0f) {
+                if (laserCooldown <= 0f) {
                     fireLaserAtPlayer();
                     laserCooldown = LASER_INTERVAL;
                 }
 
                 if (dist2 < MIN_SAFE_RADIUS * MIN_SAFE_RADIUS) {
-                    moveAwayFromPlayer(deltaTime,maze);
+                    moveAwayFromPlayer(deltaTime, maze);
                     updateDirectionFromMovement();
                 }
 
@@ -225,7 +254,7 @@ public class FlyingDrone extends Enemy {
             }
         }
 
-        if(attacking) { stopLaserSound(); }
+        if (attacking) stopLaserSound();
 
         attacking = false;
         attackTimer = 0f;
@@ -243,7 +272,19 @@ public class FlyingDrone extends Enemy {
         float px = targetPlayer.getX() + 16f;
         float py = targetPlayer.getY() + 32f;
 
-        lasers.add(new DroneLaser(start.x,start.y,px,py));
+        lasers.add(new DroneLaser(start.x, start.y, px, py));
+    }
+
+    // Move away if too close
+    private void moveAwayFromPlayer(float deltaTime, Maze maze) {
+        Vector2 pos = getPosition();
+        Vector2 playerPos = getPlayerPosition();
+
+        Vector2 awayDir = pos.cpy().sub(playerPos);
+        if (awayDir.len2() < 0.001f) return;
+
+        awayDir.nor().scl(getSpeed());
+        getCollisionHandler().move(pos, awayDir, deltaTime, maze);
     }
 
     // Update facing from movement
@@ -253,12 +294,12 @@ public class FlyingDrone extends Enemy {
         float dx = pos.x - lastPosition.x;
         float dy = pos.y - lastPosition.y;
 
-        if(Math.abs(dx) > Math.abs(dy)) {
-            if(dx > 0.01f) currentDirection = Direction.RIGHT;
-            else if(dx < -0.01f) currentDirection = Direction.LEFT;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx > 0.01f) currentDirection = Direction.RIGHT;
+            else if (dx < -0.01f) currentDirection = Direction.LEFT;
         } else {
-            if(dy > 0.01f) currentDirection = Direction.UP;
-            else if(dy < -0.01f) currentDirection = Direction.DOWN;
+            if (dy > 0.01f) currentDirection = Direction.UP;
+            else if (dy < -0.01f) currentDirection = Direction.DOWN;
         }
 
         lastPosition.set(pos);
@@ -266,27 +307,25 @@ public class FlyingDrone extends Enemy {
 
     // Get current frame
     public TextureRegion getCurrentFrame() {
-
-        if(dying) {
-            return deathAnim.getKeyFrame(deathTimer,false);
+        if (dying) {
+            return deathAnim.getKeyFrame(deathTimer, false);
         }
 
         boolean isChasing = activeBehavior.getType() == BehaviorStateType.CHASE;
 
         if (attacking)
-            return idle.getKeyFrame(attackTimer,true);
+            return idle.getKeyFrame(attackTimer, true);
 
         if (isChasing) {
-            if(currentDirection == Direction.LEFT)
-                return flyLeft.getKeyFrame(animationTimer,true);
-            if(currentDirection == Direction.RIGHT) {
-                return flyRight.getKeyFrame(animationTimer,true);
-            }
+            if (currentDirection == Direction.LEFT)
+                return flyLeft.getKeyFrame(animationTimer, true);
+            if (currentDirection == Direction.RIGHT)
+                return flyRight.getKeyFrame(animationTimer, true);
 
-            return idle.getKeyFrame(animationTimer,true);
+            return idle.getKeyFrame(animationTimer, true);
         }
 
-        return patrolScan.getKeyFrame(animationTimer,true);
+        return patrolScan.getKeyFrame(animationTimer, true);
     }
 
     // Hover bob offset
@@ -295,107 +334,80 @@ public class FlyingDrone extends Enemy {
         return HOVER_Y_OFFSETS[frameIndex % HOVER_Y_OFFSETS.length];
     }
 
-    // Closest patrol node
-    public Vector2 getClosestPatrolPoint() {
-        Vector2 pos = getPosition();
-        Vector2 closest = patrolPoints.first();
-        float bestDist = pos.dst2(closest);
-
-        for(Vector2 p : patrolPoints) {
-            float d = pos.dst2(p);
-            if(d < bestDist) {
-                bestDist = d;
-                closest = p;
-            }
-        }
-        return closest;
-    }
-
-    public BehaviorState createPatrolBehavior() {
-        return new PatrolBehavior(patrolPoints);
-    }
-
-    private boolean isPlayerInAttackRange() {
-        if(targetPlayer == null) return false;
-
-        float dist2 = getPosition().dst2(getPlayerPosition());
-        return dist2 <= ATTACK_RADIUS * ATTACK_RADIUS;
-    }
-
-    // Move away if too close
-    private void moveAwayFromPlayer(float deltaTime,Maze maze) {
-        Vector2 pos = getPosition();
-        Vector2 playerPos = getPlayerPosition();
-
-        Vector2 awayDir = pos.cpy().sub(playerPos);
-        if(awayDir.len2() < 0.001f) return;
-
-        awayDir.nor().scl(getSpeed());
-        getCollisionHandler().move(pos,awayDir,deltaTime,maze);
-    }
-
+    // ✅ REQUIRED: used by CombatSystem
     public Array<DroneLaser> getLasers() {
         return lasers;
     }
 
+    // ✅ REQUIRED: used by CombatSystem
     public boolean isLaserActive() {
         return attacking;
     }
 
+    // ✅ REQUIRED: used by CombatSystem
     public Vector2 getLaserStart() {
         return new Vector2(getX() + getRenderWidth() * 0.5f + LASER_GUN_OFFSET_X, getY() + LASER_GUN_OFFSET_Y);
     }
 
+    // ✅ REQUIRED: used by CombatSystem
     public Vector2 getLaserEnd() {
-        if(targetPlayer == null) return getLaserStart();
-
+        if (targetPlayer == null) return getLaserStart();
         return new Vector2(targetPlayer.getX() + 16f, targetPlayer.getY() + 32f);
+    }
+
+    // ✅ REQUIRED: used by CombatSystem
+    public void increaseLaserLock(float dt) {
+        laserLockTime = Math.min(laserLockTime + dt, MAX_LASER_LOCK);
+    }
+
+    // ✅ REQUIRED: used by CombatSystem
+    public void resetLaserLock() {
+        laserLockTime = 0f;
+    }
+
+    // ✅ REQUIRED: used by CombatSystem
+    public float getLaserCharge() {
+        return laserLockTime / MAX_LASER_LOCK;
+    }
+
+    // ✅ REQUIRED: used by CombatSystem
+    public float getLaserLockTime() {
+        return laserLockTime;
+    }
+
+    // ✅ REQUIRED: used internally and previously by your code
+    private boolean isPlayerInAttackRange() {
+        if (targetPlayer == null) return false;
+        float dist2 = getPosition().dst2(getPlayerPosition());
+        return dist2 <= ATTACK_RADIUS * ATTACK_RADIUS;
     }
 
     // Start looping laser sound
     private void startLaserSound() {
-        if(laserSound == null) return;
-        if(laserSoundId != -1) return;
+        if (laserSound == null) return;
+        if (laserSoundId != -1) return;
         laserSoundId = laserSound.loop(LASER_VOLUME_MIN);
     }
 
     // Update laser volume
     private void updateLaserSoundVolume() {
-        if(laserSound == null)
-            return;
-        if(laserSoundId == -1)
-            return;
+        if (laserSound == null) return;
+        if (laserSoundId == -1) return;
 
         float heat = getLaserCharge();
         float intensity = heat * heat;
 
         float volume = LASER_VOLUME_MIN + (LASER_VOLUME_MAX - LASER_VOLUME_MIN) * intensity;
-        laserSound.setVolume(laserSoundId,volume);
+        laserSound.setVolume(laserSoundId, volume);
     }
 
     // Stop laser sound
     private void stopLaserSound() {
-        if(laserSound == null) return;
-        if(laserSoundId == -1) return;
+        if (laserSound == null) return;
+        if (laserSoundId == -1) return;
 
         laserSound.stop(laserSoundId);
         laserSoundId = -1;
-    }
-
-    public void increaseLaserLock(float dt) {
-        laserLockTime = Math.min(laserLockTime + dt,MAX_LASER_LOCK);
-    }
-
-    public void resetLaserLock() {
-        laserLockTime = 0f;
-    }
-
-    public float getLaserCharge() {
-        return laserLockTime / MAX_LASER_LOCK;
-    }
-
-    public float getLaserLockTime() {
-        return laserLockTime;
     }
 
     @Override
@@ -435,8 +447,7 @@ public class FlyingDrone extends Enemy {
 
     @Override
     protected void die() {
-        if(dying)
-            return;
+        if (dying) return;
 
         dying = true;
         deathTimer = 0f;

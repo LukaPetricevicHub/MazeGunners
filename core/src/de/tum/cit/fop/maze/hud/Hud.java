@@ -23,7 +23,8 @@ import de.tum.cit.fop.maze.ui.DevConsole;
 public class Hud {
 
     // --- CONFIG ---
-    private static final int MAX_HEARTS = 5;
+    private static final int HEARTS_PER_ROW = 5;
+    private final Table heartsGrid;
     private static final float TILE_SIZE = 32f;
     private static final float NOTIF_DURATION = 3.0f;
 
@@ -37,7 +38,7 @@ public class Hud {
     private final Texture arrowTexture;
 
     // --- UI ELEMENTS ---
-    private final Image[] heartImages;
+    private final java.util.ArrayList<Image> heartImages = new java.util.ArrayList<>();
 
     private final Label floorLabel;
     private final Label hintLabel;
@@ -102,20 +103,16 @@ public class Hud {
         topLeft.pad(8);
         topLeft.left().top();
 
-        heartImages = new Image[MAX_HEARTS];
-        Table heartsRow = new Table();
-        heartsRow.left();
+        heartsGrid = new Table();
+        heartsGrid.left().top();
+        topLeft.add(heartsGrid).left().row();
 
-        for (int i = 0; i < MAX_HEARTS; i++) {
-            heartImages[i] = new Image(new TextureRegion(heartTexture));
-            heartsRow.add(heartImages[i]).size(16, 16).padRight(4);
-        }
 
         coinsLabel = new Label("Coins: 0", skin); // ✅ new
         keyLabel = new Label("Key: NO", skin);
         floorLabel = new Label("Floor: 1", skin);
 
-        topLeft.add(heartsRow).left().row();
+        topLeft.add(heartsGrid).left().row();
         topLeft.add(coinsLabel).left().padTop(4).row(); // ✅ under hearts
         topLeft.add(keyLabel).left().padTop(2).row();
         topLeft.add(floorLabel).left().padTop(2);
@@ -259,10 +256,10 @@ public class Hud {
      */
     public void update(Player player) {
         // Hearts (map 0..100 lives into 0..5 hearts)
-        int heartsToShow = MathUtils.clamp((int) Math.ceil(player.getLives() / 20f), 0, MAX_HEARTS);
-        for (int i = 0; i < heartImages.length; i++) {
-            heartImages[i].setVisible(i < heartsToShow);
-        }
+        int currentHearts = (int) Math.ceil(player.getHp() / 2f);
+        int maxHearts = player.getMaxHearts();
+        rebuildHeartsGrid(currentHearts, maxHearts);
+
 
         // ✅ Coins text
         coinsLabel.setText("Coins: " + player.getCoins());
@@ -423,6 +420,28 @@ public class Hud {
                 Actions.run(() -> bossGroup.setPosition(ox, oy))
         ));
     }
+
+    private void ensureHeartImages(int needed) {
+        while (heartImages.size() < needed) {
+            heartImages.add(new Image(new TextureRegion(heartTexture)));
+        }
+    }
+
+    private void rebuildHeartsGrid(int currentHearts, int maxHearts) {
+        heartsGrid.clearChildren();
+
+        ensureHeartImages(maxHearts);
+
+        for (int i = 0; i < maxHearts; i++) {
+            Image img = heartImages.get(i);
+            img.setVisible(i < currentHearts);
+
+            heartsGrid.add(img).size(16, 16).padRight(4).padBottom(4);
+
+            if ((i + 1) % HEARTS_PER_ROW == 0) heartsGrid.row();
+        }
+    }
+
 
     public void setMinimapActor(Actor minimapActor, float width, float height) {
         minimapContainer.clearChildren();

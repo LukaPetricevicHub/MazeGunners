@@ -6,7 +6,6 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
-
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.camera.GameCamera;
 import de.tum.cit.fop.maze.enemies.*;
@@ -21,6 +20,7 @@ import java.util.List;
 public class CombatSystem {
 
     private static final float ENEMY_WAKE_UP_DIST = 24 * 16f;
+
     private Texture droneLaserTexture;
     private List<Enemy> enemies;
 
@@ -29,8 +29,14 @@ public class CombatSystem {
 
     public CombatSystem() {}
 
-
-    public void update(float deltaTime, Player player, PlayerLike bossTarget, Boss boss, Maze maze, List<Enemy> enemies, List<Obstacle> obstacles, GameCamera gameCamera) {
+    public void update(float deltaTime,
+                       Player player,
+                       PlayerLike bossTarget,
+                       Boss boss,
+                       Maze maze,
+                       List<Enemy> enemies,
+                       List<Obstacle> obstacles,
+                       GameCamera gameCamera) {
 
         this.enemies = enemies;
 
@@ -38,12 +44,25 @@ public class CombatSystem {
             maze.updateEnemyOccupancy(enemies);
         }
 
+        // ==========================================
+        // DAMAGE CALC (single source of truth)
+        // strengthStat: 1..10, baseline at 5
+        // ==========================================
+        int strength = player.getStrengthStat();             // 1..10
+        int strengthBonus = Math.max(0, strength - 5);       // 0..5
+        float dmgMult = player.getDamageMult();
 
-        // 1) BULLETS
+        int bulletDamage = Math.max(1, Math.round((5f + strengthBonus) * dmgMult));
+        int meleeDamage  = Math.max(1, Math.round((1f + strengthBonus * 0.6f) * dmgMult));
+        int repulseDamage = Math.max(1, Math.round((2f + strengthBonus * 0.3f) * dmgMult));
+
+        // -------------------------
+        // 1) BULLETS → ENEMIES/BOSS
+        // -------------------------
         if (player.getBullets() != null) {
 
             Iterator<Bullet> bIter = player.getBullets().iterator();
-            while(bIter.hasNext()) {
+            while (bIter.hasNext()) {
 
                 Bullet b = bIter.next();
 
@@ -57,9 +76,9 @@ public class CombatSystem {
                     float hitX = b.getBounds().x + b.getBounds().width * 0.5f;
                     float hitY = b.getBounds().y + b.getBounds().height * 0.5f;
 
-                    for(Obstacle obs : obstacles) {
-                        if(obs instanceof LightningTrap lightning) {
-                            if(lightning.isHitByBullet(hitX, hitY)) {
+                    for (Obstacle obs : obstacles) {
+                        if (obs instanceof LightningTrap lightning) {
+                            if (lightning.isHitByBullet(hitX, hitY)) {
                                 lightning.disable();
                             }
                         }
@@ -70,15 +89,15 @@ public class CombatSystem {
                 }
 
                 if (boss != null && !boss.isDead() && b.getBounds().overlaps(boss.getHitbox())) {
-                    boss.damage(5);
+                    boss.damage(bulletDamage);
                     b.setDead();
                     continue;
                 }
 
                 for (Enemy e : enemies) {
-                    if(b.getBounds().overlaps(e.getCollisionBox())) {
-                        if(!e.isDying()) {
-                            e.takeDamage(5);
+                    if (b.getBounds().overlaps(e.getCollisionBox())) {
+                        if (!e.isDying()) {
+                            e.takeDamage(bulletDamage);
                         }
                         b.setDead();
                         break;
@@ -87,8 +106,9 @@ public class CombatSystem {
             }
         }
 
-
-        // 1b) DRONE LASERS
+        // -------------------------
+        // 1b) DRONE LASERS → PLAYER
+        // -------------------------
         boolean playerHitByAnyLaser = false;
 
         for (Enemy enemy : enemies) {
@@ -98,7 +118,7 @@ public class CombatSystem {
             boolean hitPlayerThisFrame = false;
 
             Iterator<DroneLaser> lIter = drone.getLasers().iterator();
-            while(lIter.hasNext()) {
+            while (lIter.hasNext()) {
 
                 DroneLaser laser = lIter.next();
                 laser.update(deltaTime);
@@ -133,20 +153,28 @@ public class CombatSystem {
             player.resetLaserHeat();
         }
 
-
+        // -------------------------
         // 2) PLAYER MELEE → BOSS
-        if (boss != null && !boss.isDead() && player.isAttacking() && player.getAttackHitbox() != null && player.getAttackHitbox().overlaps(boss.getHitbox())) {
-            boss.damage(2);
+        // -------------------------
+        if (boss != null && !boss.isDead()
+                && player.isAttacking()
+                && player.getAttackHitbox() != null
+                && player.getAttackHitbox().overlaps(boss.getHitbox())) {
+
+            int bossMelee = Math.max(1, Math.round((2f + strengthBonus * 0.6f) * dmgMult));
+            boss.damage(bossMelee);
         }
 
-
+        // -------------------------
         // 3) BOSS AI
+        // -------------------------
         if (boss != null && !boss.isDead() && bossTarget != null) {
             boss.update(deltaTime, bossTarget);
         }
 
-
+        // -------------------------
         // 4) REPULSE SKILL
+        // -------------------------
         if (player.isRepulseActive()) {
 
             float repulseRange = 200f;
@@ -156,17 +184,19 @@ public class CombatSystem {
             for (Enemy e : enemies) {
 
                 Vector2 enemyPos = e.getPosition();
-                if(playerPos.dst(enemyPos) < repulseRange) {
+                if (playerPos.dst(enemyPos) < repulseRange) {
 
                     Vector2 push = enemyPos.cpy().sub(playerPos).nor().scl(pushForce);
                     e.getPosition().add(push.x * deltaTime * 5, push.y * deltaTime * 5);
-                    e.takeDamage(2);
+
+                    e.takeDamage(repulseDamage);
                 }
             }
         }
 
-
-        // 5) ENEMIES
+        // -------------------------
+        // 5) ENEMIES (touch dmg + melee hit)
+        // -------------------------
         Rectangle playerHitbox = new Rectangle(player.getX(), player.getY(), 32f, 64f);
         Rectangle playerFeetHitbox = new Rectangle(player.getX(), player.getY(), 32f, 8f);
 
@@ -192,12 +222,36 @@ public class CombatSystem {
             enemy.update(deltaTime, maze);
             enemy.applyEnemySeparation(enemies, player, deltaTime, maze);
 
-            if(playerHitbox.overlaps(enemy.getCollisionBox())) {
+            // Touch damage
+            if (playerHitbox.overlaps(enemy.getCollisionBox())) {
                 player.takeDamage(1);
             }
 
-            if (player.isAttacking() && enemy.canBeHitByMelee() && player.getAttackHitbox() != null && player.getAttackHitbox().overlaps(enemy.getCollisionBox())) {
-                enemy.takeDamage(1);
+            // Player melee hit
+            if (player.isAttacking()
+                    && enemy.canBeHitByMelee()
+                    && player.getAttackHitbox() != null
+                    && player.getAttackHitbox().overlaps(enemy.getCollisionBox())) {
+
+                enemy.takeDamage(meleeDamage);
+
+                // Rewards: freeze + poison
+                if (player.hasFreezeWeapon()) {
+                    enemy.applyFreeze(1.25f);
+                }
+                if (player.hasPoisonKnuckles()) {
+                    enemy.applyPoison(4.0f, 0.75f);
+                }
+
+                // Gloves knockback
+                float kb = player.getGloveKnockbackStrength();
+                if (kb > 0f) {
+                    Vector2 push = enemy.getPosition().cpy()
+                            .sub(new Vector2(player.getX() + 16f, player.getY() + 32f))
+                            .nor()
+                            .scl(kb);
+                    enemy.getPosition().add(push.x * deltaTime, push.y * deltaTime);
+                }
             }
 
             if (enemy.isDead()) {
@@ -206,7 +260,7 @@ public class CombatSystem {
                 player.addScore(100);
 
                 MazeRunnerGame game = (MazeRunnerGame) Gdx.app.getApplicationListener();
-                if(game.getAchievementManager() != null) {
+                if (game.getAchievementManager() != null) {
                     game.getAchievementManager().unlock("first_blood");
                 }
 
@@ -214,8 +268,9 @@ public class CombatSystem {
             }
         }
 
-
+        // -------------------------
         // 6) OBSTACLES
+        // -------------------------
         float speedModifier = 1f;
         float visibilityFactor = 1f;
 
@@ -228,10 +283,9 @@ public class CombatSystem {
         float playerY = player.getY() + 32f;
         float tileSize = maze.getTileSize();
 
+        for (Obstacle obs : obstacles) {
 
-        for(Obstacle obs : obstacles) {
-
-            if(obs instanceof FloorHazard hazard) {
+            if (obs instanceof FloorHazard hazard) {
 
                 if (hazard.justEntered(playerFeetHitbox)) {
                     player.activateFloorHazard(2.5f, hazard.getSpeedBoost());
@@ -242,18 +296,20 @@ public class CombatSystem {
                 continue;
             }
 
-
             if (obs instanceof SpikeTrap spike) {
 
                 boolean onTrap = spike.getCollisionBox().overlaps(playerFeetHitbox);
                 spike.setPlayerOnTrap(onTrap);
                 spike.update(deltaTime);
 
-                if(spike.shouldDamagePlayerThisFrame())
-                    player.takeDamage(1);
+                if (spike.shouldDamagePlayerThisFrame()) {
+                    if (!player.canIgnoreTrapDamage()) {
+                        player.takeDamage(1);
+                    }
+                }
+
                 continue;
             }
-
 
             if (obs instanceof LightningTrap lightning && lightning.disabled) {
                 continue;
@@ -267,11 +323,12 @@ public class CombatSystem {
 
                 if (lightning.didTriggerThisFrame()) {
 
-                    if (!player.hasGhost()) {
-                        player.takeDamage(lightning.getDamageToPlayer());
-                    }
+                    boolean ignoreTrap = player.canIgnoreTrapDamage();
 
-                    player.applyLightningDebuff(3f);
+                    if (!ignoreTrap && !player.hasGhost()) {
+                        player.takeDamage(lightning.getDamageToPlayer());
+                        player.applyLightningDebuff(3f);
+                    }
                 }
 
                 if (player.isLightningDebuffed()) {
@@ -282,12 +339,15 @@ public class CombatSystem {
                 continue;
             }
 
-
             obs.updateCooldown(deltaTime);
 
             if (obs.tryActivate(playerHitbox)) {
-
                 boolean isTrap = (obs instanceof SpikeTrap || obs instanceof LightningTrap);
+
+                if (isTrap && player.canIgnoreTrapDamage()) {
+                    obs.onActivate();
+                    continue;
+                }
 
                 if (!isTrap || !player.hasGhost()) {
                     obs.onActivate();
@@ -295,7 +355,6 @@ public class CombatSystem {
                 }
             }
         }
-
 
         if (nearAnyFloorHazard && !floorHazardSoundPlaying) {
             floorHazardSoundId = ObstacleAudioManager.playFloorHazardLoop(0.6f);
@@ -310,24 +369,23 @@ public class CombatSystem {
         gameCamera.setZoomMultiplier(visibilityFactor);
     }
 
-
     public void renderProjectiles(SpriteBatch batch) {
 
         if (enemies == null) return;
 
         ensureDroneLaserTextureLoaded();
 
-        for(Enemy enemy : enemies) {
+        for (Enemy enemy : enemies) {
 
-            if(!(enemy instanceof FlyingDrone drone)) continue;
-            if(!drone.isLaserActive()) continue;
+            if (!(enemy instanceof FlyingDrone drone)) continue;
+            if (!drone.isLaserActive()) continue;
 
             Vector2 start = drone.getLaserStart();
             Vector2 end = drone.getLaserEnd();
 
             Vector2 dir = end.cpy().sub(start);
             float length = dir.len();
-            if(length < 1f) continue;
+            if (length < 1f) continue;
 
             float angleDeg = dir.angleDeg();
             float charge = drone.getLaserCharge();
@@ -335,15 +393,22 @@ public class CombatSystem {
             float glowAlpha = MathUtils.lerp(0.4f, 1f, charge);
 
             batch.setColor(1f, 0.3f, 0.3f, glowAlpha);
-            batch.draw(droneLaserTexture, start.x, start.y - beamThickness * 0.5f, 0f, beamThickness * 0.5f, length, beamThickness, 1f, 1f, angleDeg, 0, 0, droneLaserTexture.getWidth(), droneLaserTexture.getHeight(), false, false);
+            batch.draw(droneLaserTexture,
+                    start.x, start.y - beamThickness * 0.5f,
+                    0f, beamThickness * 0.5f,
+                    length, beamThickness,
+                    1f, 1f,
+                    angleDeg,
+                    0, 0,
+                    droneLaserTexture.getWidth(), droneLaserTexture.getHeight(),
+                    false, false);
             batch.setColor(1f, 1f, 1f, 1f);
         }
     }
 
-
     private boolean isWall(Rectangle rect, Maze maze) {
-        int cx = (int)(rect.x / maze.getTileSize());
-        int cy = (int)(rect.y / maze.getTileSize());
+        int cx = (int) (rect.x / maze.getTileSize());
+        int cy = (int) (rect.y / maze.getTileSize());
         return maze.isWallCell(cx, cy);
     }
 
@@ -353,6 +418,4 @@ public class CombatSystem {
             droneLaserTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
         }
     }
-
 }
-
