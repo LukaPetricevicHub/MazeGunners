@@ -1,11 +1,10 @@
-package de.tum.cit.fop.maze.world;
+package de.tum.cit.fop.maze.enemies;
 
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.ai.EntranceFinder;
 import de.tum.cit.fop.maze.ai.RoomEntrance;
 import de.tum.cit.fop.maze.ai.RoomPatrolBuilder;
-import de.tum.cit.fop.maze.enemies.*;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.map.Room;
 import de.tum.cit.fop.maze.map.RoomType;
@@ -130,11 +129,61 @@ public class EnemySpawner {
             if (!isSafeToSpawn(wx, wy, maze))
                 continue;
 
-            out.add(new MutantWorker(new Vector2(wx, wy), 100f, targetPlayer));
+            Enemy enemy = createRandomEnemyType(maze, rng, cell, targetPlayer);
+            if (enemy == null) {
+                out.add(new MutantWorker(new Vector2(wx, wy), 100f, targetPlayer));
+            } else {
+                out.add(enemy);
+            }
             spawned++;
         }
 
         System.out.println("[EnemySpawner] Random enemies spawned=" + spawned + " (requested " + maxEnemies + ")");
+    }
+
+    private Enemy createRandomEnemyType(Maze maze, Random rng, Point cell, Player targetPlayer) {
+        float roll = rng.nextFloat();
+
+        // 50% MutantWorker, 25% RobotGuard, 25% FlyingDrone
+        if (roll < 0.50f) {
+            return new MutantWorker(new Vector2(cell.x * maze.getTileSize(), cell.y * maze.getTileSize()), 100f, targetPlayer);
+        }
+
+        Array<Vector2> patrol = buildSimplePatrol(maze, rng, cell);
+        if (patrol.size < 2) return null;
+
+        Vector2 spawn = new Vector2(cell.x * maze.getTileSize(), cell.y * maze.getTileSize());
+        if (roll < 0.75f) {
+            return new RobotGuard(spawn, 60f, patrol, targetPlayer);
+        }
+        return new FlyingDrone(spawn, 100f, patrol, targetPlayer);
+    }
+
+    private Array<Vector2> buildSimplePatrol(Maze maze, Random rng, Point cell) {
+        Array<Vector2> patrol = new Array<>(2);
+
+        int[][] dirs = new int[][] { {1,0}, {-1,0}, {0,1}, {0,-1} };
+        List<Point> candidates = new ArrayList<>();
+        for (int[] d : dirs) {
+            int nx = cell.x + d[0];
+            int ny = cell.y + d[1];
+            if (!maze.inBounds(nx, ny)) continue;
+            if (maze.getTile(nx, ny) != Tiles.FLOOR) continue;
+            candidates.add(new Point(nx, ny));
+        }
+
+        int tile = maze.getTileSize();
+        Vector2 a = new Vector2(cell.x * tile, cell.y * tile);
+        patrol.add(a);
+
+        if (candidates.isEmpty()) {
+            patrol.add(new Vector2(a));
+            return patrol;
+        }
+
+        Point b = candidates.get(rng.nextInt(candidates.size()));
+        patrol.add(new Vector2(b.x * tile, b.y * tile));
+        return patrol;
     }
 
     // Helpers

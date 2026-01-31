@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Stage;
@@ -23,8 +24,6 @@ import de.tum.cit.fop.maze.ui.DevConsole;
 public class Hud {
 
     // --- CONFIG ---
-    private static final int HEARTS_PER_ROW = 5;
-    private final Table heartsGrid;
     private static final float TILE_SIZE = 32f;
     private static final float NOTIF_DURATION = 3.0f;
 
@@ -34,22 +33,25 @@ public class Hud {
 
     // --- TEXTURES ---
     private final Texture pixelTexture;
-    private final Texture heartTexture;
+    private final Texture keyIconTexture;
     private final Texture arrowTexture;
 
     // --- UI ELEMENTS ---
-    private final java.util.ArrayList<Image> heartImages = new java.util.ArrayList<>();
-
     private final Label floorLabel;
     private final Label hintLabel;
-    private final Label keyLabel;
+    private final Image keyIcon;
 
     // ✅ NEW: coins
     private final Label coinsLabel;
+    private final Label damageLabel;
+    private final Label statsLabel;
+    private final Label multLabel;
 
     private final Label levelLabel;
     private final ProgressBar xpBar;
     private final Label xpTextLabel;
+    private final ProgressBar hpBar;
+    private final Label hpTextLabel;
 
     private final Label notificationLabel;
 
@@ -64,7 +66,7 @@ public class Hud {
     private final Label bossLabel;
     private final ProgressBar bossHpBar;
 
-    // Boss shake
+    // Boss sha
     private float lastBossRatio = -1f;
     private boolean bossShakeEnabled = true;
 
@@ -73,6 +75,8 @@ public class Hud {
 
     // Timer for notifications
     private float messageTimer = 0f;
+    private float hintMaxTiles = 50f;
+    private Rectangle exitRoomWorldRect = null;
 
     // Console
     private final DevConsole devConsole;
@@ -89,8 +93,8 @@ public class Hud {
         pixelTexture = new Texture(pm);
         pm.dispose();
 
-        heartTexture = new Texture("heart.png");
         arrowTexture = new Texture("arrow.png");
+        keyIconTexture = new Texture("key.png");
 
         Drawable panelBg = new TextureRegionDrawable(new TextureRegion(pixelTexture))
                 .tint(new Color(0f, 0f, 0f, 0.55f));
@@ -100,26 +104,43 @@ public class Hud {
         // =========================
         Table topLeft = new Table();
         topLeft.setBackground(panelBg);
-        topLeft.pad(8);
+        topLeft.pad(6);
         topLeft.left().top();
 
-        heartsGrid = new Table();
-        heartsGrid.left().top();
-        topLeft.add(heartsGrid).left().row();
-
-
         coinsLabel = new Label("Coins: 0", skin); // ✅ new
-        keyLabel = new Label("Key: NO", skin);
+        damageLabel = new Label("DMG: bullet 0 | melee 0", skin);
+        statsLabel = new Label("Stats: STR 5 | SPD 5", skin);
+        multLabel = new Label("Mult: DMG x1.00 | SPD x1.00", skin);
         floorLabel = new Label("Floor: 1", skin);
+        keyIcon = new Image(keyIconTexture);
+        keyIcon.setVisible(false);
+        keyIcon.setSize(16, 16);
 
-        topLeft.add(heartsGrid).left().row();
-        topLeft.add(coinsLabel).left().padTop(4).row(); // ✅ under hearts
-        topLeft.add(keyLabel).left().padTop(2).row();
+        ProgressBar.ProgressBarStyle hpStyle = new ProgressBar.ProgressBarStyle();
+        hpStyle.background = new TextureRegionDrawable(new TextureRegion(pixelTexture))
+                .tint(new Color(0.2f, 0f, 0f, 0.8f));
+        hpStyle.knobBefore = new TextureRegionDrawable(new TextureRegion(pixelTexture))
+                .tint(Color.RED);
+
+        hpBar = new ProgressBar(0f, 1f, 0.001f, false, hpStyle);
+        hpBar.setValue(1f);
+
+        hpTextLabel = new Label("HP: 0 / 0", skin);
+        hpTextLabel.setColor(Color.SALMON);
+
+        Table hpRow = new Table();
+        hpRow.left().top();
+        hpRow.add(hpBar).width(140).height(10).left();
+        hpRow.add(keyIcon).size(16, 16).left().padLeft(6);
+        topLeft.add(hpRow).left().row();
+        topLeft.add(hpTextLabel).left().padTop(2).row();
+
+        topLeft.add(coinsLabel).left().padTop(4).row();
         topLeft.add(floorLabel).left().padTop(2);
 
         Table topLeftWrap = new Table();
         topLeftWrap.setFillParent(true);
-        topLeftWrap.top().left().pad(10);
+        topLeftWrap.top().left().pad(4);
         topLeftWrap.add(topLeft);
         stage.addActor(topLeftWrap);
 
@@ -185,11 +206,14 @@ public class Hud {
         bottomLeft.add(levelLabel).left().row();
         bottomLeft.add(xpBar).width(260).height(10).left().padTop(4).row();
         bottomLeft.add(xpTextLabel).left().padTop(2).row();
-        bottomLeft.add(hintLabel).left().padTop(6);
+        bottomLeft.add(hintLabel).left().padTop(6).row();
+        bottomLeft.add(damageLabel).left().padTop(6).row();
+        bottomLeft.add(statsLabel).left().padTop(2).row();
+        bottomLeft.add(multLabel).left().padTop(2);
 
         Table bottomLeftWrap = new Table();
         bottomLeftWrap.setFillParent(true);
-        bottomLeftWrap.bottom().left().pad(10);
+        bottomLeftWrap.bottom().left().pad(6);
         bottomLeftWrap.add(bottomLeft);
         stage.addActor(bottomLeftWrap);
 
@@ -203,7 +227,7 @@ public class Hud {
 
         Table topRightWrap = new Table();
         topRightWrap.setFillParent(true);
-        topRightWrap.top().right().pad(10);
+        topRightWrap.top().right().pad(6);
         topRightWrap.add(arrow).size(80, 80);
         stage.addActor(topRightWrap);
 
@@ -216,7 +240,7 @@ public class Hud {
 
         Table bottomRightWrap = new Table();
         bottomRightWrap.setFillParent(true);
-        bottomRightWrap.bottom().right().pad(10);
+        bottomRightWrap.bottom().right().pad(6);
         bottomRightWrap.add(minimapContainer);
         stage.addActor(bottomRightWrap);
 
@@ -230,9 +254,10 @@ public class Hud {
 
         Table notifWrap = new Table();
         notifWrap.setFillParent(true);
-        notifWrap.top().right().pad(100, 10, 10, 10);
+        notifWrap.top().right().pad(90, 6, 6, 6);
         notifWrap.add(notificationLabel);
         stage.addActor(notifWrap);
+
 
         // Console
         devConsole = new DevConsole(skin, (MazeRunnerGame) Gdx.app.getApplicationListener());
@@ -255,17 +280,30 @@ public class Hud {
      * Call this every frame.
      */
     public void update(Player player) {
-        // Hearts (map 0..100 lives into 0..5 hearts)
-        int currentHearts = (int) Math.ceil(player.getHp() / 2f);
-        int maxHearts = player.getMaxHearts();
-        rebuildHeartsGrid(currentHearts, maxHearts);
+        int hp = player.getHp();
+        int maxHp = player.getMaxHp();
+        float hpRatio = (maxHp <= 0) ? 0f : (hp / (float) maxHp);
+        hpBar.setValue(MathUtils.clamp(hpRatio, 0f, 1f));
+        hpTextLabel.setText("HP: " + hp + " / " + maxHp);
 
 
         // ✅ Coins text
         coinsLabel.setText("Coins: " + player.getCoins());
 
-        // Key text
-        keyLabel.setText(player.hasKey() ? "Key: YES" : "Key: NO");
+        // Damage + stats + gambling multipliers
+        int strength = player.getStrengthStat();
+        int strengthBonus = Math.max(0, strength - 5);
+        float dmgMult = player.getDamageMult();
+
+        int bulletDamage = Math.max(1, Math.round((5f + strengthBonus) * dmgMult));
+        int meleeDamage = Math.max(1, Math.round((1f + strengthBonus * 0.6f) * dmgMult));
+
+        damageLabel.setText("DMG: bullet " + bulletDamage + " | melee " + meleeDamage);
+        statsLabel.setText("Stats: STR " + player.getStrengthStat() + " | SPD " + player.getSpeedStat());
+        multLabel.setText(String.format("Mult: DMG x%.2f | SPD x%.2f",
+                player.getDamageMult(), player.getBonusSpeedMult()));
+
+        keyIcon.setVisible(player.hasKey());
 
         // Level + XP
         levelLabel.setText("LEVEL " + player.getPlayerLevel());
@@ -308,20 +346,26 @@ public class Hud {
         float px = player.getX() + 16f;
         float py = player.getY() + 16f;
 
+        if (exitRoomWorldRect != null && exitRoomWorldRect.contains(px, py)) {
+            hintLabel.setText("Hint: BOILING");
+            hintLabel.setColor(1f, 0f, 0f, 1f);
+            return;
+        }
+
         float dx = exitX - px;
         float dy = exitY - py;
 
         float distWorld = (float) Math.sqrt(dx * dx + dy * dy);
         float distTiles = distWorld / TILE_SIZE;
 
+        float maxTiles = Math.max(20f, hintMaxTiles);
         String text;
-        if (distTiles > 30f) text = "Cold";
-        else if (distTiles > 18f) text = "Cool";
-        else if (distTiles > 10f) text = "Warm";
-        else if (distTiles > 5f) text = "Hot";
+        if (distTiles > maxTiles * 0.80f) text = "Cold";
+        else if (distTiles > maxTiles * 0.55f) text = "Cool";
+        else if (distTiles > maxTiles * 0.30f) text = "Warm";
+        else if (distTiles > maxTiles * 0.15f) text = "Hot";
         else text = "BOILING";
 
-        float maxTiles = 25f;
         float t = 1f - MathUtils.clamp(distTiles / maxTiles, 0f, 1f);
 
         float r = t;
@@ -366,6 +410,14 @@ public class Hud {
         this.exitX = x;
         this.exitY = y;
         this.hasExitTarget = true;
+    }
+
+    public void setHintMaxTiles(float tiles) {
+        hintMaxTiles = Math.max(20f, tiles);
+    }
+
+    public void setExitRoomWorldRect(Rectangle rect) {
+        this.exitRoomWorldRect = rect;
     }
 
     public void clearExitTarget() {
@@ -421,28 +473,6 @@ public class Hud {
         ));
     }
 
-    private void ensureHeartImages(int needed) {
-        while (heartImages.size() < needed) {
-            heartImages.add(new Image(new TextureRegion(heartTexture)));
-        }
-    }
-
-    private void rebuildHeartsGrid(int currentHearts, int maxHearts) {
-        heartsGrid.clearChildren();
-
-        ensureHeartImages(maxHearts);
-
-        for (int i = 0; i < maxHearts; i++) {
-            Image img = heartImages.get(i);
-            img.setVisible(i < currentHearts);
-
-            heartsGrid.add(img).size(16, 16).padRight(4).padBottom(4);
-
-            if ((i + 1) % HEARTS_PER_ROW == 0) heartsGrid.row();
-        }
-    }
-
-
     public void setMinimapActor(Actor minimapActor, float width, float height) {
         minimapContainer.clearChildren();
         minimapContainer.add(minimapActor).size(width, height);
@@ -459,7 +489,7 @@ public class Hud {
     public void dispose() {
         stage.dispose();
         pixelTexture.dispose();
-        heartTexture.dispose();
         arrowTexture.dispose();
+        keyIconTexture.dispose();
     }
 }

@@ -422,7 +422,7 @@ public class Boss {
     }
 
     private void clampToBossRoom(Vector2 worldPos) {
-        int padTiles = 3;
+        int padTiles = 5;
 
         float minX = (bossRoom.x() + padTiles) * TILE;
         float minY = (bossRoom.y() + padTiles) * TILE;

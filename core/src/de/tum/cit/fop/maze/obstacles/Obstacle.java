@@ -28,20 +28,6 @@ public abstract class Obstacle {
     }
 
 
-    // Constructor For Props
-    public Obstacle(Vector2 startWorldPosition, float width, float height, boolean blocksMovement) {
-        this.worldPosition = new Vector2(startWorldPosition);
-        this.collisionBounds = new Rectangle(startWorldPosition.x, startWorldPosition.y, width, height);
-
-        this.damageToPlayer = 0;
-        this.isActive = true;
-        this.activationCooldown = 0f;
-        this.cooldownTimer = 0f;
-        this.wasPlayerInside = false;
-
-        this.blocksMovement = blocksMovement;
-    }
-
     // Check collision with player bounds
     public boolean intersectsPlayer(Rectangle playerBounds) {
         return collisionBounds.overlaps(playerBounds);

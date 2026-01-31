@@ -26,6 +26,8 @@ public class CombatSystem {
 
     private long floorHazardSoundId = -1;
     private boolean floorHazardSoundPlaying = false;
+    private boolean wasPlayerAttacking = false;
+    private final java.util.HashSet<Enemy> meleeHitThisSwing = new java.util.HashSet<>();
 
     public CombatSystem() {}
 
@@ -197,6 +199,11 @@ public class CombatSystem {
         // -------------------------
         // 5) ENEMIES (touch dmg + melee hit)
         // -------------------------
+        if (!wasPlayerAttacking && player.isAttacking()) {
+            meleeHitThisSwing.clear();
+        }
+        wasPlayerAttacking = player.isAttacking();
+
         Rectangle playerHitbox = new Rectangle(player.getX(), player.getY(), 32f, 64f);
         Rectangle playerFeetHitbox = new Rectangle(player.getX(), player.getY(), 32f, 8f);
 
@@ -233,7 +240,10 @@ public class CombatSystem {
                     && player.getAttackHitbox() != null
                     && player.getAttackHitbox().overlaps(enemy.getCollisionBox())) {
 
-                enemy.takeDamage(meleeDamage);
+                if (!meleeHitThisSwing.contains(enemy)) {
+                    enemy.takeDamage(meleeDamage);
+                    meleeHitThisSwing.add(enemy);
+                }
 
                 // Rewards: freeze + poison
                 if (player.hasFreezeWeapon()) {

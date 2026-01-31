@@ -36,8 +36,6 @@ import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.ui.SkillWindow;
 import de.tum.cit.fop.maze.util.GridUtils;
 import de.tum.cit.fop.maze.world.*;
-import de.tum.cit.fop.maze.obstacles.PropType;
-import de.tum.cit.fop.maze.obstacles.Prop;
 import de.tum.cit.fop.maze.ui.PauseMenuWindow;
 import de.tum.cit.fop.maze.ui.GameOverWindow;
 
@@ -47,7 +45,6 @@ import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class GameScreen implements Screen {
     // Attributes
@@ -81,9 +78,6 @@ public class GameScreen implements Screen {
     private Player player;
     private List<Enemy> enemies;
     private List<Obstacle> obstacles;
-    private Texture propTilesetTexture;
-    private final Map<PropType, TextureRegion> propSprites = new HashMap<>();
-    private final Map<PropType, Texture> propTextures = new HashMap<>();
     private FileHandle activeLevelFile;
 
     private Hud hud;
@@ -114,7 +108,6 @@ public class GameScreen implements Screen {
     private int enemyCount;
     private int trapCount;
     private int itemCount;
-    private int propCount;
 
     // Lightning trap deferred spawning
     private List<LightningTrap> pendingLightningTraps = new ArrayList<>();
@@ -125,7 +118,6 @@ public class GameScreen implements Screen {
     private static final int[] ENEMIES_PER_LEVEL = {0, 18, 22, 26, 30, 34};
     private static final int[] TRAPS_PER_LEVEL   = {0, 20, 26, 32, 38, 45};
     private static final int[] ITEMS_PER_LEVEL   = {0, 10, 10, 11, 11, 12};
-    private static final int[] PROPS_PER_LEVEL   = {0, 15, 18, 20, 22, 24};
 
     private int clampLevel(int lv) { return Math.max(1, Math.min(5, lv)); }
 
@@ -265,6 +257,9 @@ public class GameScreen implements Screen {
                         long id = pickupSound.play();
                         pickupSound.setVolume(id, game.getPreferences().getSoundVolume());
                     }
+                    if (hud != null) {
+                        hud.showNotification("I found the key.");
+                    }
                 }
             }
 
@@ -367,12 +362,6 @@ public class GameScreen implements Screen {
                 else if (obstacle instanceof FloorHazard hazard) {
                     game.getSpriteBatch().draw(hazard.getSprite(),
                             hazard.getCollisionBox().x, hazard.getCollisionBox().y, 48, 48);
-                } else if (obstacle instanceof Prop prop) {
-                    game.getSpriteBatch().draw(prop.getSprite(),
-                            prop.getCollisionBox().x,
-                            prop.getCollisionBox().y,
-                            prop.getCollisionBox().width,
-                            prop.getCollisionBox().height);
                 }
             }
         }
@@ -479,6 +468,10 @@ public class GameScreen implements Screen {
         // 3) UI now (skill window uses player)
         createPauseMenu();
         createHud();
+        if (hud != null && maze != null) {
+            float diagTiles = (float) Math.hypot(maze.getWidth(), maze.getHeight());
+            hud.setHintMaxTiles(diagTiles * 0.7f);
+        }
 
         // Correct label for each mode
         if (endlessMode) hud.setFloorText("Round: " + floor);
@@ -492,8 +485,6 @@ public class GameScreen implements Screen {
         enemyCount = ENEMIES_PER_LEVEL[lv];
         trapCount  = TRAPS_PER_LEVEL[lv];
         itemCount  = ITEMS_PER_LEVEL[lv];
-        propCount  = PROPS_PER_LEVEL[lv];
-
         for (Room r : rooms) {
             if (r.getType() == RoomType.BOSS) {
                 Gdx.app.log("BOSS", "Boss room: x=" + r.x() + " y=" + r.y() + " w=" + r.w() + " h=" + r.h());
@@ -502,8 +493,7 @@ public class GameScreen implements Screen {
 
         Gdx.app.log("SPAWN", "counts: enemies=" + enemyCount
                 + " traps=" + trapCount
-                + " items=" + itemCount
-                + " props=" + propCount);
+                + " items=" + itemCount);
         // 4) Spawn enemies/items
 
         // Boss only on level 5
@@ -535,8 +525,7 @@ public class GameScreen implements Screen {
 
         Gdx.app.log("SPAWN", "counts: enemies=" + enemyCount
                 + " traps=" + trapCount
-                + " items=" + itemCount
-                + " props=" + propCount);
+                + " items=" + itemCount);
 
 
         initializeEnemiesAndObstacles(runSeed);
@@ -631,12 +620,6 @@ public class GameScreen implements Screen {
         lightningTrapsActivated = false;
 
 
-        // 2) Props (ALLOWED in spawn room) - use propCount instead of 20
-        int effectiveLevel = endlessMode ? floor : level;
-        PropPlacer propPlacer = new PropPlacer();
-        var placedProps = propPlacer.placeProps(maze, propCount, seed, Math.min(effectiveLevel, 5), propSprites);
-        obstacles.addAll(placedProps);
-
         GameState savedState = game.getPendingSaveState();
 
         // 3) Enemies (NOT in spawn room)
@@ -701,9 +684,20 @@ public class GameScreen implements Screen {
         float centerX = mapX + minimapSize / 2f;
         float centerY = mapY + minimapSize / 2f;
 
+        Vector2 scissorBL = new Vector2(mapX, mapY);
+        Vector2 scissorTR = new Vector2(mapX + minimapSize, mapY + minimapSize);
+        uiViewport.project(scissorBL);
+        uiViewport.project(scissorTR);
+        int scissorX = Math.round(scissorBL.x);
+        int scissorY = Math.round(scissorBL.y);
+        int scissorW = Math.round(scissorTR.x - scissorBL.x);
+        int scissorH = Math.round(scissorTR.y - scissorBL.y);
+
         // blending for transparent background
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        Gdx.gl.glEnable(GL20.GL_SCISSOR_TEST);
+        Gdx.gl.glScissor(scissorX, scissorY, scissorW, scissorH);
 
         shapeRenderer.setProjectionMatrix(uiViewport.getCamera().combined);
 
@@ -776,6 +770,8 @@ public class GameScreen implements Screen {
         shapeRenderer.circle(centerX, centerY, 5);
 
         shapeRenderer.end();
+
+        Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
 
         // Border pass
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
@@ -893,21 +889,6 @@ public class GameScreen implements Screen {
             clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/click.mp3"));
         }
 
-        loadPropTexturesForLevel();
-    }
-
-    private void loadPropTexturesForLevel() {
-        for (Texture t : propTextures.values()) t.dispose();
-        propTextures.clear();
-        propSprites.clear();
-
-        for (PropType type : PropType.values()) {
-            Texture tex = new Texture(Gdx.files.internal(type.texturePath));
-            tex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-
-            propTextures.put(type, tex);
-            propSprites.put(type, new TextureRegion(tex));
-        }
     }
 
     private void togglePause() {
@@ -1009,6 +990,9 @@ public class GameScreen implements Screen {
         if (won) {
             int nextLevel = level + 1;
             game.getPreferences().setMaxLevel(nextLevel);
+            if (!endlessMode && level >= 5) {
+                game.markStoryCompleted();
+            }
         }
 
         if (pauseWindow != null) pauseWindow.setVisible(false);
@@ -1110,8 +1094,6 @@ public class GameScreen implements Screen {
         enemyCount = ENEMIES_PER_LEVEL[lv];
         trapCount  = TRAPS_PER_LEVEL[lv];
         itemCount  = ITEMS_PER_LEVEL[lv];
-        propCount  = PROPS_PER_LEVEL[lv];
-
 
         gameCamera = new GameCamera(viewport.getWorldWidth(), viewport.getWorldHeight(), maze.getWidth() * TILE_SIZE, maze.getHeight() * TILE_SIZE);
         gameCamera.setZoom(0.25f);
@@ -1201,6 +1183,14 @@ public class GameScreen implements Screen {
         return null;
     }
 
+    private Room findExitRoom() {
+        if (rooms == null) return null;
+        for (Room r : rooms) {
+            if (r.getType() == RoomType.EXIT) return r;
+        }
+        return null;
+    }
+
 
     @Override public void pause() {}
     @Override public void resume() {}
@@ -1220,12 +1210,7 @@ public class GameScreen implements Screen {
             }
         }
         if (fog != null) fog.dispose();
-        if (propTilesetTexture != null) propTilesetTexture.dispose();
-        propSprites.clear();
         if (mazeRenderer != null) mazeRenderer.dispose();
-        for (Texture t : propTextures.values()) t.dispose();
-        propTextures.clear();
-        propSprites.clear();
         if (bossAnims != null) bossAnims.dispose();
         ObstacleAudioManager.dispose();
     }
@@ -1234,12 +1219,23 @@ public class GameScreen implements Screen {
         Point exit = maze.getExitCell();
         if (exit == null) {
             hud.clearExitTarget();
+            hud.setExitRoomWorldRect(null);
             return;
         }
 
         hud.setExitTarget(exit.x * TILE_SIZE + TILE_SIZE / 2f, exit.y * TILE_SIZE + TILE_SIZE / 2f);
-    }
 
+        Room exitRoom = findExitRoom();
+        if (exitRoom != null) {
+            float rx = exitRoom.x() * TILE_SIZE;
+            float ry = exitRoom.y() * TILE_SIZE;
+            float rw = exitRoom.w() * TILE_SIZE;
+            float rh = exitRoom.h() * TILE_SIZE;
+            hud.setExitRoomWorldRect(new Rectangle(rx, ry, rw, rh));
+        } else {
+            hud.setExitRoomWorldRect(null);
+        }
+    }
 
     private FileHandle getLevelTargetFile(int level) {
         FileHandle dir = Gdx.files.local("maps");
