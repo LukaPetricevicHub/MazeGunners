@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.player;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Camera;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -19,45 +20,25 @@ import java.util.Iterator;
 import java.util.List;
 
 public class Player {
-
-    // --- POSITION ---
+    // Attributes
     private float x;
     private float y;
 
-    // =========================
-    // GAMBLING BUFFS (apply immediately)
-    // =========================
-    private float damageMult = 1.0f;       // affects bullets + melee (CombatSystem must use)
-    private float bonusSpeedMult = 1.0f;   // permanent-ish speed buff (always applied)
+    private float damageMult = 1.0f;
+    private float bonusSpeedMult = 1.0f;
 
-    // Shoes: trap immunity
-    // Gloves: knockback enemies
     private boolean hasShoes = false;
     private boolean hasGloves = false;
 
-    // =========================
-    // NEW: SLOTS STATS + HIDDEN ITEMS (persisted)
-    // =========================
-    private int strengthStat = 5; // 1..10
-    private int speedStat = 5;    // 1..10
+    private int strengthStat = 5;
+    private int speedStat = 5;
     private boolean hasFreezeWeapon = false;
     private boolean hasPoisonKnuckles = false;
-
-    // =========================
-    // STATS
-    // =========================
-
-    // =========================
-    // HP / HEARTS SYSTEM
-    // =========================
-    // Each heart = 2 HP
     private int hp;
 
-    // Start game with 5 hearts => 10 HP
     private static final int BASE_HEARTS = 5;
     private static final int HP_PER_HEART = 2;
 
-    // Permanent hearts bonus (from Progression) - counts as extra hearts
     private int permanentHeartsBonus = 0;
 
 
@@ -98,6 +79,8 @@ public class Player {
     private final Animation<TextureRegion> shootUpAnim;
     private final Animation<TextureRegion> shootDownAnim;
     private boolean shooting = false;
+    private Sound shootSound;
+
 
     // Powerups
     private boolean isShielded = false;
@@ -117,7 +100,7 @@ public class Player {
     private int skillSpeedLevel = 0;
     private int skillHealthLevel = 0;
 
-    // --- COMBAT & WEAPONS ---
+    // Combat and weapons
     private boolean hasGun = false;
 
     private boolean isAttacking = false;
@@ -131,7 +114,7 @@ public class Player {
     // Direction
     private final Vector2 facingDirection = new Vector2(0, -1);
 
-    // FLOOR HAZARD EFFECT
+    // Floor hazard effect
     private float hazardWallDamageTimer = 0f;
     private static final int HAZARD_WALL_DAMAGE = 1;
     private float controlMultiplier = 1f;
@@ -157,7 +140,7 @@ public class Player {
     private final List<Bullet> bullets = new ArrayList<>();
     private final TextureRegion bulletRegion;
 
-    // --- SKILL FLAGS ---
+    // Skill flags
     private boolean skillRapidFire = false;
     private boolean skillShotgun = false;
     private boolean skillPiercing = false;
@@ -194,11 +177,8 @@ public class Player {
         boolean isBlocked(Rectangle playerRect);
     }
 
-    // --- CONSTRUCTOR ---
-    public Player(float startX, float startY, Progression progression,
-                  Animation<TextureRegion> down, Animation<TextureRegion> up,
-                  Animation<TextureRegion> left, Animation<TextureRegion> right,
-                  MazeRunnerGame game) {
+    // Constructor
+    public Player(float startX, float startY, Progression progression, Animation<TextureRegion> down, Animation<TextureRegion> up, Animation<TextureRegion> left, Animation<TextureRegion> right, MazeRunnerGame game) {
 
         this.x = startX;
         this.y = startY;
@@ -215,6 +195,8 @@ public class Player {
         this.shootDownAnim = game.getShootDownAnim();
 
         this.bulletRegion = game.getBulletRegion();
+        this.shootSound = Gdx.audio.newSound(Gdx.files.internal("audio/PlayerShooting.wav"));
+
 
         this.progression = progression;
 
@@ -225,14 +207,12 @@ public class Player {
             this.damageMult = this.progression.getPermanentDamageMult();
             this.bonusSpeedMult = this.progression.getPermanentSpeedMult();
 
-            // NEW (slots stats + hidden items)
             this.strengthStat = this.progression.getPermanentStrength();
             this.speedStat = this.progression.getPermanentSpeedStat();
             this.hasFreezeWeapon = this.progression.hasFreezeWeapon();
             this.hasPoisonKnuckles = this.progression.hasPoisonKnuckles();
         }
 
-        // Clamp to avoid any “locked out” nonsense
         this.damageMult = MathUtils.clamp(this.damageMult, 0.5f, 3.0f);
         this.bonusSpeedMult = MathUtils.clamp(this.bonusSpeedMult, 0.5f, 3.0f);
         this.strengthStat = MathUtils.clamp(this.strengthStat, 1, 10);
@@ -248,7 +228,6 @@ public class Player {
 
         this.permanentHeartsBonus = game.getProgression().getPermanentHearts();
 
-        // also re-sync in case stats were changed in gambling
         this.strengthStat = MathUtils.clamp(game.getProgression().getPermanentStrength(), 1, 10);
         this.speedStat = MathUtils.clamp(game.getProgression().getPermanentSpeedStat(), 1, 10);
         this.hasFreezeWeapon = game.getProgression().hasFreezeWeapon();
@@ -258,7 +237,7 @@ public class Player {
         if (hp > max) hp = max;
     }
 
-    // --- MAIN UPDATE LOOP ---
+    // Main update loop
     public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker, Camera camera) {
         updateTimers(dt);
 
@@ -409,15 +388,10 @@ public class Player {
 
         boolean run = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT);
 
-        // NOTE: speedStat influences base walk speed lightly (optional but sensible)
-        float statSpeedBonus = (speedStat - 5) * 15f; // -60..+75 approx
 
-        float currentSpeed =
-                (getWalkSpeed() + statSpeedBonus)
-                        * (run ? RUN_MULTIPLIER : 1f)
-                        * speedMultiplier
-                        * bonusSpeedMult
-                        * controlMultiplier;
+        float statSpeedBonus = (speedStat - 5) * 15f;
+
+        float currentSpeed = (getWalkSpeed() + statSpeedBonus) * (run ? RUN_MULTIPLIER : 1f) * speedMultiplier * bonusSpeedMult * controlMultiplier;
 
         float move = currentSpeed * dt;
 
@@ -518,9 +492,7 @@ public class Player {
         return new Rectangle(px, py, WIDTH, HEIGHT);
     }
 
-    // =========================
-    // ATTACK (melee)
-    // =========================
+    // Close combat logic
     public boolean attack() {
         if (attackCooldownTimer <= 0 && !isAttacking) {
             isAttacking = true;
@@ -540,9 +512,7 @@ public class Player {
     public boolean isAttacking() { return isAttacking; }
     public Rectangle getAttackHitbox() { return attackHitbox; }
 
-    // =========================
-    // BULLETS
-    // =========================
+    // Bullets
     private void spawnBullet(Camera camera) {
         if (!hasGun) return;
 
@@ -555,6 +525,8 @@ public class Player {
         Vector2 target = new Vector2(mousePos.x, mousePos.y);
 
         bullets.add(new Bullet(cx, cy, target.x, target.y));
+
+        shootSound.play(0.7f);
 
         if (skillShotgun) {
             Vector2 aimVector = new Vector2(target.x - cx, target.y - cy);
@@ -605,9 +577,8 @@ public class Player {
         }
     }
 
-    // =========================
-    // DAMAGE / TRAPS / LASER
-    // =========================
+
+    // Dmg, traps and laser
     public void takeDamage(int amount) {
         if (godMode || isShielded || invulnerable) return;
 
@@ -654,9 +625,7 @@ public class Player {
         return 1f;
     }
 
-    // =========================
-    // DRAW
-    // =========================
+    // Player render
     public void draw(SpriteBatch batch) {
         for (Bullet b : bullets) b.draw(batch, bulletRegion);
 
@@ -686,9 +655,7 @@ public class Player {
         batch.setColor(oldColor);
     }
 
-    // =========================
-    // POWERUPS / STATUS
-    // =========================
+    // powerups
     public void activateSpeedBoost(float duration, float multiplier) {
         this.speedTimer = duration;
         this.speedMultiplier = multiplier;
@@ -769,9 +736,7 @@ public class Player {
         permanentSpeed = MathUtils.clamp(permanentSpeed + delta, 0, 10);
     }
 
-    // =========================
-    // GAMBLING BUFF API
-    // =========================
+    // Gambling buff
     public float getDamageMult() { return damageMult; }
 
     public void addDamageMult(float delta) {
@@ -800,9 +765,7 @@ public class Player {
         return hasGloves ? 250f : 0f;
     }
 
-    // =========================
-    // NEW: SLOTS STATS + HIDDEN ITEMS API
-    // =========================
+    // Slot stats
     public int getStrengthStat() { return strengthStat; }
     public int getSpeedStat() { return speedStat; }
 
@@ -832,9 +795,7 @@ public class Player {
         if (progression != null) progression.setHasPoisonKnuckles(true);
     }
 
-    // =========================
-    // COINS (persisted)
-    // =========================
+    // Coins
     public void addCoins(int amount) {
         if (amount <= 0) return;
         coins = Math.max(0, coins + amount);
@@ -849,12 +810,9 @@ public class Player {
         return true;
     }
 
-    // =========================
-    // GETTERS / SETTERS
-    // =========================
+    // Getters & Setters
     public int getCoins() { return coins; }
 
-    // UI hearts (you can change this later; currently this is just UI)
     public int getHeartsCount() {
         return MathUtils.clamp((int) Math.ceil(hp / (float) HP_PER_HEART), 0, getMaxHearts());
     }
@@ -879,29 +837,22 @@ public class Player {
         setHp(this.hp + amount);
     }
 
-    // If you still want a “+1 heart container” effect in-game:
     public void addHeartContainer(int hearts) {
         if (hearts <= 0) return;
-        // increase permanent hearts bonus *for this run only*
         permanentHeartsBonus += hearts;
-        // optionally fill the new HP
         hp = getMaxHp();
     }
 
     public int getLives() {
-        return getHp(); // store hp in the old "lives" field everywhere
+        return getHp();
     }
 
     public void setLives(int lives) {
         setHp(lives);
     }
 
-    /**
-     * Old code called addLife() when picking up a heart.
-     * Since 1 heart = 2 HP in your new system, addLife() should heal 2 HP.
-     */
     public void addLife() {
-        healHp(HP_PER_HEART); // +2 hp
+        healHp(HP_PER_HEART);
     }
     public void setPlayerLevel(int level) { this.playerLevel = Math.max(1, level); }
     public int getPlayerLevel() { return playerLevel; }
@@ -953,6 +904,8 @@ public class Player {
     public void unlockRapidFire() { skillRapidFire = true; }
     public void unlockShotgun() { skillShotgun = true; }
     public void unlockPiercing() { skillPiercing = true; }
+    public void dispose() {if (shootSound != null) shootSound.dispose();}
+
 
     public void unlockDash() { skillDash = true; }
     public void unlockGhost() { skillGhost = true; }

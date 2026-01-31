@@ -34,7 +34,6 @@ public final class ObstacleAudioManager {
 
         long id = lightningTrapSound.play(1f);
 
-        // Stop after 1.5 seconds
         Timer.schedule(new Timer.Task() {
             @Override
             public void run() {

@@ -17,9 +17,6 @@ import de.tum.cit.fop.maze.player.Player;
 
 public class FlyingDrone extends Enemy {
 
-    // --- HP ---
-    private static final int MAX_HP = 8; // tweak per enemy type
-
     public static final float RENDER_WIDTH  = 32f;
     public static final float RENDER_HEIGHT = 32f;
 
@@ -33,6 +30,8 @@ public class FlyingDrone extends Enemy {
 
     private boolean attacking = false;
     private float attackTimer = 0f;
+
+    private static final int MAX_HP = 8;
 
     private final Array<DroneLaser> lasers = new Array<>();
     private float laserLockTime = 0f;
@@ -79,7 +78,6 @@ public class FlyingDrone extends Enemy {
     public FlyingDrone(Vector2 startWorldPosition, float movementSpeed, Array<Vector2> patrolWorldPositions, Player targetPlayer) {
         super(startWorldPosition, movementSpeed, new PatrolBehavior(patrolWorldPositions), targetPlayer);
 
-        // ✅ health init from Enemy base
         initHp(MAX_HP);
 
         patrolPoints = new Array<>(patrolWorldPositions);
@@ -148,11 +146,11 @@ public class FlyingDrone extends Enemy {
         boolean playerInRange = dist2 <= chaseRadius * chaseRadius;
 
         if (playerInRange) {
-            if (activeBehavior.getType() != BehaviorStateType.CHASE) {
+            if(activeBehavior.getType() != BehaviorStateType.CHASE) {
                 snapToCenterOnChase = true;
                 setCurrentBehavior(createChaseBehavior());
             }
-        } else {
+        } else{
             if (activeBehavior.getType() == BehaviorStateType.CHASE) {
                 snapToCenterOnReturn = true;
                 setCurrentBehavior(new ReturnToPatrolBehavior());
@@ -170,7 +168,6 @@ public class FlyingDrone extends Enemy {
         return new PatrolBehavior(patrolPoints);
     }
 
-    // ✅ REQUIRED BY ReturnToPatrolBehavior
     public Vector2 getClosestPatrolPoint() {
         Vector2 pos = getPosition();
         Vector2 closest = patrolPoints.first();
@@ -186,7 +183,6 @@ public class FlyingDrone extends Enemy {
         return closest;
     }
 
-    // ✅ REQUIRED BY ReturnToPatrolBehavior
     public BehaviorState createPatrolBehavior() {
         return new PatrolBehavior(patrolPoints);
     }
@@ -199,13 +195,13 @@ public class FlyingDrone extends Enemy {
             deathTimer += deltaTime;
 
             if (!deathSoundPlayed) {
-                if (deathSound != null) deathSound.play(1f);
+                if(deathSound != null) deathSound.play(1f);
                 deathSoundPlayed = true;
             }
 
-            if (deathAnim.isAnimationFinished(deathTimer)) {
+            if (deathAnim.isAnimationFinished(deathTimer))
                 finalizeDeath();
-            }
+
             return;
         }
 
@@ -226,7 +222,6 @@ public class FlyingDrone extends Enemy {
 
         animationTimer += deltaTime;
 
-        // ✅ REQUIRED: was missing in my broken version
         if (isPlayerInAttackRange()) {
             float dist2 = getPosition().dst2(getPlayerPosition());
 
@@ -297,7 +292,7 @@ public class FlyingDrone extends Enemy {
         if (Math.abs(dx) > Math.abs(dy)) {
             if (dx > 0.01f) currentDirection = Direction.RIGHT;
             else if (dx < -0.01f) currentDirection = Direction.LEFT;
-        } else {
+        } else{
             if (dy > 0.01f) currentDirection = Direction.UP;
             else if (dy < -0.01f) currentDirection = Direction.DOWN;
         }
@@ -334,62 +329,51 @@ public class FlyingDrone extends Enemy {
         return HOVER_Y_OFFSETS[frameIndex % HOVER_Y_OFFSETS.length];
     }
 
-    // ✅ REQUIRED: used by CombatSystem
     public Array<DroneLaser> getLasers() {
         return lasers;
     }
 
-    // ✅ REQUIRED: used by CombatSystem
     public boolean isLaserActive() {
         return attacking;
     }
 
-    // ✅ REQUIRED: used by CombatSystem
     public Vector2 getLaserStart() {
         return new Vector2(getX() + getRenderWidth() * 0.5f + LASER_GUN_OFFSET_X, getY() + LASER_GUN_OFFSET_Y);
     }
 
-    // ✅ REQUIRED: used by CombatSystem
     public Vector2 getLaserEnd() {
         if (targetPlayer == null) return getLaserStart();
         return new Vector2(targetPlayer.getX() + 16f, targetPlayer.getY() + 32f);
     }
 
-    // ✅ REQUIRED: used by CombatSystem
     public void increaseLaserLock(float dt) {
         laserLockTime = Math.min(laserLockTime + dt, MAX_LASER_LOCK);
     }
 
-    // ✅ REQUIRED: used by CombatSystem
     public void resetLaserLock() {
         laserLockTime = 0f;
     }
 
-    // ✅ REQUIRED: used by CombatSystem
     public float getLaserCharge() {
         return laserLockTime / MAX_LASER_LOCK;
     }
 
-    // ✅ REQUIRED: used by CombatSystem
     public float getLaserLockTime() {
         return laserLockTime;
     }
 
-    // ✅ REQUIRED: used internally and previously by your code
     private boolean isPlayerInAttackRange() {
         if (targetPlayer == null) return false;
         float dist2 = getPosition().dst2(getPlayerPosition());
         return dist2 <= ATTACK_RADIUS * ATTACK_RADIUS;
     }
 
-    // Start looping laser sound
     private void startLaserSound() {
         if (laserSound == null) return;
         if (laserSoundId != -1) return;
         laserSoundId = laserSound.loop(LASER_VOLUME_MIN);
     }
 
-    // Update laser volume
     private void updateLaserSoundVolume() {
         if (laserSound == null) return;
         if (laserSoundId == -1) return;

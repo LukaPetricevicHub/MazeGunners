@@ -14,10 +14,9 @@ import de.tum.cit.fop.maze.behavior.IdleBehavior;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
-public class MutantWorker extends Enemy {
 
-    // --- HP ---
-    private static final int MAX_HP = 10; // tweak
+
+public class MutantWorker extends Enemy {
 
     // Constants
     private static final float WALK_FRAME_DURATION = 0.12f;
@@ -39,6 +38,8 @@ public class MutantWorker extends Enemy {
     private boolean hitApplied = false;
     private boolean attackSoundPlayed = false;
     private boolean deathSoundPlayed = false;
+
+    private static final int MAX_HP = 10;
 
     private enum Direction { DOWN, LEFT, RIGHT, UP }
     private Direction currentDirection = Direction.DOWN;
@@ -67,7 +68,7 @@ public class MutantWorker extends Enemy {
     public MutantWorker(Vector2 startWorldPosition, float movementSpeed, Player targetPlayer) {
         super(startWorldPosition, movementSpeed, new ChaseBehavior(), targetPlayer);
 
-        initHp(MAX_HP); // ✅ NEW
+        initHp(MAX_HP);
 
         chaseRadius = 250f;
         lastPosition.set(startWorldPosition);
@@ -95,7 +96,7 @@ public class MutantWorker extends Enemy {
 
         if (dying) {
             deathTimer += delta;
-            if (getDeathAnim().isAnimationFinished(deathTimer)) {
+            if(getDeathAnim().isAnimationFinished(deathTimer)) {
                 finalizeDeath();
             }
             return;
@@ -119,7 +120,7 @@ public class MutantWorker extends Enemy {
             return;
         }
 
-        if (attacking) {
+        if(attacking) {
             handleAttackAnimation(delta);
             return;
         }
@@ -170,8 +171,10 @@ public class MutantWorker extends Enemy {
         float animationDuration = attackAnimation.getAnimationDuration();
         float normalizedTime = attackTimer / animationDuration;
 
-        if (!hitApplied && normalizedTime >= HIT_MOMENT)
+        if (!hitApplied && normalizedTime >= HIT_MOMENT) {
             hitApplied = true;
+        }
+
 
         if (attackAnimation.isAnimationFinished(attackTimer)) {
             attacking = false;
@@ -196,7 +199,7 @@ public class MutantWorker extends Enemy {
         getCollisionHandler().move(position, awayVector, delta, maze);
     }
 
-    // Attempt sidestep when blocked (not used, but kept)
+    // Attempt sidestep when blocked
     private void trySideStep(float delta, Maze maze) {
         Vector2 position = getPosition();
         Vector2 playerPosition = getPlayerPosition();
@@ -223,7 +226,7 @@ public class MutantWorker extends Enemy {
 
         if (Math.abs(dx) > Math.abs(dy)) {
             currentDirection = (dx > 0) ? Direction.RIGHT : Direction.LEFT;
-        } else {
+        } else{
             currentDirection = (dy > 0) ? Direction.UP : Direction.DOWN;
         }
     }

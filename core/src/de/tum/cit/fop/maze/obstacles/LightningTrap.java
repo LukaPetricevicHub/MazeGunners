@@ -192,7 +192,7 @@ public class LightningTrap extends Obstacle {
 
         stateTime = 0f;
 
-        ObstacleAudioManager.playLightningTrap(); // sound
+        ObstacleAudioManager.playLightningTrap();
     }
 
 
