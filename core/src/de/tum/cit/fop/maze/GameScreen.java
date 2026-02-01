@@ -1203,10 +1203,10 @@ public class GameScreen implements Screen {
     }
 
     private void centerSettingsWindow() {
-        if (settingsWindow == null || viewport == null) return;
+        if (settingsWindow == null || uiViewport == null) return;
         settingsWindow.setPosition(
-                (viewport.getWorldWidth() - settingsWindow.getWidth()) / 2f,
-                (viewport.getWorldHeight() - settingsWindow.getHeight()) / 2f
+                (uiViewport.getWorldWidth() - settingsWindow.getWidth()) / 2f,
+                (uiViewport.getWorldHeight() - settingsWindow.getHeight()) / 2f - 40f
         );
     }
 
