@@ -15,7 +15,7 @@ import java.util.Collection;
 import de.tum.cit.fop.maze.ui.UiButtons;
 
 /**
- * Modal window that displays a scrollable list of achievements.
+ * Pop-up window listing achievements during gameplay.
  */
 public class AchievementsWindow extends Window {
 

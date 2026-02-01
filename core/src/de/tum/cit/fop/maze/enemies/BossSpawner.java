@@ -43,7 +43,7 @@ public class BossSpawner {
             return null;
         }
 
-        // Pick a random interior tile with padding for boss size (10x10 tiles drawn)
+        
         Random rng = new Random();
         Point tile = randomInteriorWithPadding(bossRoom, rng, 5);
 
@@ -63,7 +63,7 @@ public class BossSpawner {
      * @return Selected room or null if none
      */
     private static Room findBossRoomOrFallbackBiggest(List<Room> rooms) {
-        // Always use the biggest room overall
+        
         Room best = null;
         int bestArea = -1;
 

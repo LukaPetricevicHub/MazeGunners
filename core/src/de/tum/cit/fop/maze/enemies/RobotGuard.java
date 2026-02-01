@@ -21,7 +21,7 @@ import de.tum.cit.fop.maze.player.Player;
 public class RobotGuard extends Enemy {
 
     /** Maximum HP for this enemy type. */
-    private static final int MAX_HP = 15; // tweak
+    private static final int MAX_HP = 15;
 
     /** Render width in world units. */
     public static final float RENDER_WIDTH  = 32f;
@@ -200,7 +200,7 @@ public class RobotGuard extends Enemy {
         t.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
     }
 
-    // Animation
+
     /**
      * Builds an animation from a sprite sheet row.
      *
@@ -296,9 +296,6 @@ public class RobotGuard extends Enemy {
     }
 
     // Update facing from movement
-    /**
-     * Updates facing direction based on movement delta.
-     */
     private void updateDirectionFromMovement() {
         Vector2 pos = getPosition();
         float dx = pos.x - lastPosition.x;
@@ -337,7 +334,7 @@ public class RobotGuard extends Enemy {
     }
 
 
-    // Step back when too close
+
     /**
      * Steps back from the player when too close.
      *
@@ -369,7 +366,7 @@ public class RobotGuard extends Enemy {
         getCollisionHandler().move(pos, dir, deltaTime, maze);
     }
 
-    // Get attack animation
+
     /**
      * Returns the attack animation for the current attack direction.
      *
@@ -436,7 +433,7 @@ public class RobotGuard extends Enemy {
         return false;
     }
 
-    // Decide attack direction
+
     /**
      * Determines attack direction based on player position.
      *

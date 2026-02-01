@@ -19,7 +19,7 @@ public class BossAnimations implements Disposable {
     /** Frame height in pixels. */
     private static final int FRAME_H = 64;
 
-    // Rows 0-7
+
     /** Row index for idle animation. */
     private static final int ROW_IDLE   = 0;
     /** Row index for walk animation. */

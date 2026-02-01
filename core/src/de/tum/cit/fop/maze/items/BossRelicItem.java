@@ -19,7 +19,7 @@ public class BossRelicItem extends Collectable {
     public BossRelicItem(float x, float y) {
         super(x - 16f,
                 y - 16f,
-                "skull.png"  // texture path
+                "skull.png"  
         );
     }
 

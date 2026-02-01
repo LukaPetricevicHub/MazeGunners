@@ -9,9 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.utils.Align;
 
 /**
- * Modal window that displays dialogue text with a typewriter effect.
- *
- * Clicking reveals the full text or closes the window when finished.
+ * Simple dialogue box for narrative text and confirmations.
  */
 public class DialogueWindow extends Window {
 
@@ -55,7 +53,7 @@ public class DialogueWindow extends Window {
             @Override
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
                 handleClick();
-                return true; // consume input so it doesn't pass through
+                return true;
             }
         });
     }

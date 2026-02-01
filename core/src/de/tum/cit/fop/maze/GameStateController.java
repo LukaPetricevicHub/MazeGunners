@@ -18,7 +18,7 @@ public class GameStateController {
         LOST
     }
 
-    // Attributes
+
     private State state = State.RUNNING;
     private float timer = 0f;
     private static final float EXIT_DELAY = 2f;

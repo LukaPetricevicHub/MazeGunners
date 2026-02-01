@@ -63,10 +63,10 @@ public class PatrolBehavior implements BehaviorState {
 
         if (Math.abs(dx) <= ARRIVAL_EPSILON && Math.abs(dy) <= ARRIVAL_EPSILON) {
 
-            // Snap exactly to patrol point
+            
             pos.set(target);
 
-            // Reverse at ends (A <-> B)
+            
             if (index == patrolPoints.size - 1) direction = -1;
             else if (index == 0) direction = 1;
 
@@ -78,11 +78,11 @@ public class PatrolBehavior implements BehaviorState {
         Vector2 velocity = new Vector2();
 
         if (Math.abs(dx) > Math.abs(dy)) {
-            // Horizontal patrol
+            
             velocity.x = Math.signum(dx) * enemy.getSpeed();
             velocity.y = 0f;
         } else {
-            // Vertical patrol
+            
             velocity.x = 0f;
             velocity.y = Math.signum(dy) * enemy.getSpeed();
         }

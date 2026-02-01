@@ -9,7 +9,7 @@ public final class StoryManager {
      * Prevents instantiation of utility class.
      */
     private StoryManager() {
-        // Utility class
+        
     }
 
     /**

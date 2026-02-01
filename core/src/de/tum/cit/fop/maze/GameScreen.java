@@ -68,10 +68,10 @@ import java.util.List;
  * The screen supports both story mode and endless mode gameplay.
  */
 public class GameScreen implements Screen {
-    // Attributes
-    private ShapeRenderer shapeRenderer; // Tool to draw simple shapes
-    private float minimapZoom = 6.0f;    // How "zoomed out" the map is
-    private float minimapSize = 200f;    // Size of the box in pixels (overridden per frame)
+    
+    private ShapeRenderer shapeRenderer; 
+    private float minimapZoom = 6.0f;    
+    private float minimapSize = 200f;    
 
     private final MazeRunnerGame game;
     private final FileHandle levelFile;
@@ -135,13 +135,13 @@ public class GameScreen implements Screen {
     private int trapCount;
     private int itemCount;
 
-    // Minimap exploration (static map, reveal as you move)
+    
     private boolean[][] explored;
     private int exploredW = -1;
     private int exploredH = -1;
     private static final int EXPLORE_RADIUS_TILES = 6;
 
-    // Lightning trap deferred spawning
+    
     private List<LightningTrap> pendingLightningTraps = new ArrayList<>();
     private boolean lightningTrapsActivated = false;
 
@@ -153,6 +153,13 @@ public class GameScreen implements Screen {
 
 
 
+    /**
+     * Creates a game screen for story mode using a specific level file.
+     *
+     * @param game Reference to the main game instance
+     * @param level Story level number
+     * @param levelFile Optional level file, can be null
+     */
     public GameScreen(MazeRunnerGame game, int level, FileHandle levelFile) {
         this(game, level, levelFile, false, level);
     }
@@ -177,6 +184,12 @@ public class GameScreen implements Screen {
         this.viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
     }
 
+    /**
+     * Creates a game screen from a direct map path (local or internal).
+     *
+     * @param game Reference to the main game instance
+     * @param mapPath Path to a .properties map file
+     */
     public GameScreen(MazeRunnerGame game, String mapPath) {
         this.game = game;
 
@@ -215,7 +228,7 @@ public class GameScreen implements Screen {
     @Override
     public void render(float delta) {
 
-        // Input
+        
         if (gameStateController.isRunning() && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyPause())) {
             togglePause();
         }
@@ -224,11 +237,11 @@ public class GameScreen implements Screen {
             hud.getDevConsole().toggle();
         }
 
-        // Story intro (once per level)
+        
         if (!endlessMode && !storyShown && !isPaused && hud != null) {
             storyShown = true;
             storyBlocking = true;
-            int introLevel = endlessMode ? floor : level; // TODO verify correct source for story mode level
+            int introLevel = endlessMode ? floor : level; 
 
             String title = StoryManager.getIntroTitle(introLevel);
             String intro = StoryManager.getIntroText(introLevel);
@@ -258,7 +271,7 @@ public class GameScreen implements Screen {
             cameraInput.update(delta);
         }
 
-        // Game logic
+        
         if (!isPaused && !storyBlocking && gameStateController.isRunning()) {
 
             player.update(delta, maze, game, this::collidesWithBlockingObstacle, gameCamera.getCamera());
@@ -279,7 +292,7 @@ public class GameScreen implements Screen {
                 }
             }
 
-            // Boss HUD sync
+            
             if (boss != null && !boss.isDead()) {
                 hud.setBossVisible(true);
                 hud.setBossHp(boss.getHp(), boss.getMaxHp());
@@ -327,7 +340,7 @@ public class GameScreen implements Screen {
                 game.goToMenu();
             }
 
-            // Item pickup
+            
             if (items != null) {
                 Rectangle playerBounds =
                         new Rectangle(player.getX(), player.getY(), PLAYER_WIDTH, PLAYER_HEIGHT);
@@ -353,7 +366,7 @@ public class GameScreen implements Screen {
                 }
             }
 
-            // Combat
+            
             if (gameStateController.isRunning()) {
 
                 int previousLives = player.getLives();
@@ -361,7 +374,7 @@ public class GameScreen implements Screen {
                 combatSystem.update(delta, player, bossTarget, boss, maze, enemies, obstacles, gameCamera);
 
 
-                // Boss death => relic drop
+                
                 if (boss != null && boss.isDead() && !bossDropSpawned) {
                     bossDropSpawned = true;
 
@@ -388,7 +401,7 @@ public class GameScreen implements Screen {
 
         gameCamera.update(delta);
 
-        // Render world
+        
         ScreenUtils.clear(0, 0, 0, 1);
 
         game.getSpriteBatch().setProjectionMatrix(gameCamera.getCamera().combined);
@@ -536,7 +549,7 @@ public class GameScreen implements Screen {
             hud.setEndlessInfo("");
         }
 
-        // Exit target for arrow & hints
+        
         updateHudExitTarget();
 
         player.resetStoryItem();
@@ -555,7 +568,7 @@ public class GameScreen implements Screen {
 
         Gdx.app.log("SPAWN", "counts: enemies=" + enemyCount + " traps=" + trapCount + " items=" + itemCount);
 
-        // Boss only on level 5
+        
         boss = null;
         bossTarget = null;
         bossDropSpawned = false;
@@ -608,7 +621,7 @@ public class GameScreen implements Screen {
 
         player = new Player(safeSpawn.x * TILE_SIZE, safeSpawn.y * TILE_SIZE, game.getProgression(), game.getAnimDown(), game.getAnimUp(), game.getAnimLeft(), game.getAnimRight(), game);
 
-        // Check for saved data
+        
         GameState savedState = game.getPendingSaveState();
         if (savedState != null) {
             System.out.println("Loading Saved State...");
@@ -678,7 +691,7 @@ public class GameScreen implements Screen {
     private void initializeEnemiesAndObstacles(long seed) {
         Room spawnRoom = findSpawnRoom();
 
-        // 1) Traps
+        
         ObstaclePlacer placer = new ObstaclePlacer();
 
         obstacles = placer.placeObstacles(maze, trapCount, seed, spawnRoom, false);
@@ -690,9 +703,9 @@ public class GameScreen implements Screen {
 
         GameState savedState = game.getPendingSaveState();
 
-        // 3) Enemies (NOT in spawn room)
+        
         if (savedState != null && savedState.enemies != null && !savedState.enemies.isEmpty()) {
-            // restore enemies
+            
             enemies = new ArrayList<>();
             for (GameState.EnemyState es : savedState.enemies) {
                 Vector2 pos = new Vector2(es.x, es.y);
@@ -708,11 +721,11 @@ public class GameScreen implements Screen {
                 }
             }
         } else {
-            // fresh spawn using per-level enemyCount (NOT baseEnemies)
+            
             enemies = new EnemySpawner().spawnEnemies(maze, rooms, spawnRoom, player, enemyCount, seed);
         }
 
-        // 4) Items & powerups
+        
         if (savedState != null && savedState.items != null && !savedState.items.isEmpty()) {
             items = new ArrayList<>();
             for (GameState.ItemState is : savedState.items) {
@@ -736,7 +749,7 @@ public class GameScreen implements Screen {
                 else if (is.type.equals("ammo")) items.add(new AmmoItem(is.x, is.y));
             }
         } else {
-            items = new ItemSpawner().spawnItems(maze, itemCount); // use per-level
+            items = new ItemSpawner().spawnItems(maze, itemCount); 
         }
 
         ensureKeyItemPresent(seed);
@@ -781,7 +794,7 @@ public class GameScreen implements Screen {
         int scissorW = Math.round(scissorTR.x - scissorBL.x);
         int scissorH = Math.round(scissorTR.y - scissorBL.y);
 
-        // blending for transparent background
+        
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         Gdx.gl.glEnable(GL20.GL_SCISSOR_TEST);
@@ -789,14 +802,14 @@ public class GameScreen implements Screen {
 
         shapeRenderer.setProjectionMatrix(uiViewport.getCamera().combined);
 
-        // Filled pass
+        
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
-        // Background
+        
         shapeRenderer.setColor(0, 0, 0, 0.5f);
         shapeRenderer.rect(mapX, mapY, minimapSize, minimapSize);
 
-        // Explored tiles (rooms + halls only)
+        
         for (int row = 0; row < maze.getHeight(); row++) {
             for (int col = 0; col < maze.getWidth(); col++) {
                 if (!explored[col][row]) continue;
@@ -810,7 +823,7 @@ public class GameScreen implements Screen {
             }
         }
 
-        // Enemies (red) -
+        
         if (enemies != null) {
             shapeRenderer.setColor(Color.RED);
             for (Enemy enemy : enemies) {
@@ -827,7 +840,7 @@ public class GameScreen implements Screen {
             }
         }
 
-        // Boss (purple)
+        
         if (boss != null && !boss.isDead()) {
             shapeRenderer.setColor(Color.PURPLE);
 
@@ -844,7 +857,7 @@ public class GameScreen implements Screen {
             }
         }
 
-        // Player (green)
+        
         shapeRenderer.setColor(Color.GREEN);
         int pTileX = (int) (player.getX() / TILE_SIZE);
         int pTileY = (int) (player.getY() / TILE_SIZE);
@@ -852,7 +865,7 @@ public class GameScreen implements Screen {
         float pcy = mapOriginY + (pTileY + 0.5f) * tileScale;
         shapeRenderer.circle(pcx, pcy, Math.max(2f, tileScale * 0.45f));
 
-        // Entrance (always)
+        
         Point entry = maze.getEntryCell();
         if (entry != null) {
             shapeRenderer.setColor(Color.CYAN);
@@ -862,7 +875,7 @@ public class GameScreen implements Screen {
                     tileScale * 0.6f, tileScale * 0.6f);
         }
 
-        // Exit (only if player has key)
+        
         if (player.hasKey()) {
             Point exit = maze.getExitCell();
             if (exit != null) {
@@ -954,7 +967,7 @@ public class GameScreen implements Screen {
         GameState saved = game.getPendingSaveState();
         boolean loadingSave = (saved != null);
         if (loadingSave && saved.shouldRestorePosition) {
-            storyShown = true; // don't show story when resuming mid-level
+            storyShown = true; 
         }
 
         if (endlessMode) {
@@ -973,7 +986,7 @@ public class GameScreen implements Screen {
         }
 
 
-        // 1) LOAD GAME => REGEN FROM SAVED SEED
+        
         if (loadingSave) {
             long savedSeed = saved.mazeSeed;
             int savedEffectiveLevel = saved.isEndless ? saved.currentFloor : saved.level;
@@ -995,7 +1008,7 @@ public class GameScreen implements Screen {
             return;
         }
 
-        // 2) NEW RUN => LEVEL SELECT
+        
         FileHandle localTarget = getLevelTargetFile(level);
 
         Gdx.app.log("MAZE", "NEW RUN -> generating NEW maze -> " + localTarget.path());
@@ -1081,19 +1094,19 @@ public class GameScreen implements Screen {
     private void createPauseMenu() {
         pauseStage = new Stage(uiViewport, game.getSpriteBatch());
 
-        // 1. Create a dark semi-transparent background texture
+        
         Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        pixmap.setColor(0, 0, 0, 0.6f); // Black with 60% opacity
+        pixmap.setColor(0, 0, 0, 0.6f); 
         pixmap.fill();
         TextureRegionDrawable darkBg = new TextureRegionDrawable(new TextureRegion(new Texture(pixmap)));
         pixmap.dispose();
 
-        // 2. Create a Root Table that fills the screen
+        
         Table rootTable = new Table();
         rootTable.setFillParent(true);
         rootTable.setBackground(darkBg);
 
-        // 3. Create the Skill Window (hidden by default)
+        
         skillWindow = new SkillWindow(game.getSkin(), player, () -> {
             playClickSound();
             skillWindow.setVisible(false);
@@ -1101,7 +1114,7 @@ public class GameScreen implements Screen {
         });
         skillWindow.setVisible(false);
 
-        // 4. Create the Pause Window
+        
         pauseWindow = new PauseMenuWindow(
                 game.getSkin(),
                 () -> { playClickSound(); togglePause(); },
@@ -1117,7 +1130,7 @@ public class GameScreen implements Screen {
                     pauseWindow.setVisible(false);
                     skillWindow.setVisible(true);
 
-                    // Center skill window
+                    
                     skillWindow.setPosition((uiViewport.getWorldWidth() - skillWindow.getWidth()) / 2f, (uiViewport.getWorldHeight() - skillWindow.getHeight()) / 2f);
                 },
                 () -> {
@@ -1160,13 +1173,13 @@ public class GameScreen implements Screen {
         pauseWindow.add(saveButton).fillX().pad(10).row();
         pauseWindow.pack();
 
-        // 5. Add the Pause Window to the Root Table (Centered)
+        
         rootTable.add(pauseWindow);
 
-        // 6. Create Settings Window (hidden)
+        
         createSettingsWindow();
 
-        // 7. Add everything to the Stage
+        
         pauseStage.addActor(rootTable);
         pauseStage.addActor(settingsWindow);
         pauseStage.addActor(skillWindow);

@@ -70,12 +70,12 @@ public class MenuScreen implements Screen {
             }
         });
 
-        // ✅ Gambling is MENU-ONLY (no Player instance)
+
         TextButton gamblingBtn = UiButtons.button("The Casino", game.getSkin());
         gamblingBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                game.goToGambling(); // opens menu-only GamblingScreen
+                game.goToGambling();
             }
         });
 

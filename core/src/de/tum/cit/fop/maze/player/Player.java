@@ -20,11 +20,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/**
- * Core player entity handling movement, combat, progression, and rendering.
- */
 public class Player {
-    // Attributes
     /** Player x-coordinate in world units. */
     private float x;
     /** Player y-coordinate in world units. */
@@ -60,7 +56,6 @@ public class Player {
     private int permanentHeartsBonus = 0;
 
 
-    // Coins (persisted)
     /** Current coin count. */
     private int coins = 0;
     /** Progression data store for persistent stats. */
@@ -79,7 +74,7 @@ public class Player {
     /** Current score. */
     private int score = 0;
 
-    // Status
+
     /** Whether the player is invulnerable. */
     private boolean invulnerable = false;
     /** Remaining invulnerability time. */
@@ -89,18 +84,17 @@ public class Player {
     /** Remaining damage flash time. */
     private float flashTimeLeft = 0f;
 
-    // Movement
     /** Base walk speed in world units per second. */
     private static final float WALK_SPEED_BASE = 300f;
     /** Run speed multiplier. */
     private static final float RUN_MULTIPLIER = 1.7f;
 
     /** Temporary speed multiplier from power-ups and debuffs. */
-    private float speedMultiplier = 1f; // temporary speed powerups + slow debuffs
+    private float speedMultiplier = 1f;
     /** Remaining time for temporary speed boost. */
     private float speedTimer = 0f;
 
-    // Dimensions
+
     /** Player collision width. */
     private static final float WIDTH = 32f;
     /** Player collision height. */
@@ -108,7 +102,7 @@ public class Player {
     /** Collision inset to tighten bounds. */
     private static final float COLLISION_INSET = 2f;
 
-    // Animation - Walking
+
     /** Walking animation facing down. */
     private final Animation<TextureRegion> animDown, animUp, animLeft, animRight;
     /** Idle animation facing down. */
@@ -118,7 +112,7 @@ public class Player {
     /** Accumulated animation time. */
     private float animTime = 0f;
 
-    // Animation - Shooting
+
     /** Shooting animation facing left. */
     private final Animation<TextureRegion> shootLeftAnim;
     /** Shooting animation facing right. */
@@ -162,19 +156,17 @@ public class Player {
     private Sound ouchSound;
 
 
-    // Powerups
+
     /** Whether the player is shielded. */
     private boolean isShielded = false;
     /** Remaining shield duration. */
     private float shieldTimer = 0f;
 
-    // Debug
     /** Whether god mode is enabled. */
     private boolean godMode = false;
     /** Whether noclip is enabled. */
     private boolean noClip = false;
 
-    // RPG / Leveling
     /** Current experience points. */
     private int experience = 0;
     /** Current player level. */
@@ -184,13 +176,11 @@ public class Player {
     /** XP required per level baseline. */
     private static final int XP_PER_LEVEL_BASE = 100;
 
-    // Skills (0 to 5)
     /** Speed skill level. */
     private int skillSpeedLevel = 0;
     /** Health skill level. */
     private int skillHealthLevel = 0;
 
-    // Combat and weapons
     /** Whether the player has a gun. */
     private boolean hasGun = false;
     /** Maximum bullets per clip. */
@@ -214,11 +204,10 @@ public class Player {
     private Rectangle attackHitbox;
 
 
-    // Direction
     /** Last facing direction vector. */
     private final Vector2 facingDirection = new Vector2(0, -1);
 
-    // Floor hazard effect
+
     /** Remaining time of wall damage after hazard slip. */
     private float hazardWallDamageTimer = 0f;
     /** Remaining slide timer. */
@@ -239,7 +228,6 @@ public class Player {
     /** Whether wall damage has been applied for current hazard. */
     private boolean hazardWallDamageUsed = false;
 
-    // Lightning trap visuals/debuff
     /** Whether lightning slow is active. */
     private boolean lightningSlowed = false;
     /** Animation timer for lightning effect. */
@@ -247,7 +235,7 @@ public class Player {
     /** Remaining lightning debuff time. */
     private float lightningDebuffTimer = 0f;
 
-    // Repulse Skill
+
     /** Whether repulse is active this frame. */
     private boolean isRepulsing = false;
     /** Remaining repulse cooldown time. */
@@ -258,13 +246,13 @@ public class Player {
     /** Current facing direction. */
     private Facing currentFacing = Facing.DOWN;
 
-    // Bullets
+
     /** Active bullets fired by the player. */
     private final List<Bullet> bullets = new ArrayList<>();
     /** Texture region for bullet rendering. */
     private final TextureRegion bulletRegion;
 
-    // Skill flags
+
     /** Whether rapid fire is unlocked. */
     private boolean skillRapidFire = false;
     /** Whether shotgun is unlocked. */
@@ -282,7 +270,7 @@ public class Player {
     /** Whether repulse is unlocked. */
     private boolean skillRepulse = false;
 
-    // Dash
+
     /** Whether a dash is currently active. */
     private boolean isDashing = false;
     /** Remaining dash time. */
@@ -298,17 +286,17 @@ public class Player {
     /** Max dash cooldown time. */
     private static final float DASH_COOLDOWN_MAX = 1.0f;
 
-    // Shooting cooldown
+
     /** Remaining time until next allowed shot. */
     private float shootTimer = 0f;
 
-    // Drone laser
+
     /** Accumulated laser damage for fractional ticks. */
     private float laserDamageAccumulator = 0f;
     /** Current laser heat value. */
     private float laserHeat = 0f;
     /** Permanent strength stat (debug). */
-    private int permanentStrength = 5; // starts playable
+    private int permanentStrength = 5;
     /** Permanent speed stat (debug). */
     private int permanentSpeed = 5;
 
@@ -331,7 +319,7 @@ public class Player {
         boolean isBlocked(Rectangle playerRect);
     }
 
-    // Constructor
+
     /**
      * Creates a new player instance with starting position and animations.
      *
@@ -409,7 +397,7 @@ public class Player {
 
     }
 
-    // If permanent hearts updated while running
+
     /**
      * Refreshes permanent progression values while a run is active.
      *
@@ -446,7 +434,7 @@ public class Player {
         this.hp = getMaxHp();
     }
 
-    // Main update loop
+
     /**
      * Updates the player state each frame.
      *
@@ -464,7 +452,7 @@ public class Player {
         if (shootTimer > 0) shootTimer -= dt;
         if (repulseCooldownTimer > 0) repulseCooldownTimer -= dt;
 
-        // Dash
+
         if (isDashing) {
             dashTimer -= dt;
             attemptMove(dashDirection.x * DASH_SPEED * dt, dashDirection.y * DASH_SPEED * dt, maze, game, null);
@@ -487,7 +475,7 @@ public class Player {
         if (hasGun) updateFacingToMouse(camera);
         else updateFacingDirection(game);
 
-        // Sliding
+
         if (isSliding) {
             if (input.dx != 0f || input.dy != 0f) {
                 Vector2 inputVelocity = new Vector2(input.dx / dt, input.dy / dt);
@@ -497,23 +485,23 @@ public class Player {
             moveDy = slideVelocity.y * dt;
         }
 
-        // Dash skill
+
         if (skillDash && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyDash()) && dashCooldown <= 0 && moving) {
             startDash(input.dx, input.dy);
         }
 
-        // Repulse skill
+
         if (skillRepulse && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyRepulse()) && repulseCooldownTimer <= 0) {
             isRepulsing = true;
             repulseCooldownTimer = 5.0f;
         }
 
-        // Melee
+
         if (!isParalyzed() && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyMelee())) {
             attack();
         }
 
-        // Shooting
+
         boolean shootPressed = Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)
                 || Gdx.input.isKeyJustPressed(game.getPreferences().getKeyShoot());
         boolean reloadPressed = Gdx.input.isKeyJustPressed(Input.Keys.R);
@@ -530,7 +518,7 @@ public class Player {
             shooting = false;
         }
 
-        // Anim
+
         if (shooting) selectShootingAnimation();
         else selectWalkAnimation(moving);
 
@@ -545,13 +533,13 @@ public class Player {
             animTime = 0f;
         }
 
-        // Movement
+
         attemptMove(moveDx, moveDy, maze, game, blockChecker);
 
-        // Bullets
+
         updateBullets(dt);
 
-        // Melee window
+
         if (isAttacking) {
             attackTimer -= dt;
             if (attackTimer <= 0) isAttacking = false;
@@ -812,7 +800,7 @@ public class Player {
         return new Rectangle(px, py, WIDTH, HEIGHT);
     }
 
-    // Close combat logic
+
     /**
      * Starts a melee attack if off cooldown.
      *
@@ -850,7 +838,7 @@ public class Player {
      */
     public Rectangle getAttackHitbox() { return attackHitbox; }
 
-    // Bullets
+
     /**
      * Spawns a bullet toward the mouse cursor.
      *
@@ -952,7 +940,7 @@ public class Player {
     }
 
 
-    // Dmg, traps and laser
+
     /**
      * Applies damage to the player if not protected.
      *
@@ -1027,7 +1015,7 @@ public class Player {
         return 1f;
     }
 
-    // Player render
+
     /**
      * Renders the player, weapons, and bullets.
      *
@@ -1213,9 +1201,6 @@ public class Player {
         }
     }
 
-    // =========================
-    // LEVELING
-    // =========================
     /**
      * Adds experience and handles level-ups.
      *
@@ -1300,7 +1285,7 @@ public class Player {
         permanentSpeed = MathUtils.clamp(permanentSpeed + delta, 0, 99);
     }
 
-    // Gambling buff
+
     /**
      * Retrieves the damage multiplier.
      *
@@ -1308,7 +1293,7 @@ public class Player {
      */
     public float getDamageMult() { return damageMult; }
 
-    // Dev override (no clamp, not persisted)
+
     /**
      * Sets the damage multiplier directly without clamping.
      *
@@ -1380,7 +1365,7 @@ public class Player {
         return hasGloves ? 250f : 0f;
     }
 
-    // Slot stats
+
     /**
      * Retrieves the strength stat value.
      *
@@ -1404,7 +1389,7 @@ public class Player {
         if (progression != null) progression.setPermanentStrength(strengthStat);
     }
 
-    // Dev override (no clamp, not persisted)
+
     /**
      * Sets the strength stat directly without clamping.
      *
@@ -1466,7 +1451,6 @@ public class Player {
         if (progression != null) progression.setHasPoisonKnuckles(true);
     }
 
-    // Coins
     /**
      * Adds coins to the player and persists the value.
      *
@@ -1492,7 +1476,7 @@ public class Player {
         return true;
     }
 
-    // Getters & Setters
+
     /**
      * Retrieves current coin count.
      *

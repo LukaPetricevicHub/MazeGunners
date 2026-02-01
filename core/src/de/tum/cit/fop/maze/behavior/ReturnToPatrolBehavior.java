@@ -48,23 +48,23 @@ public class ReturnToPatrolBehavior implements BehaviorState {
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
 
-        // This behavior should only be used for FlyingDrone
+        
         if (!(enemy instanceof FlyingDrone drone))
             return;
 
-        // Current enemy tile
+        
         Point enemyTile = toTile(enemy.getPosition(), maze);
 
-        // Closest patrol point (WORLD SPACE!)
+        
         Vector2 patrolPoint = drone.getClosestPatrolPoint();
 
-        // Tile under the patrol point (ONLY for pathfinding)
+        
         Point targetTile = new Point(
                 (int) (patrolPoint.x / maze.getTileSize()),
                 (int) (patrolPoint.y / maze.getTileSize())
         );
 
-        // Recalculate path if needed
+        
         if (path.isEmpty() || index >= path.size()) {
             path = GridPathfinder.findPath(
                     maze,
@@ -75,11 +75,11 @@ public class ReturnToPatrolBehavior implements BehaviorState {
             index = 0;
         }
 
-        // No path => cannot move
+        
         if (path.isEmpty())
             return;
 
-        // Follow path
+        
         index = SteeringBehavior.followPath(enemy, maze, path, index, deltaTime);
 
         if (index >= path.size()) {

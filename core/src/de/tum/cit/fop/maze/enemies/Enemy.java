@@ -18,7 +18,6 @@ import java.util.List;
  */
 public abstract class Enemy {
 
-    // Attributes
     /** Current world position of the enemy. */
     protected Vector2 worldPosition;
     /** Movement speed in world units per second. */
@@ -45,8 +44,7 @@ public abstract class Enemy {
     /** Whether the enemy has locked aggro and will keep chasing. */
     protected boolean aggroLocked = false;
 
-    // Health
-    /** Current health points. */
+
     protected int health = 3;
     /** Maximum health points. */
     protected int maxHealth = 3;
@@ -57,7 +55,7 @@ public abstract class Enemy {
     private float hitFlashTimer = 0f;
     private static final float HIT_FLASH_DURATION = 0.12f;
 
-    // Status
+
     private boolean frozen = false;
     private float freezeTimer = 0f;
 
@@ -65,13 +63,13 @@ public abstract class Enemy {
     private float poisonDps = 0f;
     private float poisonTickAccumulator = 0f;
 
-    // Stuck handling
+
     private final Vector2 prevPosition = new Vector2();
     private float stuckTimer = 0f;
     private static final float STUCK_TIME_THRESHOLD = 0.4f;
     private static final float MIN_MOVEMENT_EPSILON = 0.5f;
 
-    // Interaction
+
     private final Rectangle interactionRect = new Rectangle();
     /** Extra margin used for interaction box expansion. */
     protected static final float INTERACTION_MARGIN = 2f;
@@ -363,7 +361,7 @@ public abstract class Enemy {
     private void updateStatusEffects(float dt) {
         if (dying) return;
 
-        // Freeze timer
+
         if(frozen) {
             freezeTimer -= dt;
             if (freezeTimer <= 0f) {
@@ -372,13 +370,13 @@ public abstract class Enemy {
             }
         }
 
-        // Poison
+
         if (poisonTimer > 0f) {
             poisonTimer -= dt;
 
             poisonTickAccumulator += poisonDps * dt;
 
-            // deal damage as integer ticks
+
             while (poisonTickAccumulator >= 1f) {
                 takeDamage(1);
                 poisonTickAccumulator -= 1f;
@@ -394,12 +392,7 @@ public abstract class Enemy {
         }
     }
 
-    // Getters
-    /**
-     * Retrieves the current position vector.
-     *
-     * @return world position
-     */
+
     public Vector2 getPosition() { return worldPosition; }
 
     /**
@@ -467,12 +460,7 @@ public abstract class Enemy {
         this.activeBehavior = behavior;
     }
 
-    // Enemy - Enemy col
-    /**
-     * Builds and returns the interaction rectangle.
-     *
-     * @return interaction rectangle
-     */
+
     public Rectangle getInteractionRect() {
         interactionRect.set(worldPosition.x - INTERACTION_MARGIN, worldPosition.y - INTERACTION_MARGIN, getRenderWidth() + INTERACTION_MARGIN * 2, INTERACTION_BODY_HEIGHT + INTERACTION_MARGIN * 2);
         return interactionRect;
@@ -528,7 +516,6 @@ public abstract class Enemy {
         getCollisionHandler().move(pos, correction, deltaTime, maze);
     }
 
-    // Combat lock
     /**
      * Updates combat lock timing and state transitions.
      *

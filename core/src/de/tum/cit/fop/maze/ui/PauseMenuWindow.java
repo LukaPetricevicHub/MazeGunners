@@ -13,6 +13,9 @@ import de.tum.cit.fop.maze.ui.UiButtons;
  * Provides buttons to resume the game, open settings, open the skill tree,
  * or exit back to the main menu.
  */
+/**
+ * Pause menu overlay shown during gameplay.
+ */
 public class PauseMenuWindow extends Window {
 
     /** Callback executed when opening achievements. */
@@ -37,7 +40,7 @@ public class PauseMenuWindow extends Window {
         this.onAchievements = onAchievements;
 
 
-        // RESUME BUTTON
+        
         TextButton resumeBtn = UiButtons.button("Resume", skin);
         resumeBtn.addListener(new ChangeListener() {
             @Override
@@ -47,7 +50,7 @@ public class PauseMenuWindow extends Window {
         });
         this.add(resumeBtn).width(200).pad(10).row();
 
-        // SKILL TREE BUTTON
+        
         TextButton skillsBtn = UiButtons.button("Skill Tree", skin);
         skillsBtn.addListener(new ChangeListener() {
             @Override
@@ -57,7 +60,7 @@ public class PauseMenuWindow extends Window {
         });
         add(skillsBtn).width(200).padBottom(10).row();
 
-        // ACHIEVEMENTS BUTTON
+        
         TextButton achievementsBtn = UiButtons.button("Achievements", skin);
         achievementsBtn.addListener(new ChangeListener() {
             @Override
@@ -67,7 +70,7 @@ public class PauseMenuWindow extends Window {
         });
         add(achievementsBtn).width(200).padBottom(10).row();
 
-        // SETTINGS BUTTON
+        
         TextButton settingsBtn = UiButtons.button("Settings", skin);
         settingsBtn.addListener(new ChangeListener() {
             @Override
@@ -77,7 +80,7 @@ public class PauseMenuWindow extends Window {
         });
         this.add(settingsBtn).width(200).pad(10).row();
 
-        // EXIT BUTTON
+        
         TextButton menuBtn = UiButtons.button("Exit to Menu", skin);
         menuBtn.addListener(new ChangeListener() {
             @Override

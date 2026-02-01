@@ -53,18 +53,18 @@ public class MazeGenerator {
     /** Minimum boss room size in tiles. */
     private static final int BOSS_MIN_SIZE = 16;
 
-    // Level sizes for level=1..5 (index 0 unused)
+    
     private static final int[] LEVEL_W = {0, 80, 80, 90, 90, 100};
     private static final int[] LEVEL_H = {0, 80, 80, 90, 90, 100};
 
-    // Target number of rooms per level (min, max)
+    
     private static final int[][] LEVEL_ROOMS = {
-            {},            // unused (index 0)
-            {12, 14},      // level 1
-            {14, 16},      // level 2
-            {16, 18},      // level 3
-            {18, 20},      // level 4
-            {20, 22}       // level 5
+            {},            
+            {12, 14},      
+            {14, 16},      
+            {16, 18},      
+            {18, 20},      
+            {20, 22}       
     };
 
     /**
@@ -259,7 +259,7 @@ public class MazeGenerator {
         int innerH = mapH - 2;
         double avgLeafArea = (innerW * (double) innerH) / Math.max(1, targetLeaves);
         int dynamicMinLeaf = (int) (Math.sqrt(avgLeafArea) * 0.9);
-        int minLeafFloor = MIN_ROOM + 2 * ROOM_MARGIN; // keep your MIN_LEAF as a floor
+        int minLeafFloor = MIN_ROOM + 2 * ROOM_MARGIN; 
         int minLeaf = clamp(dynamicMinLeaf, minLeafFloor, 22);
 
         List<Leaf> leaves = new ArrayList<>();
@@ -640,7 +640,7 @@ public class MazeGenerator {
                 for (int y = r.y(); y < r.y() + r.h(); y++) {
                     if (!maze.inBounds(x, y)) continue;
                     maze.setTile(x, y, Tiles.FLOOR);
-                    maze.setRoomCell(x, y, true); // room
+                    maze.setRoomCell(x, y, true); 
                 }
             }
         }
@@ -674,7 +674,7 @@ public class MazeGenerator {
                 carveDoorMouthLR(maze, left, y, hallWidth, true);
                 carveDoorMouthLR(maze, right, y, hallWidth, false);
 
-                // doors aligned with wall opening (outside edge)
+                
                 placeDoorBandLRAligned(maze, left, y, hallWidth, true);
                 placeDoorBandLRAligned(maze, right, y, hallWidth, false);
 
@@ -1017,7 +1017,7 @@ public class MazeGenerator {
                 be = new BorderEntryPlan(side, x);
             }
 
-            // reuse the same intersection test you already use for exit
+            
             BorderExitPlan asExit = new BorderExitPlan(be.side, be.coord);
             if (!corridorIntersectsOtherRoom(asExit, spawnRoom, rooms, maze, hallWidth)) {
                 return be;
@@ -1064,7 +1064,7 @@ public class MazeGenerator {
             return new Point(x, 0);
         }
 
-        // BOTTOM
+        
         int x = clamp(be.coord, 1 + hallPad(hallWidth), W - 2 - hallPad(hallWidth));
         for (int y = spawnRoom.y() + spawnRoom.h() - 1; y <= H - 1; y++) carveHorizontalBandExact(maze, x, y, hallWidth);
         for (int dx = lo; dx <= hi; dx++) maze.setTile(x + dx, H - 1, Tiles.SPAWN);
@@ -1205,10 +1205,10 @@ public class MazeGenerator {
         candidates.sort((a, b) -> {
             int sa = Math.min(dist2(a, spawn), dist2(a, exit));
             int sb = Math.min(dist2(b, spawn), dist2(b, exit));
-            return Integer.compare(sb, sa); // descending
+            return Integer.compare(sb, sa); 
         });
 
-        // pick from top slice for variety
+        
         int top = Math.min(Math.max(1, candidates.size() / 4), candidates.size());
         return candidates.get(rng.nextInt(top));
     }
@@ -1379,7 +1379,7 @@ public class MazeGenerator {
             cx1 = x + hi + 1;
             cy0 = 0;
             cy1 = exitRoom.y() + 1;
-        } else { // BOTTOM
+        } else { 
             int x = be.coord;
             cx0 = x + lo;
             cx1 = x + hi + 1;
@@ -1447,7 +1447,7 @@ public class MazeGenerator {
             return new Point(x, 0);
         }
 
-        // BOTTOM
+        
         int x = clamp(be.coord, 1 + hallPad(hallWidth), W - 2 - hallPad(hallWidth));
         for (int y = exitRoom.y() + exitRoom.h() - 1; y <= H - 1; y++) carveHorizontalBandExact(maze, x, y, hallWidth);
         for (int dx = lo; dx <= hi; dx++) maze.setTile(x + dx, H - 1, Tiles.EXIT);
@@ -1502,13 +1502,13 @@ public class MazeGenerator {
      * @return Updated level spec
      */
     private MazeLoader.LevelSpec applyLevelSize(MazeLoader.LevelSpec spec, int level) {
-        // keep your original sizes for 1..5
+        
         if (level <= 5) {
             int lv = clamp(level, 1, 5);
             return new MazeLoader.LevelSpec(LEVEL_W[lv], LEVEL_H[lv], spec.overrides);
         }
 
-        // Endless scaling after 5:
+        
         int extra = (level - 5) * 8;
         int targetW = 100 + extra;
         int targetH = 100 + extra;
@@ -1652,7 +1652,7 @@ public class MazeGenerator {
     public GeneratedMaze generateWithRooms(MazeLoader.LevelSpec spec, int tileSize, long seed, int level) {
         Objects.requireNonNull(spec, "LevelSpec must not be null");
 
-        // We reuse the existing generate logic, but intercept the rooms before returning.
+        
         GenerationCapture capture = new GenerationCapture();
 
         Maze maze = generateInternal(spec, tileSize, seed, level, capture);
@@ -1775,7 +1775,7 @@ public class MazeGenerator {
      * @return Boss room or null
      */
     private Room pickBossRoomNearExitFarFromSpawn(List<Room> rooms, Room spawn, Room exit, Random rng) {
-        // Prefer decent-sized rooms so boss has space
+        
         final int minW = 14;
         final int minH = 14;
 
@@ -1789,7 +1789,7 @@ public class MazeGenerator {
             int dSpawn = dist2(r, spawn);
             int dExit  = dist2(r, exit);
 
-            // Bigger is slightly better; far from spawn and close to exit is the main objective
+            
             float sizeBonus = (r.w() * r.h()) * 0.01f;
             float score = (float)dSpawn - 0.85f * (float)dExit + sizeBonus;
 
@@ -1799,11 +1799,11 @@ public class MazeGenerator {
             }
         }
 
-        // fallback: just biggest non-spawn/non-exit
+        
         if (best == null) {
             best = biggestRoom(rooms);
             if (best == spawn || best == exit) {
-                // find next biggest
+                
                 Room second = null;
                 int bestA = -1;
                 for (Room r : rooms) {

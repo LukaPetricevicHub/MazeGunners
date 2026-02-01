@@ -14,7 +14,6 @@ import com.badlogic.gdx.math.Vector2;
  */
 public abstract class Obstacle {
 
-    // Attributes
     /** World position of the obstacle. */
     protected Vector2 worldPosition;
     /** Collision bounds for the obstacle. */

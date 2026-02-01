@@ -12,7 +12,7 @@ public interface PlayerLike {
      *
      * @return Center position
      */
-    Vector2 getPosition();      // center position
+    Vector2 getPosition();
     /**
      * Retrieves the hitbox of the target.
      *

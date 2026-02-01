@@ -12,28 +12,26 @@ public class GameState {
     /** Current floor in endless mode. */
     public int currentFloor;
 
-    // --- Global Progress ---
-    /** Current level number. */
+
+
     public int level;
     /** Current score value. */
     public int score;
     /** Seed used to generate the maze. */
     public long mazeSeed;
 
-    // --- Player Stats ---
-    /** Remaining player lives. */
+
     public int lives;
     /** Current experience points. */
     public int experience;
 
-    // --- Skills ---
-    /** Speed skill level. */
+
+
     public int skillSpeedLevel;
     /** Health skill level. */
     public int skillHealthLevel;
 
-    // --- Inventory ---
-    /** Whether the player has the gun. */
+
     public boolean hasGun;
     /** Whether the player has the key. */
     public boolean hasKey;
@@ -42,8 +40,9 @@ public class GameState {
     /** Ammo in reserve. */
     public int ammoReserve;
 
-    // --- Position ---
-    /** Player X position in world coordinates. */
+
+
+
     public float playerX;
     /** Player Y position in world coordinates. */
     public float playerY;
@@ -83,7 +82,7 @@ public class GameState {
         /** Enemy Y position. */
         public float y;
         /** Enemy type identifier. */
-        public String type; // "robot", "slime", "drone"
+        public String type;
         /** Optional enemy health value. */
         public int health;
     }
@@ -92,13 +91,8 @@ public class GameState {
      * Serializable item snapshot.
      */
     public static class ItemState {
-        /** Item X position. */
-        public float x;
-        /** Item Y position. */
-        public float y;
-        /** Item type identifier. */
-        public String type; // "gun", "heart", "speed", "shield", "key"
-        /** Item name for story items. */
+        public float x, y;
+        public String type;
         public String name;
     }
 
@@ -117,8 +111,7 @@ public class GameState {
     /** Current story item name. */
     public String storyItemName;
 
-    // --- Run-only gambling buffs ---
-    /** Run-only speed buff value. */
+
     public int runGambleSpeed = 5;
     /** Run-only strength buff value. */
     public int runGambleStrength = 5;
@@ -132,6 +125,7 @@ public class GameState {
     public boolean runGambleFreeze = false;
     /** Run-only poison knuckles flag. */
     public boolean runGamblePoison = false;
+
 
     /**
      * No-argument constructor required for JSON deserialization.

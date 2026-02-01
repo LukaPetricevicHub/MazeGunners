@@ -123,10 +123,10 @@ public class ChaseBehavior implements BehaviorState {
             if (currentPath.isEmpty()) {
                 noPathAvailable = true;
                 noPathRetryTimer = NO_PATH_RETRY_DELAY;
-                return; // HOLD POSITION
+                return; 
             }
 
-            noPathAvailable = false; //?
+            noPathAvailable = false; 
 
 
             if (currentPath.get(0).equals(enemyTile)) {

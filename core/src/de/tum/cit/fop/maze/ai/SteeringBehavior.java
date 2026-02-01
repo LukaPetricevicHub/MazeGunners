@@ -37,14 +37,14 @@ public final class SteeringBehavior {
         if (path == null || currentWaypointIndex >= path.size())
             return currentWaypointIndex;
 
-//        float distToPlayer2 = enemy.getPosition().dst2(enemy.getPlayerPosition());
-//        float attackRadius = enemy.getAttackRadius();
-//
-//        if (attackRadius > 0 && distToPlayer2 <= attackRadius * attackRadius) {
-//            return currentWaypointIndex;
-//        }
 
-        // Stop path-following ONLY when actually attacking
+
+
+
+
+
+
+        
         if (enemy.isAttackingLocked()) {
             return currentWaypointIndex;
         }

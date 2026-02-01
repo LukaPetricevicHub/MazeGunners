@@ -32,7 +32,7 @@ public class PlayerAdapter implements PlayerLike {
      */
     @Override
     public Vector2 getPosition() {
-        // use player center; player sprite is 32x32-ish logically
+        
         return tmp.set(p.getX() + 16f, p.getY() + 16f);
     }
 

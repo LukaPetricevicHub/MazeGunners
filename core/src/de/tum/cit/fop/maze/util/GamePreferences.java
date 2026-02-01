@@ -63,7 +63,7 @@ public class GamePreferences {
     public void setMaxLevel(int level) {
         if (level > getMaxLevel()) {
             getPrefs().putInteger(PREF_MAX_LEVEL, level);
-            getPrefs().flush(); // Save to disk
+            getPrefs().flush();
         }
     }
 
@@ -139,7 +139,6 @@ public class GamePreferences {
      * camera controls, and special abilities.
      */
 
-    // Movement
     /**
      * Retrieves the key binding for moving up.
      *
@@ -216,7 +215,7 @@ public class GamePreferences {
         getPrefs().flush();
     }
 
-    // Gameplay & UI
+
     /**
      * Retrieves the key binding for pause.
      *
@@ -293,7 +292,6 @@ public class GamePreferences {
         getPrefs().flush();
     }
 
-    // Camera & Skills
     /**
      * Retrieves the key binding for zoom in.
      *

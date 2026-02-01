@@ -15,7 +15,7 @@ import java.util.List;
  * Paths are recalculated periodically to avoid getting stuck.
  */
 public class RetreatBehavior implements BehaviorState {
-    // Attributes
+
     private static final float RECALC_COOLDOWN = 0.7f;
     private static final float ARRIVAL_THRESHOLD = 4f;
 
@@ -88,7 +88,7 @@ public class RetreatBehavior implements BehaviorState {
     }
 
 
-    // Convert world coordinates to tile
+
     /**
      * Converts world coordinates to tile coordinates.
      *
@@ -101,7 +101,7 @@ public class RetreatBehavior implements BehaviorState {
     }
 
 
-    // Get center position of tile
+
     /**
      * Computes the center of a tile in world coordinates.
      *

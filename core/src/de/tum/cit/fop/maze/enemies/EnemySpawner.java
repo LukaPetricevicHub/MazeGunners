@@ -37,7 +37,7 @@ public class EnemySpawner {
         List<Enemy> enemies = new ArrayList<>();
         Random rng = new Random(seed);
 
-        // Filter usable rooms
+
         List<Room> usableRooms = rooms;
         if (rooms != null && excludedRoom != null) {
             usableRooms = new ArrayList<>();
@@ -61,21 +61,20 @@ public class EnemySpawner {
             }
         }
 
-        // 1) Patrol enemies
+
         if (usableRooms != null && !usableRooms.isEmpty()) {
             spawnRoomPatrolEnemies(maze, usableRooms, targetPlayer, rng, enemies, roomCounts);
         } else {
             System.out.println("[EnemySpawner] No rooms available -> skipping patrol enemies");
         }
 
-        // 2) Random enemies
+
         spawnRandomEnemies(maze, usableRooms, excludedRoom, targetPlayer, enemyCount, rng, enemies, roomCounts);
 
         System.out.println("[EnemySpawner] Spawned total enemies=" + enemies.size());
         return enemies;
     }
 
-    // Patrolling enemies
     /**
      * Spawns patrol enemies in rooms using entrance-based patrols.
      *
@@ -92,10 +91,10 @@ public class EnemySpawner {
             if (room.getType() == RoomType.SPAWN || room.getType() == RoomType.BOSS)
                 continue;
 
-            // 1) Entrances
+
             List<RoomEntrance> entrances = EntranceFinder.findEntrances(maze, room);
 
-            // 2) Patrols
+
             List<Array<Vector2>> patrols = new ArrayList<>();
             for (RoomEntrance e : entrances) {
                 Array<Vector2> patrol =
@@ -107,7 +106,7 @@ public class EnemySpawner {
             if (patrols.isEmpty())
                 continue;
 
-            // 3) Pick one patrol
+
             Array<Vector2> chosenPatrol =
                     patrols.get(rng.nextInt(patrols.size()));
 
@@ -145,9 +144,9 @@ public class EnemySpawner {
      * @param out Output list to append to
      * @param roomCounts Per-room enemy counts for balancing
      */
+
     private void spawnRandomEnemies(Maze maze, List<Room> rooms, Room excludedRoom, Player targetPlayer, int maxEnemies, Random rng, List<Enemy> out, Map<Room, Integer> roomCounts) {
 
-        // Prefer room interiors
         if (rooms != null && !rooms.isEmpty()) {
             List<Room> roomPool = new ArrayList<>();
             for (Room r : rooms) {
@@ -218,7 +217,7 @@ public class EnemySpawner {
                     }
 
                     if (!placed) {
-                        // no valid cells left in this room
+
                         continue;
                     }
                 }
@@ -228,7 +227,7 @@ public class EnemySpawner {
             }
         }
 
-        // Fallback: no rooms or no valid room interiors
+
         List<Point> candidates = collectFloorCells(maze, excludedRoom);
         Collections.shuffle(candidates, rng);
 
@@ -267,7 +266,7 @@ public class EnemySpawner {
     private Enemy createRandomEnemyType(Maze maze, Random rng, Point cell, Player targetPlayer) {
         float roll = rng.nextFloat();
 
-        // 50% MutantWorker, 25% RobotGuard, 25% FlyingDrone
+
         if (roll < 0.50f) {
             return new MutantWorker(new Vector2(cell.x * maze.getTileSize(), cell.y * maze.getTileSize()), 100f, targetPlayer);
         }
@@ -317,7 +316,6 @@ public class EnemySpawner {
         return patrol;
     }
 
-    // Helpers
     /**
      * Collects floor cells, excluding the given room if specified.
      *
@@ -325,6 +323,7 @@ public class EnemySpawner {
      * @param excludedRoom Room to exclude
      * @return List of floor tiles
      */
+
     private List<Point> collectFloorCells(Maze maze, Room excludedRoom) {
         List<Point> cells = new ArrayList<>();
         List<Room> rooms = maze.getRooms();

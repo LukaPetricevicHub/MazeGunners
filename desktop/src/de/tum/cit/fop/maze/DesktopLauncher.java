@@ -21,21 +21,21 @@ public class DesktopLauncher {
 
         System.out.println("Working dir: " + new File(".").getAbsolutePath());
 
-        // Configuration for the game window
+        
 		Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
-		config.setTitle("Maze Runner"); // Set the window title
+		config.setTitle("Maze Runner"); 
 
-		// Get the display mode of the current monitor
+		
 		Graphics.DisplayMode displayMode = Lwjgl3ApplicationConfiguration.getDisplayMode();
-		// Set the window size to 80% of the screen width and height
+		
 		config.setWindowedMode(
 				Math.round(0.8f * displayMode.width),
 				Math.round(0.8f * displayMode.height)
 		);
-		config.useVsync(true); // Enable vertical sync
-		config.setForegroundFPS(60); // Set the foreground frames per second
+		config.useVsync(true); 
+		config.setForegroundFPS(60); 
 
-		// Launch the game
+		
 		new Lwjgl3Application(new MazeRunnerGame(new DesktopFileChooser()), config);
 	}
 }

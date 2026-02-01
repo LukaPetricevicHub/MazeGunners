@@ -175,12 +175,12 @@ public class FlyingDrone extends Enemy {
         deathSound = Gdx.audio.newSound(Gdx.files.internal("Enemies/FlyingDrone/FlyingDroneDeath.wav"));
     }
 
-    // Apply nearest filtering
+
     private static void setNearest(Texture texture) {
         texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
     }
 
-    // Build looping animation strip
+
     private static Animation<TextureRegion> buildStripAnim(Texture tex, int frames, float frameDuration) {
         int frameWidth = tex.getWidth() / frames;
         int frameHeight = tex.getHeight();
@@ -331,10 +331,10 @@ public class FlyingDrone extends Enemy {
         updateDirectionFromMovement();
     }
 
-    // Spawn laser projectile
     /**
      * Fires a laser projectile toward the player.
      */
+
     private void fireLaserAtPlayer() {
         if (targetPlayer == null) return;
 
@@ -346,7 +346,6 @@ public class FlyingDrone extends Enemy {
         lasers.add(new DroneLaser(start.x, start.y, px, py));
     }
 
-    // Move away if too close
     /**
      * Moves away from the player when too close.
      *
@@ -364,10 +363,7 @@ public class FlyingDrone extends Enemy {
         getCollisionHandler().move(pos, awayDir, deltaTime, maze);
     }
 
-    // Update facing from movement
-    /**
-     * Updates facing direction based on movement delta.
-     */
+
     private void updateDirectionFromMovement() {
         Vector2 pos = getPosition();
 
@@ -411,7 +407,6 @@ public class FlyingDrone extends Enemy {
         return patrolScan.getKeyFrame(animationTimer, true);
     }
 
-    // Hover bob offset
     /**
      * Returns the hover Y offset for bobbing effect.
      *
@@ -527,7 +522,6 @@ public class FlyingDrone extends Enemy {
         laserSound.setVolume(laserSoundId, volume);
     }
 
-    // Stop laser sound
     /**
      * Stops the looping laser sound.
      */

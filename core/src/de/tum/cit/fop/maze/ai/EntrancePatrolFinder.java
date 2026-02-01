@@ -73,7 +73,7 @@ public final class EntrancePatrolFinder {
         List<Point> tiles = new ArrayList<>(2);
         tiles.add(new Point(sx, sy));
 
-        // Look for the second tile (must be directly adjacent)
+        
         Point second = null;
 
         if (maze.inBounds(sx + 1, sy) && maze.getTile(sx + 1, sy) == Tiles.DOOR)

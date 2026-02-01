@@ -23,11 +23,11 @@ public class AchievementManager {
      * Registers all achievements and loads their saved unlock states.
      */
     public AchievementManager() {
-        // Use a specific preference file for achievements
+
         this.prefs = Gdx.app.getPreferences("MazeRunner_Achievements");
         this.achievements = new HashMap<>();
 
-        // Define your achievements here!
+
         register("win_it_big", "High Roller", "Win a Blackjack hand with a bet over 1000 coins.");
         register("first_blood", "First Blood", "Kill your first enemy.");
         register("level_2", "Novice Runner", "Reach Level 2.");
@@ -44,7 +44,7 @@ public class AchievementManager {
      */
     private void register(String id, String title, String desc) {
         Achievement a = new Achievement(id, title, desc);
-        // Load saved status immediately
+
         if (prefs.contains(id)) {
             a.setUnlocked(true);
         }
@@ -72,10 +72,10 @@ public class AchievementManager {
     public boolean unlockAchievement(String id) {
         Achievement a = achievements.get(id);
         if (a != null && !a.isUnlocked()) {
-            // Mark as unlocked
+
             a.setUnlocked(true);
 
-            // Notify Player
+
             System.out.println("ACHIEVEMENT UNLOCKED: " + a.getTitle());
             if (hud != null) {
                 hud.showAchievementPopup(a.getTitle(), a.getDescription());
@@ -99,6 +99,7 @@ public class AchievementManager {
      *
      * @param id achievement identifier
      */
+
     public void unlock(String id) {
         unlockAchievement(id);
     }

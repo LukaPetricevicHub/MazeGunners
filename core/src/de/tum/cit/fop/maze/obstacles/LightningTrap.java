@@ -16,7 +16,6 @@ import com.badlogic.gdx.math.Rectangle;
  */
 public class LightningTrap extends Obstacle {
 
-    // Gameplay
     /** Damage dealt by the trap. */
     private static final int TRAP_DAMAGE = 1;
     /** Cooldown between activations. */
@@ -36,7 +35,7 @@ public class LightningTrap extends Obstacle {
     private boolean triggeredThisFrame = false;
 
 
-    // Animation
+
     /** Animation frame duration. */
     private static final float FRAME_DURATION = 0.08f;
     /** Number of columns in the sprite sheet. */
@@ -107,7 +106,6 @@ public class LightningTrap extends Obstacle {
 
 
 
-    // State
     /** Animation state time. */
     private float stateTime = 0f;
     /** Remaining debuff time. */
@@ -124,7 +122,7 @@ public class LightningTrap extends Obstacle {
         super(spawnPosition, TRAP_DAMAGE, RETRIGGER_COOLDOWN, 32f, 64f);
 
         this.vertical = vertical;
-        float tileSize = 32f; // maze tile size
+        float tileSize = 32f;
 
         float centerX = spawnPosition.x + getWidth() * 0.5f;
         float centerY = spawnPosition.y + getHeight() * 0.5f;

@@ -33,14 +33,14 @@ public final class LevelDiscovery {
         FileHandle internalMaps = Gdx.files.internal("maps");
         if (internalMaps.exists() && internalMaps.isDirectory()) {
             for (FileHandle f : internalMaps.list(".properties")) {
-                byName.put(f.name(), f); // lower priority
+                byName.put(f.name(), f); 
             }
         }
 
         FileHandle localMaps = Gdx.files.local("maps");
         if (localMaps.exists() && localMaps.isDirectory()) {
             for (FileHandle f : localMaps.list(".properties")) {
-                byName.put(f.name(), f); // higher priority (overwrites)
+                byName.put(f.name(), f); 
             }
         }
 

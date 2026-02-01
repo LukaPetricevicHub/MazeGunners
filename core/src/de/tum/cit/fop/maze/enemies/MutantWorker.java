@@ -21,7 +21,7 @@ import de.tum.cit.fop.maze.player.Player;
  */
 public class MutantWorker extends Enemy {
 
-    // Constants
+
     /** Walk animation frame duration. */
     private static final float WALK_FRAME_DURATION = 0.12f;
     /** Attack animation frame duration. */
@@ -187,7 +187,7 @@ public class MutantWorker extends Enemy {
         updateDirectionFromMovement();
     }
 
-    // Handle locked attack state logic
+
     /**
      * Updates logic while attack is locked to the player.
      *
@@ -225,7 +225,6 @@ public class MutantWorker extends Enemy {
         updateDirectionFromPlayer();
     }
 
-    // Handle attack animation progression
     /**
      * Advances the attack animation and timing.
      *
@@ -255,7 +254,7 @@ public class MutantWorker extends Enemy {
         updateDirectionFromPlayer();
     }
 
-    // Moves enemy away from player (not used, but kept)
+
     /**
      * Attempts to move away from the player.
      *
@@ -273,7 +272,7 @@ public class MutantWorker extends Enemy {
         getCollisionHandler().move(position, awayVector, delta, maze);
     }
 
-    // Attempt sidestep when blocked
+
     /**
      * Attempts a side step around the player.
      *
@@ -296,7 +295,7 @@ public class MutantWorker extends Enemy {
         getCollisionHandler().move(position, chosenDirection, delta, maze);
     }
 
-    // Update direction based on player
+
     /**
      * Updates facing direction toward the player.
      */
@@ -314,7 +313,7 @@ public class MutantWorker extends Enemy {
         }
     }
 
-    // Updates direction from movement delta
+
     /**
      * Updates facing direction based on movement delta.
      */
@@ -358,7 +357,7 @@ public class MutantWorker extends Enemy {
         return getWalkAnim().getKeyFrame(animationTimer, true);
     }
 
-    // Returns attack animation by direction
+
     private Animation<TextureRegion> getAttackAnim() {
         if (currentDirection == Direction.UP) return attackUp;
         if (currentDirection == Direction.LEFT) return attackLeft;
@@ -366,7 +365,7 @@ public class MutantWorker extends Enemy {
         return attackDown;
     }
 
-    // Returns walk animation by direction
+
     /**
      * Returns the walking animation for the current direction.
      *
@@ -379,7 +378,7 @@ public class MutantWorker extends Enemy {
         return walkDown;
     }
 
-    // Return death animation by direction
+
     /**
      * Returns the death animation for the current direction.
      *
@@ -405,7 +404,7 @@ public class MutantWorker extends Enemy {
         return 18f;
     }
 
-    // Animations
+
     /**
      * Lazily loads animations and sounds for this enemy type.
      */
@@ -430,7 +429,7 @@ public class MutantWorker extends Enemy {
         deathSound = Gdx.audio.newSound(Gdx.files.internal("Enemies/MutantWorker/MutantWorkerDeath.wav"));
     }
 
-    // Load animation strip from texture
+
     /**
      * Loads an animation strip from a texture.
      *
@@ -468,7 +467,7 @@ public class MutantWorker extends Enemy {
         return Gdx.app.getPreferences("maze_runner_prefs").getFloat("sound_vol", 0.5f);
     }
 
-    // Overrides
+
     @Override
     protected float maxAllowedOverlap() {
         return 5f;
