@@ -195,7 +195,10 @@ public class GameScreen implements Screen {
             int needed = player.getXpNeededForNextLevel() - player.getExperience();
             player.addExperience(Math.max(needed, 0));
             hud.showNotification("CHEAT: FORCED LEVEL UP!");
-            if (pickupSound != null) pickupSound.play();
+            if (pickupSound != null) {
+                long id = pickupSound.play();
+                pickupSound.setVolume(id, game.getPreferences().getSoundVolume());
+            }
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.GRAVE)) {
@@ -394,11 +397,15 @@ public class GameScreen implements Screen {
                 else if (enemy instanceof FlyingDrone fd) frame = fd.getCurrentFrame();
 
                 if (frame != null) {
+                    if (enemy.isHitFlashing()) {
+                        game.getSpriteBatch().setColor(Color.RED);
+                    }
                     game.getSpriteBatch().draw(frame,
                             enemy.getPosition().x,
                             enemy.getPosition().y,
                             enemy.getRenderWidth(),
                             enemy.getRenderHeight());
+                    game.getSpriteBatch().setColor(Color.WHITE);
                 }
             }
         }
@@ -483,8 +490,13 @@ public class GameScreen implements Screen {
         }
 
         // Correct label for each mode
-        if (endlessMode) hud.setFloorText("Round: " + floor);
-        else hud.setFloorText("Floor: " + level);
+        if (endlessMode) {
+            hud.setFloorText("Round: " + floor);
+            hud.setEndlessInfo("Endless: +" + ((floor - 1) * 2) + " HP");
+        } else {
+            hud.setFloorText("Floor: " + level);
+            hud.setEndlessInfo("");
+        }
 
         // Exit target for arrow/hints
         updateHudExitTarget();
@@ -513,6 +525,10 @@ public class GameScreen implements Screen {
         if (clampLevel(endlessMode ? floor : level) == 5) {
             bossAnims = new BossAnimations("Sword.png");
             boss = BossSpawner.spawnBossIfFinalLevel(maze, 5, bossAnims);
+            if (boss != null && endlessMode) {
+                float bossHpMult = 1f + Math.max(0, floor - 1) * 0.25f;
+                boss.scaleHp(bossHpMult);
+            }
             bossTarget = new PlayerAdapter(player);
         }
 
@@ -1065,7 +1081,17 @@ public class GameScreen implements Screen {
         if (settingsWindow != null) settingsWindow.setVisible(false);
 
         // FIX: Remove "de.tum.cit.fop.maze." prefix so it uses the import
-        GameOverWindow window = new GameOverWindow(game.getSkin(), game, level, won, activeLevelFile != null ? activeLevelFile : levelFile, player.getScore(), player);
+        GameOverWindow window = new GameOverWindow(
+                game.getSkin(),
+                game,
+                level,
+                won,
+                activeLevelFile != null ? activeLevelFile : levelFile,
+                player.getScore(),
+                player,
+                endlessMode,
+                floor
+        );
         window.setPosition(
                 (uiViewport.getWorldWidth() - window.getWidth()) / 2f,
                 (uiViewport.getWorldHeight() - window.getHeight()) / 2f
@@ -1149,6 +1175,7 @@ public class GameScreen implements Screen {
         floor++;
         hud.showNotification("ROUND " + floor);
         hud.setFloorText("Round: " + floor);
+        hud.setEndlessInfo("Endless: +" + ((floor - 1) * 2) + " HP");
 
         long seed = System.nanoTime();
         runSeed = seed;
@@ -1181,6 +1208,10 @@ public class GameScreen implements Screen {
             if (bossAnims != null) bossAnims.dispose();
             bossAnims = new BossAnimations("Sword.png");
             boss = BossSpawner.spawnBossIfFinalLevel(maze, 5, bossAnims);
+            if (boss != null && endlessMode) {
+                float bossHpMult = 1f + Math.max(0, floor - 1) * 0.25f;
+                boss.scaleHp(bossHpMult);
+            }
             bossTarget = new PlayerAdapter(player);
         }
 
@@ -1333,10 +1364,27 @@ public class GameScreen implements Screen {
 
     @Override public void pause() {}
     @Override public void resume() {}
-    @Override public void hide() {}
+    @Override public void hide() {
+        if (combatSystem != null) combatSystem.stopLoopingSfx();
+        if (enemies != null) {
+            for (Enemy e : enemies) {
+                if (e instanceof FlyingDrone fd) {
+                    fd.stopAllSounds();
+                }
+            }
+        }
+    }
 
     @Override
     public void dispose() {
+        if (combatSystem != null) combatSystem.stopLoopingSfx();
+        if (enemies != null) {
+            for (Enemy e : enemies) {
+                if (e instanceof FlyingDrone fd) {
+                    fd.stopAllSounds();
+                }
+            }
+        }
         if (hud != null) hud.dispose();
         if (keyTexture != null) keyTexture.dispose();
         if (pauseStage != null) pauseStage.dispose();

@@ -138,7 +138,7 @@ public class MutantWorker extends Enemy {
             hitApplied = false;
 
             if (attackSound != null && !attackSoundPlayed) {
-                attackSound.play(0.8f);
+                attackSound.play(0.8f * getSfxVolume());
                 attackSoundPlayed = true;
             }
         }
@@ -342,6 +342,14 @@ public class MutantWorker extends Enemy {
         return animation;
     }
 
+    private float getSfxVolume() {
+        if (Gdx.app == null) return 1f;
+        if (Gdx.app.getApplicationListener() instanceof de.tum.cit.fop.maze.MazeRunnerGame game) {
+            return game.getPreferences().getSoundVolume();
+        }
+        return 1f;
+    }
+
     // Overrides
     @Override
     protected float maxAllowedOverlap() {
@@ -366,7 +374,7 @@ public class MutantWorker extends Enemy {
         deathTimer = 0f;
 
         if (deathSound != null && !deathSoundPlayed) {
-            deathSound.play(1.0f);
+            deathSound.play(1.0f * getSfxVolume());
             deathSoundPlayed = true;
         }
 

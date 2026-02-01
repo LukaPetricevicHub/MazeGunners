@@ -195,7 +195,7 @@ public class FlyingDrone extends Enemy {
             deathTimer += deltaTime;
 
             if (!deathSoundPlayed) {
-                if(deathSound != null) deathSound.play(1f);
+                if(deathSound != null) deathSound.play(1f * getSfxVolume());
                 deathSoundPlayed = true;
             }
 
@@ -371,7 +371,7 @@ public class FlyingDrone extends Enemy {
     private void startLaserSound() {
         if (laserSound == null) return;
         if (laserSoundId != -1) return;
-        laserSoundId = laserSound.loop(LASER_VOLUME_MIN);
+        laserSoundId = laserSound.loop(LASER_VOLUME_MIN * getSfxVolume());
     }
 
     private void updateLaserSoundVolume() {
@@ -381,7 +381,7 @@ public class FlyingDrone extends Enemy {
         float heat = getLaserCharge();
         float intensity = heat * heat;
 
-        float volume = LASER_VOLUME_MIN + (LASER_VOLUME_MAX - LASER_VOLUME_MIN) * intensity;
+        float volume = (LASER_VOLUME_MIN + (LASER_VOLUME_MAX - LASER_VOLUME_MIN) * intensity) * getSfxVolume();
         laserSound.setVolume(laserSoundId, volume);
     }
 
@@ -392,6 +392,10 @@ public class FlyingDrone extends Enemy {
 
         laserSound.stop(laserSoundId);
         laserSoundId = -1;
+    }
+
+    public void stopAllSounds() {
+        stopLaserSound();
     }
 
     @Override
@@ -439,5 +443,13 @@ public class FlyingDrone extends Enemy {
 
         stopLaserSound();
         lasers.clear();
+    }
+
+    private float getSfxVolume() {
+        if (Gdx.app == null) return 1f;
+        if (Gdx.app.getApplicationListener() instanceof de.tum.cit.fop.maze.MazeRunnerGame game) {
+            return game.getPreferences().getSoundVolume();
+        }
+        return 1f;
     }
 }

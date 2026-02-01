@@ -36,6 +36,8 @@ public abstract class Enemy {
     protected int maxHealth = 3;
     protected boolean markedForRemoval = false;
     protected boolean dying = false;
+    private float hitFlashTimer = 0f;
+    private static final float HIT_FLASH_DURATION = 0.12f;
 
     // Status
     private boolean frozen = false;
@@ -86,6 +88,7 @@ public abstract class Enemy {
 
     // Update logic
     public final void update(float deltaTime, Maze maze) {
+        if (hitFlashTimer > 0f) hitFlashTimer = Math.max(0f, hitFlashTimer - deltaTime);
         prevPosition.set(worldPosition);
 
         updateStatusEffects(deltaTime);
@@ -155,6 +158,7 @@ public abstract class Enemy {
         if (dying) return;
 
         health -= Math.max(0, amount);
+        hitFlashTimer = HIT_FLASH_DURATION;
         if (health <= 0) {
             die();
         }
@@ -176,6 +180,10 @@ public abstract class Enemy {
 
     public boolean isDead() {
         return markedForRemoval;
+    }
+
+    public boolean isHitFlashing() {
+        return hitFlashTimer > 0f;
     }
 
     public void scaleHp(float mult) {

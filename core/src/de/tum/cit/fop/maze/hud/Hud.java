@@ -40,6 +40,7 @@ public class Hud {
     private final Label floorLabel;
     private final Label hintLabel;
     private final Image keyIcon;
+    private final Label endlessLabel;
 
     // ✅ NEW: coins
     private final Label coinsLabel;
@@ -103,7 +104,6 @@ public class Hud {
         // TOP-LEFT (Hearts + Coins + Key + Floor)
         // =========================
         Table topLeft = new Table();
-        topLeft.setBackground(panelBg);
         topLeft.pad(6);
         topLeft.left().top();
 
@@ -112,6 +112,8 @@ public class Hud {
         statsLabel = new Label("Stats: STR 5 | SPD 5", skin);
         multLabel = new Label("Mult: DMG x1.00 | SPD x1.00", skin);
         floorLabel = new Label("Floor: 1", skin);
+        endlessLabel = new Label("", skin);
+        endlessLabel.setVisible(false);
         keyIcon = new Image(keyIconTexture);
         keyIcon.setVisible(false);
         keyIcon.setSize(16, 16);
@@ -137,6 +139,7 @@ public class Hud {
 
         topLeft.add(coinsLabel).left().padTop(4).row();
         topLeft.add(floorLabel).left().padTop(2);
+        topLeft.add(endlessLabel).left().padTop(2).row();
 
         Table topLeftWrap = new Table();
         topLeftWrap.setFillParent(true);
@@ -164,10 +167,6 @@ public class Hud {
         bossHpBar.setAnimateDuration(0.15f);
 
         bossTable = new Table();
-        bossTable.setBackground(
-                new TextureRegionDrawable(new TextureRegion(pixelTexture))
-                        .tint(new Color(0f, 0f, 0f, 0.60f))
-        );
         bossTable.pad(8);
         bossTable.add(bossLabel).padBottom(4).row();
         bossTable.add(bossHpBar).width(700).height(14);
@@ -199,7 +198,6 @@ public class Hud {
         hintLabel.setColor(Color.SKY);
 
         Table bottomLeft = new Table();
-        bottomLeft.setBackground(panelBg);
         bottomLeft.pad(8);
         bottomLeft.left().bottom();
 
@@ -235,7 +233,6 @@ public class Hud {
         // BOTTOM-RIGHT (Minimap container)
         // =========================
         minimapContainer = new Table();
-        minimapContainer.setBackground(panelBg);
         minimapContainer.pad(6);
 
         Table bottomRightWrap = new Table();
@@ -404,6 +401,15 @@ public class Hud {
 
     public void setFloorText(String text) {
         floorLabel.setText(text);
+    }
+
+    public void setEndlessInfo(String text) {
+        if (text == null || text.isEmpty()) {
+            endlessLabel.setVisible(false);
+            return;
+        }
+        endlessLabel.setText(text);
+        endlessLabel.setVisible(true);
     }
 
     public void setExitTarget(float x, float y) {

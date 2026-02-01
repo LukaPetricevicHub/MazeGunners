@@ -37,10 +37,9 @@ public class MenuScreen implements Screen {
 
         Label title = new Label("THE MAZE RUNNER", game.getSkin(), "title");
         title.setFontScale(1.2f);
-        table.add(title).padBottom(60).row();
+        table.add(title).padBottom(80).padTop(-40).row();
 
         TextButton goToGameButton = new TextButton("New Game", game.getSkin());
-        table.add(goToGameButton).width(300).padBottom(10).row();
         goToGameButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -50,7 +49,6 @@ public class MenuScreen implements Screen {
         });
 
         TextButton loadButton = new TextButton("Load Game", game.getSkin());
-        table.add(loadButton).width(300).padBottom(10).row();
         loadButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -65,7 +63,6 @@ public class MenuScreen implements Screen {
 
         // ✅ Gambling is MENU-ONLY (no Player instance)
         TextButton gamblingBtn = new TextButton("The Casino", game.getSkin());
-        table.add(gamblingBtn).width(300).padBottom(10).row();
         gamblingBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -82,7 +79,6 @@ public class MenuScreen implements Screen {
                 game.setScreen(new AchievementScreen(game));
             }
         });
-        table.add(achievementBtn).width(300).padBottom(10).row();
 
         TextButton leaderboardBtn = new TextButton("Leaderboard", game.getSkin());
         leaderboardBtn.addListener(new ChangeListener() {
@@ -92,10 +88,8 @@ public class MenuScreen implements Screen {
                 game.setScreen(new LeaderboardScreen(game));
             }
         });
-        table.add(leaderboardBtn).width(300).padBottom(20).row();
 
         TextButton settingsButton = new TextButton("Settings", game.getSkin());
-        table.add(settingsButton).width(300).padBottom(10).row();
         settingsButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -105,7 +99,6 @@ public class MenuScreen implements Screen {
         });
 
         TextButton exitButton = new TextButton("Exit", game.getSkin());
-        table.add(exitButton).width(300).row();
         exitButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -113,6 +106,25 @@ public class MenuScreen implements Screen {
                 Gdx.app.exit();
             }
         });
+
+        Table grid = new Table();
+        grid.defaults().width(300).height(60).pad(8);
+
+        grid.add(goToGameButton);
+        grid.add(loadButton);
+        grid.add(gamblingBtn);
+        grid.row();
+
+        grid.add(achievementBtn);
+        grid.add(leaderboardBtn);
+        grid.add(settingsButton);
+        grid.row();
+
+        grid.add();
+        grid.add(exitButton);
+        grid.add();
+
+        table.add(grid);
     }
 
     private void playClickSound() {

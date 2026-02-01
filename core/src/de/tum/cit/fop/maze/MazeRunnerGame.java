@@ -101,7 +101,7 @@ public class MazeRunnerGame extends Game {
 
     public void playWallHitSound() {
         if (wallHitSound != null) {
-            wallHitSound.play(0.6f);
+            wallHitSound.play(0.6f * getPreferences().getSoundVolume());
         }
     }
 

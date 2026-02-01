@@ -45,6 +45,7 @@ public class Player {
     // Coins (persisted)
     private int coins = 0;
     private final Progression progression;
+    private final MazeRunnerGame gameRef;
 
 
     private boolean hasKey = false;
@@ -197,8 +198,8 @@ public class Player {
         this.bulletRegion = game.getBulletRegion();
         this.shootSound = Gdx.audio.newSound(Gdx.files.internal("audio/PlayerShooting.wav"));
 
-
         this.progression = progression;
+        this.gameRef = game;
 
         if (this.progression != null) {
             this.coins = this.progression.getCoins();
@@ -528,7 +529,9 @@ public class Player {
 
         bullets.add(new Bullet(cx, cy, target.x, target.y));
 
-        shootSound.play(0.7f);
+        if (shootSound != null) {
+            shootSound.play(0.7f * gameRef.getPreferences().getSoundVolume());
+        }
 
         if (skillShotgun) {
             Vector2 aimVector = new Vector2(target.x - cx, target.y - cy);

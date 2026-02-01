@@ -422,6 +422,14 @@ public class CombatSystem {
         }
     }
 
+    public void stopLoopingSfx() {
+        if (floorHazardSoundPlaying) {
+            ObstacleAudioManager.stopFloorHazard(floorHazardSoundId);
+            floorHazardSoundId = -1;
+            floorHazardSoundPlaying = false;
+        }
+    }
+
     private boolean isWall(Rectangle rect, Maze maze) {
         int cx = (int) (rect.x / maze.getTileSize());
         int cy = (int) (rect.y / maze.getTileSize());
