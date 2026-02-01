@@ -181,7 +181,7 @@ public class RobotGuard extends Enemy {
                 attackTimer = 0f;
 
                 if(attackSound != null && !attackSoundPlayed) {
-                    attackSound.play(0.8f);
+                    attackSound.play(0.8f * getSfxVolume());
                     attackSoundPlayed = true;
                 }
             }
@@ -370,6 +370,14 @@ public class RobotGuard extends Enemy {
 
         attacking = false;
         attackSoundPlayed = false;
+    }
+
+    private float getSfxVolume() {
+        if (Gdx.app == null) return 1f;
+        if (Gdx.app.getApplicationListener() instanceof de.tum.cit.fop.maze.MazeRunnerGame game) {
+            return game.getPreferences().getSoundVolume();
+        }
+        return 1f;
     }
 
 }

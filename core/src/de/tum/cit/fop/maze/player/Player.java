@@ -45,6 +45,7 @@ public class Player {
     // Coins (persisted)
     private int coins = 0;
     private final Progression progression;
+    private final MazeRunnerGame gameRef;
 
 
     private boolean hasKey = false;
@@ -197,8 +198,8 @@ public class Player {
         this.bulletRegion = game.getBulletRegion();
         this.shootSound = Gdx.audio.newSound(Gdx.files.internal("audio/PlayerShooting.wav"));
 
-
         this.progression = progression;
+        this.gameRef = game;
 
         if (this.progression != null) {
             this.coins = this.progression.getCoins();
@@ -280,23 +281,25 @@ public class Player {
         }
 
         // Dash skill
-        if (skillDash && Gdx.input.isKeyJustPressed(Input.Keys.E) && dashCooldown <= 0 && moving) {
+        if (skillDash && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyDash()) && dashCooldown <= 0 && moving) {
             startDash(input.dx, input.dy);
         }
 
         // Repulse skill
-        if (skillRepulse && Gdx.input.isKeyJustPressed(Input.Keys.Q) && repulseCooldownTimer <= 0) {
+        if (skillRepulse && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyRepulse()) && repulseCooldownTimer <= 0) {
             isRepulsing = true;
             repulseCooldownTimer = 5.0f;
         }
 
         // Melee
-        if (!isParalyzed() && Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+        if (!isParalyzed() && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyMelee())) {
             attack();
         }
 
         // Shooting
-        if (!isParalyzed() && Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && hasGun) {
+        boolean shootPressed = Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)
+                || Gdx.input.isKeyJustPressed(game.getPreferences().getKeyShoot());
+        if (!isParalyzed() && shootPressed && hasGun) {
             if (shootTimer <= 0) {
                 spawnBullet(camera);
                 shootTimer = skillRapidFire ? 0.2f : 0.4f;
@@ -526,7 +529,9 @@ public class Player {
 
         bullets.add(new Bullet(cx, cy, target.x, target.y));
 
-        shootSound.play(0.7f);
+        if (shootSound != null) {
+            shootSound.play(0.7f * gameRef.getPreferences().getSoundVolume());
+        }
 
         if (skillShotgun) {
             Vector2 aimVector = new Vector2(target.x - cx, target.y - cy);
@@ -739,6 +744,11 @@ public class Player {
     // Gambling buff
     public float getDamageMult() { return damageMult; }
 
+    // Dev override (no clamp, not persisted)
+    public void setDamageMultRaw(float v) {
+        damageMult = v;
+    }
+
     public void addDamageMult(float delta) {
         damageMult = MathUtils.clamp(damageMult + delta, 0.5f, 3.0f);
         if (progression != null) progression.setPermanentDamageMult(damageMult);
@@ -772,6 +782,11 @@ public class Player {
     public void setStrengthStat(int v) {
         strengthStat = MathUtils.clamp(v, 1, 10);
         if (progression != null) progression.setPermanentStrength(strengthStat);
+    }
+
+    // Dev override (no clamp, not persisted)
+    public void setStrengthStatRaw(int v) {
+        strengthStat = v;
     }
 
     public void setSpeedStat(int v) {

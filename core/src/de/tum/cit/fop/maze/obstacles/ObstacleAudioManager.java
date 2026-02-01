@@ -26,13 +26,13 @@ public final class ObstacleAudioManager {
 
     public static void playSpikeTrap() {
         if (spikeTrapSound != null)
-            spikeTrapSound.play(1f);
+            spikeTrapSound.play(1f * getSfxVolume());
     }
 
     public static void playLightningTrap() {
         if (lightningTrapSound == null) return;
 
-        long id = lightningTrapSound.play(1f);
+        long id = lightningTrapSound.play(1f * getSfxVolume());
 
         Timer.schedule(new Timer.Task() {
             @Override
@@ -43,8 +43,7 @@ public final class ObstacleAudioManager {
     }
 
     public static long playFloorHazardLoop(float volume) {
-        if (floorHazardSound == null) return -1;
-        return floorHazardSound.loop(volume);
+        return -1;
     }
 
     public static void stopFloorHazard(long id) {
@@ -56,5 +55,13 @@ public final class ObstacleAudioManager {
         if (floorHazardSound != null) floorHazardSound.dispose();
         if (spikeTrapSound != null) spikeTrapSound.dispose();
         if (lightningTrapSound != null) lightningTrapSound.dispose();
+    }
+
+    private static float getSfxVolume() {
+        if (Gdx.app == null) return 1f;
+        if (Gdx.app.getApplicationListener() instanceof de.tum.cit.fop.maze.MazeRunnerGame game) {
+            return game.getPreferences().getSoundVolume();
+        }
+        return 1f;
     }
 }

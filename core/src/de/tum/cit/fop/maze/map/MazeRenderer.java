@@ -88,7 +88,7 @@ public class MazeRenderer {
 
                     case SPAWN -> r = spawn;
                     case EXIT -> r = exit;
-                    case KEY -> r = key;
+                    case KEY -> r = pickFloor(maze, x, y);
 
                     default -> r = pickFloor(maze, x, y);
                 }

@@ -31,13 +31,12 @@ import de.tum.cit.fop.maze.enemies.*;
 import de.tum.cit.fop.maze.hud.Hud;
 import de.tum.cit.fop.maze.items.*;
 import de.tum.cit.fop.maze.map.*;
+import de.tum.cit.fop.maze.map.RoomDetector;
 import de.tum.cit.fop.maze.obstacles.*;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.ui.SkillWindow;
 import de.tum.cit.fop.maze.util.GridUtils;
 import de.tum.cit.fop.maze.world.*;
-import de.tum.cit.fop.maze.obstacles.PropType;
-import de.tum.cit.fop.maze.obstacles.Prop;
 import de.tum.cit.fop.maze.ui.PauseMenuWindow;
 import de.tum.cit.fop.maze.ui.GameOverWindow;
 
@@ -47,13 +46,12 @@ import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class GameScreen implements Screen {
     // Attributes
     private ShapeRenderer shapeRenderer; // Tool to draw simple shapes
     private float minimapZoom = 6.0f;    // How "zoomed out" the map is
-    private float minimapSize = 200f;    // Size of the box in pixels (200x200)
+    private float minimapSize = 200f;    // Size of the box in pixels (overridden per frame)
 
     private final MazeRunnerGame game;
     private final FileHandle levelFile;
@@ -81,9 +79,6 @@ public class GameScreen implements Screen {
     private Player player;
     private List<Enemy> enemies;
     private List<Obstacle> obstacles;
-    private Texture propTilesetTexture;
-    private final Map<PropType, TextureRegion> propSprites = new HashMap<>();
-    private final Map<PropType, Texture> propTextures = new HashMap<>();
     private FileHandle activeLevelFile;
 
     private Hud hud;
@@ -96,7 +91,6 @@ public class GameScreen implements Screen {
     private static final float PLAYER_WIDTH = 32f;
     private static final float PLAYER_HEIGHT = 32f;
 
-    private Texture keyTexture;
     private final int level;
     private int trackedLevel = 1;
 
@@ -114,7 +108,12 @@ public class GameScreen implements Screen {
     private int enemyCount;
     private int trapCount;
     private int itemCount;
-    private int propCount;
+
+    // Minimap exploration (static map, reveal as you move)
+    private boolean[][] explored;
+    private int exploredW = -1;
+    private int exploredH = -1;
+    private static final int EXPLORE_RADIUS_TILES = 6;
 
     // Lightning trap deferred spawning
     private List<LightningTrap> pendingLightningTraps = new ArrayList<>();
@@ -125,7 +124,6 @@ public class GameScreen implements Screen {
     private static final int[] ENEMIES_PER_LEVEL = {0, 18, 22, 26, 30, 34};
     private static final int[] TRAPS_PER_LEVEL   = {0, 20, 26, 32, 38, 45};
     private static final int[] ITEMS_PER_LEVEL   = {0, 10, 10, 11, 11, 12};
-    private static final int[] PROPS_PER_LEVEL   = {0, 15, 18, 20, 22, 24};
 
     private int clampLevel(int lv) { return Math.max(1, Math.min(5, lv)); }
 
@@ -188,7 +186,7 @@ public class GameScreen implements Screen {
     public void render(float delta) {
 
         // Input
-        if (gameStateController.isRunning() && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+        if (gameStateController.isRunning() && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyPause())) {
             togglePause();
         }
 
@@ -196,7 +194,10 @@ public class GameScreen implements Screen {
             int needed = player.getXpNeededForNextLevel() - player.getExperience();
             player.addExperience(Math.max(needed, 0));
             hud.showNotification("CHEAT: FORCED LEVEL UP!");
-            if (pickupSound != null) pickupSound.play();
+            if (pickupSound != null) {
+                long id = pickupSound.play();
+                pickupSound.setVolume(id, game.getPreferences().getSoundVolume());
+            }
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.GRAVE)) {
@@ -259,15 +260,6 @@ public class GameScreen implements Screen {
                 game.goToMenu();
             }
 
-            if (gameStateController.isRunning()) {
-                if (worldLogic.handleKeyPickup(player, maze)) {
-                    if (pickupSound != null) {
-                        long id = pickupSound.play();
-                        pickupSound.setVolume(id, game.getPreferences().getSoundVolume());
-                    }
-                }
-            }
-
             // Item pickup
             if (items != null) {
                 Rectangle playerBounds =
@@ -278,7 +270,15 @@ public class GameScreen implements Screen {
                     Collectable item = iter.next();
 
                     if (item.isActive() && playerBounds.overlaps(item.getBounds())) {
+                        boolean hadKey = player.hasKey();
                         item.applyEffect(player);
+
+                        if (!hadKey && item instanceof KeyItem) {
+                            game.getAchievementManager().unlock("collector");
+                            if (hud != null) {
+                                hud.showNotification("I found the key.");
+                            }
+                        }
 
                         if (pickupSound != null) {
                             long id = pickupSound.play();
@@ -314,7 +314,7 @@ public class GameScreen implements Screen {
                         items.add(new de.tum.cit.fop.maze.items.BossRelicItem(dropX, dropY));
                     }
 
-                    hud.showNotification("BOSS DEFEATED!\nRelic dropped.");
+                    hud.showNotification("SWORD DEFEATED!\nRelic dropped.");
                 }
             }
 
@@ -367,12 +367,6 @@ public class GameScreen implements Screen {
                 else if (obstacle instanceof FloorHazard hazard) {
                     game.getSpriteBatch().draw(hazard.getSprite(),
                             hazard.getCollisionBox().x, hazard.getCollisionBox().y, 48, 48);
-                } else if (obstacle instanceof Prop prop) {
-                    game.getSpriteBatch().draw(prop.getSprite(),
-                            prop.getCollisionBox().x,
-                            prop.getCollisionBox().y,
-                            prop.getCollisionBox().width,
-                            prop.getCollisionBox().height);
                 }
             }
         }
@@ -398,11 +392,15 @@ public class GameScreen implements Screen {
                 else if (enemy instanceof FlyingDrone fd) frame = fd.getCurrentFrame();
 
                 if (frame != null) {
+                    if (enemy.isHitFlashing()) {
+                        game.getSpriteBatch().setColor(Color.RED);
+                    }
                     game.getSpriteBatch().draw(frame,
                             enemy.getPosition().x,
                             enemy.getPosition().y,
                             enemy.getRenderWidth(),
                             enemy.getRenderHeight());
+                    game.getSpriteBatch().setColor(Color.WHITE);
                 }
             }
         }
@@ -416,7 +414,8 @@ public class GameScreen implements Screen {
 
         game.getSpriteBatch().end();
 
-        fog.render(game.getSpriteBatch(), gameCamera.getCamera(), px, py);
+        fog.render(game.getSpriteBatch(), gameCamera.getCamera(), px, py,
+                player.getBullets(), 1.5f * TILE_SIZE);
 
 
         if (isPaused) {
@@ -429,7 +428,8 @@ public class GameScreen implements Screen {
             hud.draw();
         }
 
-        if (Gdx.input.isKeyPressed(Input.Keys.M)) {
+        updateMinimapExploration();
+        if (Gdx.input.isKeyPressed(game.getPreferences().getKeyMap())) {
             renderMinimap();
         }
     }
@@ -479,10 +479,19 @@ public class GameScreen implements Screen {
         // 3) UI now (skill window uses player)
         createPauseMenu();
         createHud();
+        if (hud != null && maze != null) {
+            float diagTiles = (float) Math.hypot(maze.getWidth(), maze.getHeight());
+            hud.setHintMaxTiles(diagTiles * 0.7f);
+        }
 
         // Correct label for each mode
-        if (endlessMode) hud.setFloorText("Round: " + floor);
-        else hud.setFloorText("Floor: " + level);
+        if (endlessMode) {
+            hud.setFloorText("Round: " + floor);
+            hud.setEndlessInfo("");
+        } else {
+            hud.setFloorText("Floor: " + level);
+            hud.setEndlessInfo("");
+        }
 
         // Exit target for arrow/hints
         updateHudExitTarget();
@@ -492,8 +501,6 @@ public class GameScreen implements Screen {
         enemyCount = ENEMIES_PER_LEVEL[lv];
         trapCount  = TRAPS_PER_LEVEL[lv];
         itemCount  = ITEMS_PER_LEVEL[lv];
-        propCount  = PROPS_PER_LEVEL[lv];
-
         for (Room r : rooms) {
             if (r.getType() == RoomType.BOSS) {
                 Gdx.app.log("BOSS", "Boss room: x=" + r.x() + " y=" + r.y() + " w=" + r.w() + " h=" + r.h());
@@ -502,8 +509,7 @@ public class GameScreen implements Screen {
 
         Gdx.app.log("SPAWN", "counts: enemies=" + enemyCount
                 + " traps=" + trapCount
-                + " items=" + itemCount
-                + " props=" + propCount);
+                + " items=" + itemCount);
         // 4) Spawn enemies/items
 
         // Boss only on level 5
@@ -514,6 +520,10 @@ public class GameScreen implements Screen {
         if (clampLevel(endlessMode ? floor : level) == 5) {
             bossAnims = new BossAnimations("Sword.png");
             boss = BossSpawner.spawnBossIfFinalLevel(maze, 5, bossAnims);
+            if (boss != null && endlessMode) {
+                float bossHpMult = 1f + Math.max(0, floor - 1) * 0.25f;
+                boss.scaleHp(bossHpMult);
+            }
             bossTarget = new PlayerAdapter(player);
         }
 
@@ -531,15 +541,15 @@ public class GameScreen implements Screen {
         Gdx.input.setInputProcessor(multiplexer);
 
         fog = new FogOfWarRenderer();
-        fog.setFogAlpha(0.95f);
+        fog.setFogAlpha(0.97f);
 
         Gdx.app.log("SPAWN", "counts: enemies=" + enemyCount
                 + " traps=" + trapCount
-                + " items=" + itemCount
-                + " props=" + propCount);
+                + " items=" + itemCount);
 
 
         initializeEnemiesAndObstacles(runSeed);
+        applyEndlessScaling();
 
 
         Gdx.app.log("SPAWN", "rooms=" + (rooms == null ? 0 : rooms.size())
@@ -595,6 +605,9 @@ public class GameScreen implements Screen {
             if (savedState.hasGun) {
                 player.equipGun();
             }
+            if (savedState.hasKey) {
+                player.giveKey();
+            }
             if (savedState.godMode) {
                 player.setGodMode(true);
             }
@@ -631,12 +644,6 @@ public class GameScreen implements Screen {
         lightningTrapsActivated = false;
 
 
-        // 2) Props (ALLOWED in spawn room) - use propCount instead of 20
-        int effectiveLevel = endlessMode ? floor : level;
-        PropPlacer propPlacer = new PropPlacer();
-        var placedProps = propPlacer.placeProps(maze, propCount, seed, Math.min(effectiveLevel, 5), propSprites);
-        obstacles.addAll(placedProps);
-
         GameState savedState = game.getPendingSaveState();
 
         // 3) Enemies (NOT in spawn room)
@@ -669,10 +676,13 @@ public class GameScreen implements Screen {
                 else if (is.type.equals("heart")) items.add(new HeartItem(is.x, is.y));
                 else if (is.type.equals("speed")) items.add(new SpeedItem(is.x, is.y));
                 else if (is.type.equals("shield")) items.add(new ShieldItem(is.x, is.y));
+                else if (is.type.equals("key") && !player.hasKey()) items.add(new KeyItem(is.x, is.y));
             }
         } else {
             items = new ItemSpawner().spawnItems(maze, itemCount); // use per-level
         }
+
+        ensureKeyItemPresent(seed);
     }
 
 
@@ -688,22 +698,31 @@ public class GameScreen implements Screen {
         float worldW = uiViewport.getWorldWidth();
         float worldH = uiViewport.getWorldHeight();
 
+        minimapSize = Math.min(worldW, worldH) * 0.5f;
+
         float mapX = worldW - minimapSize - 20;
         float mapY = 20; // bottom-right instead of top-right
 
+        float tileScale = minimapSize / Math.max(maze.getWidth(), maze.getHeight());
+        float mapW = maze.getWidth() * tileScale;
+        float mapH = maze.getHeight() * tileScale;
+        float mapOriginX = mapX + (minimapSize - mapW) * 0.5f;
+        float mapOriginY = mapY + (minimapSize - mapH) * 0.5f;
 
-        // Show a 30-tile range (15 left, 15 right)
-        float viewRange = 15 * TILE_SIZE;
-        float scale = minimapSize / (viewRange * 2);
-
-        float playerX = player.getX();
-        float playerY = player.getY();
-        float centerX = mapX + minimapSize / 2f;
-        float centerY = mapY + minimapSize / 2f;
+        Vector2 scissorBL = new Vector2(mapX, mapY);
+        Vector2 scissorTR = new Vector2(mapX + minimapSize, mapY + minimapSize);
+        uiViewport.project(scissorBL);
+        uiViewport.project(scissorTR);
+        int scissorX = Math.round(scissorBL.x);
+        int scissorY = Math.round(scissorBL.y);
+        int scissorW = Math.round(scissorTR.x - scissorBL.x);
+        int scissorH = Math.round(scissorTR.y - scissorBL.y);
 
         // blending for transparent background
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        Gdx.gl.glEnable(GL20.GL_SCISSOR_TEST);
+        Gdx.gl.glScissor(scissorX, scissorY, scissorW, scissorH);
 
         shapeRenderer.setProjectionMatrix(uiViewport.getCamera().combined);
 
@@ -714,44 +733,34 @@ public class GameScreen implements Screen {
         shapeRenderer.setColor(0, 0, 0, 0.5f);
         shapeRenderer.rect(mapX, mapY, minimapSize, minimapSize);
 
-        // Walls
-        shapeRenderer.setColor(Color.LIGHT_GRAY);
+        // Explored tiles (rooms + halls only)
+        for (int row = 0; row < maze.getHeight(); row++) {
+            for (int col = 0; col < maze.getWidth(); col++) {
+                if (!explored[col][row]) continue;
+                if (!maze.getTile(col, row).isWalkable()) continue;
 
-        int radius = 20;
-        int startCol = (int)(playerX / TILE_SIZE) - radius;
-        int endCol   = (int)(playerX / TILE_SIZE) + radius;
-        int startRow = (int)(playerY / TILE_SIZE) - radius;
-        int endRow   = (int)(playerY / TILE_SIZE) + radius;
+                shapeRenderer.setColor(Color.GRAY);
 
-        for (int row = startRow; row <= endRow; row++) {
-            for (int col = startCol; col <= endCol; col++) {
-                if (col < 0 || row < 0 || col >= maze.getWidth() || row >= maze.getHeight()) continue;
-
-                if (maze.getTile(col, row).isWall()) {
-                    float relX = (col * TILE_SIZE - playerX) * scale;
-                    float relY = (row * TILE_SIZE - playerY) * scale;
-
-                    if (Math.abs(relX) < minimapSize / 2 && Math.abs(relY) < minimapSize / 2) {
-                        shapeRenderer.rect(centerX + relX, centerY + relY,
-                                TILE_SIZE * scale, TILE_SIZE * scale);
-                    }
-                }
+                float x = mapOriginX + col * tileScale;
+                float y = mapOriginY + row * tileScale;
+                shapeRenderer.rect(x, y, tileScale, tileScale);
             }
         }
 
-        // Enemies (red)
+        // Enemies (red) - only if tile explored
         if (enemies != null) {
             shapeRenderer.setColor(Color.RED);
             for (Enemy enemy : enemies) {
                 float ex = enemy.getPosition().x;
                 float ey = enemy.getPosition().y;
 
-                float relX = (ex - playerX) * scale;
-                float relY = (ey - playerY) * scale;
+                int tileX = (int) (ex / TILE_SIZE);
+                int tileY = (int) (ey / TILE_SIZE);
+                if (!inExplored(tileX, tileY)) continue;
 
-                if (Math.abs(relX) < minimapSize / 2 && Math.abs(relY) < minimapSize / 2) {
-                    shapeRenderer.circle(centerX + relX, centerY + relY, 4);
-                }
+                float cx = mapOriginX + (tileX + 0.5f) * tileScale;
+                float cy = mapOriginY + (tileY + 0.5f) * tileScale;
+                shapeRenderer.circle(cx, cy, Math.max(2f, tileScale * 0.35f));
             }
         }
 
@@ -763,27 +772,83 @@ public class GameScreen implements Screen {
             float bx = hb.x + hb.width / 2f;
             float by = hb.y + hb.height / 2f;
 
-            float relX = (bx - playerX) * scale;
-            float relY = (by - playerY) * scale;
-
-            if (Math.abs(relX) < minimapSize / 2 && Math.abs(relY) < minimapSize / 2) {
-                shapeRenderer.circle(centerX + relX, centerY + relY, 5);
+            int tileX = (int) (bx / TILE_SIZE);
+            int tileY = (int) (by / TILE_SIZE);
+            if (inExplored(tileX, tileY)) {
+                float cx = mapOriginX + (tileX + 0.5f) * tileScale;
+                float cy = mapOriginY + (tileY + 0.5f) * tileScale;
+                shapeRenderer.circle(cx, cy, Math.max(2f, tileScale * 0.45f));
             }
         }
 
         // Player (green)
         shapeRenderer.setColor(Color.GREEN);
-        shapeRenderer.circle(centerX, centerY, 5);
+        int pTileX = (int) (player.getX() / TILE_SIZE);
+        int pTileY = (int) (player.getY() / TILE_SIZE);
+        float pcx = mapOriginX + (pTileX + 0.5f) * tileScale;
+        float pcy = mapOriginY + (pTileY + 0.5f) * tileScale;
+        shapeRenderer.circle(pcx, pcy, Math.max(2f, tileScale * 0.45f));
+
+        // Entrance (always)
+        Point entry = maze.getEntryCell();
+        if (entry != null) {
+            shapeRenderer.setColor(Color.CYAN);
+            float ex = mapOriginX + (entry.x + 0.5f) * tileScale;
+            float ey = mapOriginY + (entry.y + 0.5f) * tileScale;
+            shapeRenderer.rect(ex - tileScale * 0.3f, ey - tileScale * 0.3f,
+                    tileScale * 0.6f, tileScale * 0.6f);
+        }
+
+        // Exit (only if player has key)
+        if (player.hasKey()) {
+            Point exit = maze.getExitCell();
+            if (exit != null) {
+                shapeRenderer.setColor(Color.ORANGE);
+                float ex = mapOriginX + (exit.x + 0.5f) * tileScale;
+                float ey = mapOriginY + (exit.y + 0.5f) * tileScale;
+                shapeRenderer.rect(ex - tileScale * 0.3f, ey - tileScale * 0.3f,
+                        tileScale * 0.6f, tileScale * 0.6f);
+            }
+        }
 
         shapeRenderer.end();
 
-        // Border pass
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        shapeRenderer.setColor(Color.WHITE);
-        shapeRenderer.rect(mapX, mapY, minimapSize, minimapSize);
-        shapeRenderer.end();
+        Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
 
         Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    private void updateMinimapExploration() {
+        if (maze == null || player == null) return;
+        ensureExploredGrid();
+        markExploredAroundPlayer();
+    }
+
+    private void ensureExploredGrid() {
+        if (maze == null) return;
+        if (explored == null || exploredW != maze.getWidth() || exploredH != maze.getHeight()) {
+            exploredW = maze.getWidth();
+            exploredH = maze.getHeight();
+            explored = new boolean[exploredW][exploredH];
+        }
+    }
+
+    private void markExploredAroundPlayer() {
+        if (explored == null || maze == null || player == null) return;
+        int cx = (int) (player.getX() / TILE_SIZE);
+        int cy = (int) (player.getY() / TILE_SIZE);
+        for (int y = cy - EXPLORE_RADIUS_TILES; y <= cy + EXPLORE_RADIUS_TILES; y++) {
+            for (int x = cx - EXPLORE_RADIUS_TILES; x <= cx + EXPLORE_RADIUS_TILES; x++) {
+                if (x < 0 || y < 0 || x >= exploredW || y >= exploredH) continue;
+                explored[x][y] = true;
+            }
+        }
+    }
+
+    private boolean inExplored(int x, int y) {
+        if (explored == null) return false;
+        if (x < 0 || y < 0 || x >= exploredW || y >= exploredH) return false;
+        return explored[x][y];
     }
 
 
@@ -817,6 +882,20 @@ public class GameScreen implements Screen {
 
         GameState saved = game.getPendingSaveState();
         boolean loadingSave = (saved != null);
+
+        if (endlessMode) {
+            FileHandle endlessFile = getEndlessLevelFile(floor);
+            if (endlessFile != null && endlessFile.exists()) {
+                MazeLoader loader = new MazeLoader();
+                this.maze = loader.loadMazeFromProperties(endlessFile, TILE_SIZE);
+                this.rooms = RoomDetector.detectRooms(this.maze);
+                this.maze.setRooms(this.rooms);
+                applyRoomMask(this.maze, this.rooms);
+                assignRoomTypesFromTiles(this.maze, this.rooms);
+                activeLevelFile = endlessFile;
+                return;
+            }
+        }
 
 
         // 1) LOAD GAME -> REGEN FROM SAVED SEED
@@ -878,7 +957,7 @@ public class GameScreen implements Screen {
         );
 
         gameCamera.setZoom(0.25f);
-        cameraInput = new CameraInputController(gameCamera);
+        cameraInput = new CameraInputController(gameCamera, game.getPreferences());
 
         Texture tileset = new Texture("tileset1.png");
         mazeRenderer = new MazeRenderer(tileset);
@@ -893,21 +972,6 @@ public class GameScreen implements Screen {
             clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/click.mp3"));
         }
 
-        loadPropTexturesForLevel();
-    }
-
-    private void loadPropTexturesForLevel() {
-        for (Texture t : propTextures.values()) t.dispose();
-        propTextures.clear();
-        propSprites.clear();
-
-        for (PropType type : PropType.values()) {
-            Texture tex = new Texture(Gdx.files.internal(type.texturePath));
-            tex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-
-            propTextures.put(type, tex);
-            propSprites.put(type, new TextureRegion(tex));
-        }
     }
 
     private void togglePause() {
@@ -1009,13 +1073,26 @@ public class GameScreen implements Screen {
         if (won) {
             int nextLevel = level + 1;
             game.getPreferences().setMaxLevel(nextLevel);
+            if (!endlessMode && level >= 5) {
+                game.markStoryCompleted();
+            }
         }
 
         if (pauseWindow != null) pauseWindow.setVisible(false);
         if (settingsWindow != null) settingsWindow.setVisible(false);
 
         // FIX: Remove "de.tum.cit.fop.maze." prefix so it uses the import
-        GameOverWindow window = new GameOverWindow(game.getSkin(), game, level, won, activeLevelFile != null ? activeLevelFile : levelFile, player.getScore(), player);
+        GameOverWindow window = new GameOverWindow(
+                game.getSkin(),
+                game,
+                level,
+                won,
+                activeLevelFile != null ? activeLevelFile : levelFile,
+                player.getScore(),
+                player,
+                endlessMode,
+                floor
+        );
         window.setPosition(
                 (uiViewport.getWorldWidth() - window.getWidth()) / 2f,
                 (uiViewport.getWorldHeight() - window.getHeight()) / 2f
@@ -1099,6 +1176,10 @@ public class GameScreen implements Screen {
         floor++;
         hud.showNotification("ROUND " + floor);
         hud.setFloorText("Round: " + floor);
+        int hpGain = Math.max(0, (floor - 1) * 2);
+        if (hpGain > 0) {
+            hud.showNotification("ENEMIES + " + hpGain + " HP");
+        }
 
         long seed = System.nanoTime();
         runSeed = seed;
@@ -1110,12 +1191,10 @@ public class GameScreen implements Screen {
         enemyCount = ENEMIES_PER_LEVEL[lv];
         trapCount  = TRAPS_PER_LEVEL[lv];
         itemCount  = ITEMS_PER_LEVEL[lv];
-        propCount  = PROPS_PER_LEVEL[lv];
-
 
         gameCamera = new GameCamera(viewport.getWorldWidth(), viewport.getWorldHeight(), maze.getWidth() * TILE_SIZE, maze.getHeight() * TILE_SIZE);
         gameCamera.setZoom(0.25f);
-        cameraInput = new CameraInputController(gameCamera);
+        cameraInput = new CameraInputController(gameCamera, game.getPreferences());
 
         Point entry = maze.getEntryCell();
         if (entry == null) entry = new Point(1, 1);
@@ -1124,6 +1203,7 @@ public class GameScreen implements Screen {
         player.clearKey();
 
         initializeEnemiesAndObstacles(seed);
+        applyEndlessScaling();
         boss = null;
         bossTarget = null;
         bossDropSpawned = false;
@@ -1132,6 +1212,10 @@ public class GameScreen implements Screen {
             if (bossAnims != null) bossAnims.dispose();
             bossAnims = new BossAnimations("Sword.png");
             boss = BossSpawner.spawnBossIfFinalLevel(maze, 5, bossAnims);
+            if (boss != null && endlessMode) {
+                float bossHpMult = 1f + Math.max(0, floor - 1) * 0.25f;
+                boss.scaleHp(bossHpMult);
+            }
             bossTarget = new PlayerAdapter(player);
         }
 
@@ -1201,15 +1285,182 @@ public class GameScreen implements Screen {
         return null;
     }
 
+    private Room findExitRoom() {
+        if (rooms == null) return null;
+        for (Room r : rooms) {
+            if (r.getType() == RoomType.EXIT) return r;
+        }
+        return null;
+    }
+
+    private Room findKeyRoom() {
+        if (rooms == null) return null;
+        for (Room r : rooms) {
+            if (r.getType() == RoomType.KEY) return r;
+        }
+        return null;
+    }
+
+    private void ensureKeyItemPresent(long seed) {
+        if (player == null || player.hasKey()) return;
+        if (items == null) items = new ArrayList<>();
+
+        for (Collectable c : items) {
+            if (c instanceof KeyItem) return;
+        }
+
+        Point keyTile = findFirstTileOfType(maze, Tiles.KEY);
+        if (keyTile != null) {
+            maze.setTile(keyTile.x, keyTile.y, Tiles.FLOOR);
+            Room r = findRoomContaining(rooms, keyTile);
+            if (r != null) r.setType(RoomType.KEY);
+            items.add(new KeyItem(keyTile.x * TILE_SIZE, keyTile.y * TILE_SIZE));
+            return;
+        }
+
+        Room keyRoom = findKeyRoom();
+        if (keyRoom == null) {
+            Room spawnRoom = findSpawnRoom();
+            Room exitRoom = findExitRoom();
+            keyRoom = pickFallbackKeyRoom(spawnRoom, exitRoom);
+            if (keyRoom != null) keyRoom.setType(RoomType.KEY);
+        }
+
+        if (keyRoom != null) {
+            java.util.Random rng = new java.util.Random(seed ^ 0x9E3779B97F4A7C15L);
+            Point p = keyRoom.randomInterior(rng);
+            if (p != null && maze.getTile(p.x, p.y).isWalkable()) {
+                items.add(new KeyItem(p.x * TILE_SIZE, p.y * TILE_SIZE));
+            }
+        }
+    }
+
+    private Room pickFallbackKeyRoom(Room spawnRoom, Room exitRoom) {
+        if (rooms == null || rooms.isEmpty()) return null;
+        Room best = null;
+        int bestScore = -1;
+
+        int sx = spawnRoom != null ? spawnRoom.centerX() : -1;
+        int sy = spawnRoom != null ? spawnRoom.centerY() : -1;
+        int ex = exitRoom != null ? exitRoom.centerX() : -1;
+        int ey = exitRoom != null ? exitRoom.centerY() : -1;
+
+        for (Room r : rooms) {
+            if (r == spawnRoom || r == exitRoom) continue;
+            int ds = (sx < 0) ? Integer.MAX_VALUE : dist2(r.centerX(), r.centerY(), sx, sy);
+            int de = (ex < 0) ? Integer.MAX_VALUE : dist2(r.centerX(), r.centerY(), ex, ey);
+            int score = Math.min(ds, de);
+            if (score > bestScore) {
+                bestScore = score;
+                best = r;
+            }
+        }
+        return best;
+    }
+
+    private int dist2(int ax, int ay, int bx, int by) {
+        int dx = ax - bx;
+        int dy = ay - by;
+        return dx * dx + dy * dy;
+    }
+
+    private void applyRoomMask(Maze maze, List<Room> rooms) {
+        if (maze == null) return;
+        maze.clearRoomMask();
+        if (rooms == null) return;
+        for (Room r : rooms) {
+            for (int y = r.y(); y < r.y() + r.h(); y++) {
+                for (int x = r.x(); x < r.x() + r.w(); x++) {
+                    maze.setRoomCell(x, y, true);
+                }
+            }
+        }
+    }
+
+    private void assignRoomTypesFromTiles(Maze maze, List<Room> rooms) {
+        if (maze == null || rooms == null) return;
+
+        Point spawn = maze.getEntryCell();
+        if (spawn != null) {
+            Room r = findRoomContaining(rooms, spawn);
+            if (r != null) r.setType(RoomType.SPAWN);
+        }
+
+        Point exit = maze.getExitCell();
+        if (exit != null) {
+            Room r = findRoomContaining(rooms, exit);
+            if (r != null) r.setType(RoomType.EXIT);
+        }
+
+        Point key = findFirstTileOfType(maze, Tiles.KEY);
+        if (key != null) {
+            Room r = findRoomContaining(rooms, key);
+            if (r != null) r.setType(RoomType.KEY);
+        }
+    }
+
+    private Room findRoomContaining(List<Room> rooms, Point p) {
+        for (Room r : rooms) {
+            if (p.x >= r.x() && p.x < r.x() + r.w()
+                    && p.y >= r.y() && p.y < r.y() + r.h()) {
+                return r;
+            }
+        }
+        return null;
+    }
+
+    private Point findFirstTileOfType(Maze maze, Tiles tile) {
+        for (int y = 0; y < maze.getHeight(); y++) {
+            for (int x = 0; x < maze.getWidth(); x++) {
+                if (maze.getTile(x, y) == tile) {
+                    return new Point(x, y);
+                }
+            }
+        }
+        return null;
+    }
+
+    private void applyEndlessScaling() {
+        if (combatSystem == null) return;
+        if (!endlessMode) {
+            combatSystem.setEnemyDamageMult(1f);
+            return;
+        }
+
+        int hpAdd = Math.max(0, (floor - 1) * 2);
+        if (enemies != null) {
+            for (Enemy e : enemies) {
+                if (e != null) e.addHp(hpAdd);
+            }
+        }
+        combatSystem.setEnemyDamageMult(1f);
+    }
+
 
     @Override public void pause() {}
     @Override public void resume() {}
-    @Override public void hide() {}
+    @Override public void hide() {
+        if (combatSystem != null) combatSystem.stopLoopingSfx();
+        if (enemies != null) {
+            for (Enemy e : enemies) {
+                if (e instanceof FlyingDrone fd) {
+                    fd.stopAllSounds();
+                }
+            }
+        }
+    }
 
     @Override
     public void dispose() {
+        if (combatSystem != null) combatSystem.stopLoopingSfx();
+        if (enemies != null) {
+            for (Enemy e : enemies) {
+                if (e instanceof FlyingDrone fd) {
+                    fd.stopAllSounds();
+                }
+            }
+        }
         if (hud != null) hud.dispose();
-        if (keyTexture != null) keyTexture.dispose();
         if (pauseStage != null) pauseStage.dispose();
         if (pickupSound != null) pickupSound.dispose();
         if (hitSound != null) hitSound.dispose();
@@ -1220,12 +1471,7 @@ public class GameScreen implements Screen {
             }
         }
         if (fog != null) fog.dispose();
-        if (propTilesetTexture != null) propTilesetTexture.dispose();
-        propSprites.clear();
         if (mazeRenderer != null) mazeRenderer.dispose();
-        for (Texture t : propTextures.values()) t.dispose();
-        propTextures.clear();
-        propSprites.clear();
         if (bossAnims != null) bossAnims.dispose();
         ObstacleAudioManager.dispose();
     }
@@ -1234,16 +1480,39 @@ public class GameScreen implements Screen {
         Point exit = maze.getExitCell();
         if (exit == null) {
             hud.clearExitTarget();
+            hud.setExitRoomWorldRect(null);
             return;
         }
 
         hud.setExitTarget(exit.x * TILE_SIZE + TILE_SIZE / 2f, exit.y * TILE_SIZE + TILE_SIZE / 2f);
-    }
 
+        Room exitRoom = findExitRoom();
+        if (exitRoom != null) {
+            float rx = exitRoom.x() * TILE_SIZE;
+            float ry = exitRoom.y() * TILE_SIZE;
+            float rw = exitRoom.w() * TILE_SIZE;
+            float rh = exitRoom.h() * TILE_SIZE;
+            hud.setExitRoomWorldRect(new Rectangle(rx, ry, rw, rh));
+        } else {
+            hud.setExitRoomWorldRect(null);
+        }
+    }
 
     private FileHandle getLevelTargetFile(int level) {
         FileHandle dir = Gdx.files.local("maps");
         dir.mkdirs();
         return dir.child("level-" + level + ".properties");
+    }
+
+    private FileHandle getEndlessLevelFile(int floor) {
+        String name = "maps/endless-" + floor + ".properties";
+
+        FileHandle internal = Gdx.files.internal(name);
+        if (internal.exists()) return internal;
+
+        FileHandle local = Gdx.files.local(name);
+        if (local.exists()) return local;
+
+        return null;
     }
 }

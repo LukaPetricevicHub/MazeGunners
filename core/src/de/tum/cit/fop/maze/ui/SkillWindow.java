@@ -130,6 +130,14 @@ public class SkillWindow extends Window {
         this.pack();
     }
 
+    @Override
+    public void setVisible(boolean visible) {
+        super.setVisible(visible);
+        if (visible) {
+            refresh();
+        }
+    }
+
     private TextButton createSkillButton(String name, String desc, boolean isUnlocked, boolean isParentUnlocked, Runnable unlockAction) {
         // BUTTON TEXT: Only Name + Status
         String text = name;

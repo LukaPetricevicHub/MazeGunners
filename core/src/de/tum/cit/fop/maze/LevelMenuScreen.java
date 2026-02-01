@@ -47,6 +47,7 @@ public class LevelMenuScreen implements Screen {
         scroll.setFadeScrollBars(false);
 
         var levels = LevelDiscovery.listAllLevels();
+        int maxUnlocked = game.getPreferences().getMaxLevel();
 
         if (levels.size == 0) {
             listTable.add(new Label("No .properties levels found in maps/.", game.getSkin()))
@@ -54,12 +55,15 @@ public class LevelMenuScreen implements Screen {
         } else {
             for (FileHandle levelFile : levels) {
                 int lvl = guessDifficulty(levelFile.name());
-                String label = "Floor " + lvl;
+                boolean locked = lvl > maxUnlocked;
+                String label = locked ? ("Floor " + lvl + " (Locked)") : ("Floor " + lvl);
 
                 TextButton btn = new TextButton(label, game.getSkin());
+                btn.setDisabled(locked);
                 btn.addListener(new ChangeListener() {
                     @Override
                     public void changed(ChangeEvent event, Actor actor) {
+                        if (btn.isDisabled()) return;
                         // Your MazeRunnerGame uses: new GameScreen(game, mapPathString)
                         game.setScreen(new GameScreen(game, levelFile.path()));
                     }

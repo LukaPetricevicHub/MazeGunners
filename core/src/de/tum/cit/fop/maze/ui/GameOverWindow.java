@@ -19,7 +19,9 @@ public class GameOverWindow extends Window {
                           boolean won,
                           FileHandle currentLevelFile,
                           int score,
-                          Player player) {
+                          Player player,
+                          boolean endlessMode,
+                          int floor) {
 
         super(won ? "LEVEL COMPLETED" : "GAME OVER", skin);
 
@@ -59,7 +61,12 @@ public class GameOverWindow extends Window {
                 String name = nameField.getText();
                 if (name == null || name.trim().isEmpty()) name = "Unknown";
 
-                game.getLeaderboardManager().addScore(name, score);
+                String boardKey = endlessMode ? "endless" : ("level-" + currentLevel);
+                if (endlessMode) {
+                    game.getLeaderboardManager().addScore(boardKey, name, floor, score);
+                } else {
+                    game.getLeaderboardManager().addScore(boardKey, name, score);
+                }
 
                 submitBtn.setText("Saved!");
                 submitBtn.setDisabled(true);

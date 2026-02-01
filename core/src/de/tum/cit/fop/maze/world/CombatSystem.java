@@ -23,11 +23,18 @@ public class CombatSystem {
 
     private Texture droneLaserTexture;
     private List<Enemy> enemies;
+    private float enemyDamageMult = 1f;
 
     private long floorHazardSoundId = -1;
     private boolean floorHazardSoundPlaying = false;
+    private boolean wasPlayerAttacking = false;
+    private final java.util.HashSet<Enemy> meleeHitThisSwing = new java.util.HashSet<>();
 
     public CombatSystem() {}
+
+    public void setEnemyDamageMult(float mult) {
+        enemyDamageMult = Math.max(0.1f, mult);
+    }
 
     public void update(float deltaTime,
                        Player player,
@@ -46,15 +53,15 @@ public class CombatSystem {
 
         // ==========================================
         // DAMAGE CALC (single source of truth)
-        // strengthStat: 1..10, baseline at 5
+        // Use raw strength directly, scaled by dmg multiplier
         // ==========================================
-        int strength = player.getStrengthStat();             // 1..10
-        int strengthBonus = Math.max(0, strength - 5);       // 0..5
+        int strength = player.getStrengthStat();
         float dmgMult = player.getDamageMult();
 
-        int bulletDamage = Math.max(1, Math.round((5f + strengthBonus) * dmgMult));
-        int meleeDamage  = Math.max(1, Math.round((1f + strengthBonus * 0.6f) * dmgMult));
-        int repulseDamage = Math.max(1, Math.round((2f + strengthBonus * 0.3f) * dmgMult));
+        int base = Math.max(1, strength);
+        int bulletDamage = Math.max(1, Math.round(base * dmgMult));
+        int meleeDamage  = Math.max(1, Math.round(base * dmgMult));
+        int repulseDamage = Math.max(1, Math.round(base * dmgMult));
 
         // -------------------------
         // 1) BULLETS → ENEMIES/BOSS
@@ -161,7 +168,7 @@ public class CombatSystem {
                 && player.getAttackHitbox() != null
                 && player.getAttackHitbox().overlaps(boss.getHitbox())) {
 
-            int bossMelee = Math.max(1, Math.round((2f + strengthBonus * 0.6f) * dmgMult));
+            int bossMelee = Math.max(1, Math.round(Math.max(1, strength) * dmgMult));
             boss.damage(bossMelee);
         }
 
@@ -197,6 +204,12 @@ public class CombatSystem {
         // -------------------------
         // 5) ENEMIES (touch dmg + melee hit)
         // -------------------------
+        if (!wasPlayerAttacking && player.isAttacking()) {
+            meleeHitThisSwing.clear();
+        }
+        wasPlayerAttacking = player.isAttacking();
+
+        int touchDamage = Math.max(1, Math.round(1f * enemyDamageMult));
         Rectangle playerHitbox = new Rectangle(player.getX(), player.getY(), 32f, 64f);
         Rectangle playerFeetHitbox = new Rectangle(player.getX(), player.getY(), 32f, 8f);
 
@@ -224,7 +237,7 @@ public class CombatSystem {
 
             // Touch damage
             if (playerHitbox.overlaps(enemy.getCollisionBox())) {
-                player.takeDamage(1);
+                player.takeDamage(touchDamage);
             }
 
             // Player melee hit
@@ -233,7 +246,10 @@ public class CombatSystem {
                     && player.getAttackHitbox() != null
                     && player.getAttackHitbox().overlaps(enemy.getCollisionBox())) {
 
-                enemy.takeDamage(meleeDamage);
+                if (!meleeHitThisSwing.contains(enemy)) {
+                    enemy.takeDamage(meleeDamage);
+                    meleeHitThisSwing.add(enemy);
+                }
 
                 // Rewards: freeze + poison
                 if (player.hasFreezeWeapon()) {
@@ -403,6 +419,14 @@ public class CombatSystem {
                     droneLaserTexture.getWidth(), droneLaserTexture.getHeight(),
                     false, false);
             batch.setColor(1f, 1f, 1f, 1f);
+        }
+    }
+
+    public void stopLoopingSfx() {
+        if (floorHazardSoundPlaying) {
+            ObstacleAudioManager.stopFloorHazard(floorHazardSoundId);
+            floorHazardSoundId = -1;
+            floorHazardSoundPlaying = false;
         }
     }
 

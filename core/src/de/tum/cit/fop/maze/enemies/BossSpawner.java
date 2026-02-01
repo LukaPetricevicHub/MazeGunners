@@ -26,9 +26,9 @@ public class BossSpawner {
             return null;
         }
 
-        // Pick a random interior tile in the boss room
+        // Pick a random interior tile with padding for boss size (10x10 tiles drawn)
         Random rng = new Random();
-        Point tile = bossRoom.randomInterior(rng);
+        Point tile = randomInteriorWithPadding(bossRoom, rng, 5);
 
         float spawnX = tile.x * maze.getTileSize() + maze.getTileSize() / 2f;
         float spawnY = tile.y * maze.getTileSize() + maze.getTileSize() / 2f;
@@ -74,5 +74,20 @@ public class BossSpawner {
         }
 
         return best;
+    }
+
+    private static Point randomInteriorWithPadding(Room room, Random rng, int padTiles) {
+        int ix0 = room.x() + padTiles;
+        int iy0 = room.y() + padTiles;
+        int ix1 = room.x() + room.w() - 1 - padTiles;
+        int iy1 = room.y() + room.h() - 1 - padTiles;
+
+        if (ix1 < ix0 || iy1 < iy0) {
+            return room.center();
+        }
+
+        int rx = ix0 + rng.nextInt(ix1 - ix0 + 1);
+        int ry = iy0 + rng.nextInt(iy1 - iy0 + 1);
+        return new Point(rx, ry);
     }
 }

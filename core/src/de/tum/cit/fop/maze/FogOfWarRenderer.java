@@ -10,10 +10,13 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
+import de.tum.cit.fop.maze.player.Bullet;
+
+import java.util.List;
 
 public class FogOfWarRenderer {
 
-    private float radiusWorld = 8f * 32f;   // e.g. 8 tiles * TILE_SIZE
+    private float radiusWorld = 3f * 32f;   // e.g. 3 tiles * TILE_SIZE
     private float softEdgeWorld = 2f * 32f; // optional: also in world units
     private FrameBuffer fbo;
     private Texture black1x1;
@@ -53,6 +56,15 @@ public class FogOfWarRenderer {
                        OrthographicCamera worldCam,
                        float playerWorldX,
                        float playerWorldY) {
+        render(batch, worldCam, playerWorldX, playerWorldY, null, 0f);
+    }
+
+    public void render(SpriteBatch batch,
+                       OrthographicCamera worldCam,
+                       float playerWorldX,
+                       float playerWorldY,
+                       List<Bullet> bullets,
+                       float bulletRadiusWorld) {
         if (fbo == null) return;
 
         // Convert player position from world -> screen coordinates (pixels)
@@ -95,6 +107,28 @@ public class FogOfWarRenderer {
                 pxScreen - size / 2f,
                 pyScreen - size / 2f,
                 size, size);
+
+        // 2b) Bullet light holes (temporary)
+        if (bullets != null && bulletRadiusWorld > 0f) {
+            float bulletRadiusScreen = bulletRadiusWorld / zoom;
+            float bulletSoftScreen = Math.max(1f, softScreen * 0.5f);
+            float bulletSize = (bulletRadiusScreen + bulletSoftScreen) * 2f;
+
+            for (Bullet b : bullets) {
+                if (b == null || !b.isAlive()) continue;
+
+                tmp.set(b.getX(), b.getY(), 0f);
+                worldCam.project(tmp);
+
+                float bxScreen = tmp.x;
+                float byScreen = screenH - tmp.y;
+
+                batch.draw(holeMask,
+                        bxScreen - bulletSize / 2f,
+                        byScreen - bulletSize / 2f,
+                        bulletSize, bulletSize);
+            }
+        }
 
         // restore defaults
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);

@@ -28,6 +28,7 @@ public class Boss {
     // HP / PHASE
     // =========================
     private static final int MAX_HP = 250;
+    private static final float DAMAGE_TAKEN_MULT = 0.5f;
     private static final float RUN2_HP_PCT = 0.25f;
 
     // =========================
@@ -138,6 +139,11 @@ public class Boss {
         return MAX_HP;
     }
 
+    public void scaleHp(float mult) {
+        if (mult <= 1f) return;
+        hp = Math.max(1, Math.round(hp * mult));
+    }
+
     public float getHpPct() {
         return (MAX_HP <= 0) ? 0f : (hp / (float) MAX_HP);
     }
@@ -145,7 +151,8 @@ public class Boss {
     public void damage(int dmg) {
         if (state == BossState.DEATH) return;
 
-        hp -= dmg;
+        int scaled = Math.max(1, Math.round(dmg * DAMAGE_TAKEN_MULT));
+        hp -= scaled;
         if (hp <= 0) {
             hp = 0;
             state = BossState.DEATH;
@@ -422,7 +429,7 @@ public class Boss {
     }
 
     private void clampToBossRoom(Vector2 worldPos) {
-        int padTiles = 3;
+        int padTiles = 5;
 
         float minX = (bossRoom.x() + padTiles) * TILE;
         float minY = (bossRoom.y() + padTiles) * TILE;

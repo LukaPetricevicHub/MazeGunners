@@ -36,6 +36,9 @@ public class Bullet {
         return new Rectangle(position.x, position.y, SIZE, SIZE);
     }
 
+    public float getX() { return position.x; }
+    public float getY() { return position.y; }
+
     // --- NEW HELPERS FOR PIERCING ---
     public boolean hasAlreadyHit(Enemy enemy) {
         return hitEnemies.contains(enemy);

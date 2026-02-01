@@ -155,7 +155,18 @@ public class ObstaclePlacer {
 
     private boolean isNearSpawnRoom(Point cell, Room spawnRoom, Maze maze) {
 
-        if(spawnRoom == null) return false;
+        if(spawnRoom == null) {
+            Point entry = maze.getEntryCell();
+            if (entry == null) return false;
+            if (!maze.isHallTile(cell.x, cell.y)) return false;
+
+            int minX = entry.x - SPAWN_ROOM_BUFFER_TILES;
+            int maxX = entry.x + SPAWN_ROOM_BUFFER_TILES;
+            int minY = entry.y - SPAWN_ROOM_BUFFER_TILES;
+            int maxY = entry.y + SPAWN_ROOM_BUFFER_TILES;
+
+            return cell.x >= minX && cell.x <= maxX && cell.y >= minY && cell.y <= maxY;
+        }
 
         int minX = spawnRoom.x() - SPAWN_ROOM_BUFFER_TILES;
         int maxX = spawnRoom.x() + spawnRoom.w() + SPAWN_ROOM_BUFFER_TILES - 1;

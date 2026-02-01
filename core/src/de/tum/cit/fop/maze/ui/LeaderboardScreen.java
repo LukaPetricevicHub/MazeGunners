@@ -17,6 +17,8 @@ import de.tum.cit.fop.maze.score.ScoreEntry;
 public class LeaderboardScreen implements Screen {
     private final MazeRunnerGame game;
     private final Stage stage;
+    private final Table listTable;
+    private String activeBoard = null;
 
     public LeaderboardScreen(MazeRunnerGame game) {
         this.game = game;
@@ -31,21 +33,22 @@ public class LeaderboardScreen implements Screen {
         // Title
         table.add(new Label("HALL OF FAME", game.getSkin(), "title")).padBottom(20).row();
 
-        // Header
-        Table listTable = new Table();
-        listTable.add(new Label("Rank", game.getSkin())).width(50);
-        listTable.add(new Label("Name", game.getSkin())).width(200);
-        listTable.add(new Label("Score", game.getSkin())).width(100).row();
+        Table buttons = new Table();
+        buttons.defaults().pad(6).width(180);
 
-        // Entries
-        int rank = 1;
-        for (ScoreEntry entry : game.getLeaderboardManager().getScores()) {
-            listTable.add(new Label("#" + rank, game.getSkin())).pad(5);
-            listTable.add(new Label(entry.getPlayerName(), game.getSkin())).pad(5);
-            listTable.add(new Label(String.valueOf(entry.getScore()), game.getSkin())).pad(5).row();
-            rank++;
-        }
+        buttons.add(makeBoardButton("Level 1", "level-1"));
+        buttons.add(makeBoardButton("Level 2", "level-2"));
+        buttons.add(makeBoardButton("Level 3", "level-3"));
+        buttons.row();
+        buttons.add(makeBoardButton("Level 4", "level-4"));
+        buttons.add(makeBoardButton("Level 5", "level-5"));
+        buttons.add(makeBoardButton("Endless", "endless"));
+
+        table.add(buttons).padBottom(20).row();
+
+        listTable = new Table();
         table.add(listTable).padBottom(30).row();
+        showSelectHint();
 
         // Back Button
         TextButton backBtn = new TextButton("Back to Menu", game.getSkin());
@@ -70,4 +73,50 @@ public class LeaderboardScreen implements Screen {
     @Override public void hide() {}
     @Override public void pause() {}
     @Override public void resume() {}
+
+    private TextButton makeBoardButton(String label, String boardKey) {
+        TextButton btn = new TextButton(label, game.getSkin());
+        btn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                activeBoard = boardKey;
+                rebuildList();
+            }
+        });
+        return btn;
+    }
+
+    private void rebuildList() {
+        listTable.clearChildren();
+        if (activeBoard == null) {
+            showSelectHint();
+            return;
+        }
+        listTable.add(new Label("Rank", game.getSkin())).width(120).pad(6);
+        listTable.add(new Label("Name", game.getSkin())).width(320).pad(6);
+        if (activeBoard.equals("endless")) {
+            listTable.add(new Label("Floor", game.getSkin())).width(140).pad(6);
+            listTable.add(new Label("Score", game.getSkin())).width(180).pad(6).row();
+        } else {
+            listTable.add(new Label("Score", game.getSkin())).width(180).pad(6).row();
+        }
+
+        int rank = 1;
+        for (ScoreEntry entry : game.getLeaderboardManager().getScores(activeBoard)) {
+            listTable.add(new Label("#" + rank, game.getSkin())).pad(6);
+            listTable.add(new Label(entry.getPlayerName(), game.getSkin())).pad(6);
+            if (activeBoard.equals("endless")) {
+                listTable.add(new Label(String.valueOf(entry.getScore()), game.getSkin())).pad(6);
+                listTable.add(new Label(String.valueOf(entry.getExtra()), game.getSkin())).pad(6).row();
+            } else {
+                listTable.add(new Label(String.valueOf(entry.getScore()), game.getSkin())).pad(6).row();
+            }
+            rank++;
+        }
+    }
+
+    private void showSelectHint() {
+        listTable.clearChildren();
+        listTable.add(new Label("Select a leaderboard above.", game.getSkin())).pad(10);
+    }
 }

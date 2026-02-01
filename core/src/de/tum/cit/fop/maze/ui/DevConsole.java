@@ -109,6 +109,80 @@ public class DevConsole extends Table {
                     log("Key added to inventory.");
                     break;
 
+                case "gun":
+                    requirePlayer();
+                    player.equipGun();
+                    log("Gun equipped.");
+                    break;
+
+                case "boost":
+                    requirePlayer();
+                    if (parts.length > 1) {
+                        int delta = Integer.parseInt(parts[1]);
+                        player.addStrengthStat(delta);
+                        player.addSpeedStat(delta);
+                        log("Increased STR and SPD by " + delta);
+                    } else {
+                        log("Usage: boost <amount> (e.g. 2)");
+                    }
+                    break;
+
+                case "str":
+                    requirePlayer();
+                    if (parts.length > 1) {
+                        int delta = Integer.parseInt(parts[1]);
+                        player.addStrengthStat(delta);
+                        log("Increased STR by " + delta);
+                    } else {
+                        log("Usage: str <amount> (e.g. 2)");
+                    }
+                    break;
+
+                case "strraw":
+                    requirePlayer();
+                    if (parts.length > 1) {
+                        int value = Integer.parseInt(parts[1]);
+                        player.setStrengthStatRaw(value);
+                        log("STR override set to " + value);
+                    } else {
+                        log("Usage: strraw <value> (e.g. 1000)");
+                    }
+                    break;
+
+                case "spd":
+                    requirePlayer();
+                    if (parts.length > 1) {
+                        int delta = Integer.parseInt(parts[1]);
+                        player.addSpeedStat(delta);
+                        log("Increased SPD by " + delta);
+                    } else {
+                        log("Usage: spd <amount> (e.g. 2)");
+                    }
+                    break;
+
+                case "dmgmult":
+                    requirePlayer();
+                    if (parts.length > 1) {
+                        float target = Float.parseFloat(parts[1]);
+                        float delta = target - player.getDamageMult();
+                        player.addDamageMult(delta);
+                        log("Damage multiplier set to " + player.getDamageMult());
+                    } else {
+                        log("Usage: dmgmult <value> (e.g. 2.5)");
+                    }
+                    break;
+
+                case "dmgmultraw":
+                    requirePlayer();
+                    if (parts.length > 1) {
+                        float target = Float.parseFloat(parts[1]);
+                        player.setDamageMultRaw(target);
+                        log("Damage multiplier override set to " + player.getDamageMult());
+                    } else {
+                        log("Usage: dmgmultraw <value> (e.g. 10)");
+                    }
+                    break;
+
                 case "speed":
                     requirePlayer();
                     if (parts.length > 1) {
@@ -157,7 +231,7 @@ public class DevConsole extends Table {
                     break;
 
                 case "help":
-                    log("cmds: god, ungod, noclip, clip, key, speed <x>, heal, xp <n>, level <n>, coins [n], setcoins <n>, bankcoins [n], setbankcoins <n>");
+                    log("cmds: god, ungod, noclip, clip, key, gun, boost <n>, str <n>, strraw <n>, spd <n>, dmgmult <x>, dmgmultraw <x>, speed <x>, heal, xp <n>, level <n>, coins [n], setcoins <n>, bankcoins [n], setbankcoins <n>");
                     break;
 
                 case "coins":

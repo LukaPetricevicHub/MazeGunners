@@ -24,6 +24,7 @@ public class GameState {
 
     // --- Inventory ---
     public boolean hasGun;
+    public boolean hasKey;
 
     // --- Position ---
     // (Optional: We save this, but we might just spawn you at the start of the level
@@ -53,7 +54,7 @@ public class GameState {
 
     public static class ItemState {
         public float x, y;
-        public String type; // "gun", "heart", "speed", "shield"
+        public String type; // "gun", "heart", "speed", "shield", "key"
     }
 
     public boolean shouldRestorePosition = true;
