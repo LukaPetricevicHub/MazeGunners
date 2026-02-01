@@ -43,7 +43,7 @@ public class MenuScreen implements Screen {
         table.setFillParent(true);
         stage.addActor(table);
 
-        Label title = new Label("ESCAPE THE FACILITY", game.getSkin(), "title");
+        Label title = new Label("MAZEGUNNER", game.getSkin(), "title");
         title.setFontScale(1.2f);
         table.add(title).padBottom(80).padTop(-40).row();
 

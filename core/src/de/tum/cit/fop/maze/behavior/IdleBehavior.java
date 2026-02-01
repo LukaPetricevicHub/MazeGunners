@@ -12,7 +12,7 @@ import de.tum.cit.fop.maze.map.Maze;
 public class IdleBehavior implements BehaviorState {
 
     /**
-     * Returns the behavior type.k
+     * Returns the behavior type.
      *
      * @return IDLE behavior type
      */
