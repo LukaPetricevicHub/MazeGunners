@@ -58,7 +58,7 @@ public class Player {
     private float flashTimeLeft = 0f;
 
     // Movement
-    private static final float WALK_SPEED_BASE = 450f;
+    private static final float WALK_SPEED_BASE = 300f;
     private static final float RUN_MULTIPLIER = 1.7f;
 
     private float speedMultiplier = 1f; // temporary speed powerups + slow debuffs
