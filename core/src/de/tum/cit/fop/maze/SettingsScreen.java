@@ -12,6 +12,7 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 /**
  * Screen for configuring game settings such as audio, display,
@@ -89,7 +90,7 @@ public class SettingsScreen implements Screen {
         contentTable.add(new Label("Display", game.getSkin())).padBottom(15).row();
 
         String currentMode = Gdx.graphics.isFullscreen() ? "Fullscreen: ON" : "Fullscreen: OFF";
-        final TextButton fullscreenBtn = new TextButton(currentMode, game.getSkin());
+        final TextButton fullscreenBtn = UiButtons.button(currentMode, game.getSkin());
 
         fullscreenBtn.addListener(new ChangeListener() {
             @Override
@@ -141,7 +142,7 @@ public class SettingsScreen implements Screen {
 
 
         // --- BACK BUTTON ---
-        TextButton backButton = new TextButton("Back to Menu", game.getSkin());
+        TextButton backButton = UiButtons.button("Back to Menu", game.getSkin());
         backButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -174,7 +175,7 @@ public class SettingsScreen implements Screen {
 
     private TextButton createKeyBindButton(String actionName, int currentKey, java.util.function.Consumer<Integer> onSave) {
         String keyName = Input.Keys.toString(currentKey);
-        final TextButton button = new TextButton(actionName + ": " + keyName, game.getSkin());
+        final TextButton button = UiButtons.button(actionName + ": " + keyName, game.getSkin());
         button.getLabel().setWrap(true);
 
         button.addListener(new ChangeListener() {
@@ -261,3 +262,4 @@ public class SettingsScreen implements Screen {
     @Override public void resume() {}
     @Override public void hide() {}
 }
+

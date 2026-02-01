@@ -5,6 +5,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 /**
  * Pause menu window displayed while the game is paused.
@@ -35,7 +36,7 @@ public class PauseMenuWindow extends Window {
 
 
         // RESUME BUTTON
-        TextButton resumeBtn = new TextButton("Resume", skin);
+        TextButton resumeBtn = UiButtons.button("Resume", skin);
         resumeBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -45,7 +46,7 @@ public class PauseMenuWindow extends Window {
         this.add(resumeBtn).width(200).pad(10).row();
 
         // SKILL TREE BUTTON
-        TextButton skillsBtn = new TextButton("Skill Tree", skin);
+        TextButton skillsBtn = UiButtons.button("Skill Tree", skin);
         skillsBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -55,7 +56,7 @@ public class PauseMenuWindow extends Window {
         add(skillsBtn).width(200).padBottom(10).row();
 
         // ACHIEVEMENTS BUTTON
-        TextButton achievementsBtn = new TextButton("Achievements", skin);
+        TextButton achievementsBtn = UiButtons.button("Achievements", skin);
         achievementsBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -65,7 +66,7 @@ public class PauseMenuWindow extends Window {
         add(achievementsBtn).width(200).padBottom(10).row();
 
         // SETTINGS BUTTON
-        TextButton settingsBtn = new TextButton("Settings", skin);
+        TextButton settingsBtn = UiButtons.button("Settings", skin);
         settingsBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -75,7 +76,7 @@ public class PauseMenuWindow extends Window {
         this.add(settingsBtn).width(200).pad(10).row();
 
         // EXIT BUTTON
-        TextButton menuBtn = new TextButton("Exit to Menu", skin);
+        TextButton menuBtn = UiButtons.button("Exit to Menu", skin);
         menuBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -87,3 +88,4 @@ public class PauseMenuWindow extends Window {
         this.pack();
     }
 }
+

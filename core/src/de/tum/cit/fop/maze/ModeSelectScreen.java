@@ -12,6 +12,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 /**
  * Screen that allows the player to select the game mode.
@@ -52,7 +53,7 @@ public class ModeSelectScreen implements Screen {
         root.add(title).padBottom(30).row();
 
         // STORY
-        TextButton storyBtn = new TextButton("Story Mode", game.getSkin());
+        TextButton storyBtn = UiButtons.button("Story Mode", game.getSkin());
         storyBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -63,7 +64,7 @@ public class ModeSelectScreen implements Screen {
 
         // ENDLESS (locked until story completed)
         boolean unlocked = game.getProgression().isStoryCompleted();
-        TextButton endlessBtn = new TextButton(unlocked ? "Endless Mode" : "Endless Mode (Locked)", game.getSkin());
+        TextButton endlessBtn = UiButtons.button(unlocked ? "Endless Mode" : "Endless Mode (Locked)", game.getSkin());
         endlessBtn.setDisabled(!unlocked);
         endlessBtn.addListener(new ChangeListener() {
             @Override
@@ -83,7 +84,7 @@ public class ModeSelectScreen implements Screen {
             root.row();
         }
 
-        TextButton back = new TextButton("Back", game.getSkin());
+        TextButton back = UiButtons.button("Back", game.getSkin());
         back.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -106,3 +107,4 @@ public class ModeSelectScreen implements Screen {
     @Override public void hide() {}
     @Override public void dispose() { stage.dispose(); }
 }
+

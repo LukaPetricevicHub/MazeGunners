@@ -14,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 /**
  * Screen for selecting story mode levels.
@@ -80,7 +81,7 @@ public class LevelMenuScreen implements Screen {
                 boolean locked = lvl > maxUnlocked;
                 String label = locked ? ("Floor " + lvl + " (Locked)") : ("Floor " + lvl);
 
-                TextButton btn = new TextButton(label, game.getSkin());
+                TextButton btn = UiButtons.button(label, game.getSkin());
                 btn.setDisabled(locked);
                 btn.addListener(new ChangeListener() {
                     @Override
@@ -97,7 +98,7 @@ public class LevelMenuScreen implements Screen {
 
         root.add(scroll).width(440).height(460).row();
 
-        TextButton back = new TextButton("Back", game.getSkin());
+        TextButton back = UiButtons.button("Back", game.getSkin());
         back.addListener(new ChangeListener() {
             @Override public void changed(ChangeEvent event, Actor actor) {
                 game.setScreen(new ModeSelectScreen(game));
@@ -132,3 +133,4 @@ public class LevelMenuScreen implements Screen {
     @Override public void hide() {}
     @Override public void dispose() { stage.dispose(); }
 }
+
