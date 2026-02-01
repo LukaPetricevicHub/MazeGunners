@@ -487,7 +487,7 @@ public class GameScreen implements Screen {
         // Correct label for each mode
         if (endlessMode) {
             hud.setFloorText("Round: " + floor);
-            hud.setEndlessInfo("Endless: +" + ((floor - 1) * 2) + " HP");
+            hud.setEndlessInfo("");
         } else {
             hud.setFloorText("Floor: " + level);
             hud.setEndlessInfo("");
@@ -1176,7 +1176,10 @@ public class GameScreen implements Screen {
         floor++;
         hud.showNotification("ROUND " + floor);
         hud.setFloorText("Round: " + floor);
-        hud.setEndlessInfo("Endless: +" + ((floor - 1) * 2) + " HP");
+        int hpGain = Math.max(0, (floor - 1) * 2);
+        if (hpGain > 0) {
+            hud.showNotification("ENEMIES + " + hpGain + " HP");
+        }
 
         long seed = System.nanoTime();
         runSeed = seed;
