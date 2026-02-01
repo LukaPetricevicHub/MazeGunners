@@ -277,7 +277,7 @@ public class CombatSystem {
 
                 MazeRunnerGame game = (MazeRunnerGame) Gdx.app.getApplicationListener();
                 if (game.getAchievementManager() != null) {
-                    game.getAchievementManager().unlock("first_blood");
+                    game.getAchievementManager().unlockAchievement("first_blood");
                 }
 
                 iter.remove();

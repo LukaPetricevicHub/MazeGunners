@@ -9,7 +9,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 public class PauseMenuWindow extends Window {
 
     // ADD 'Runnable onSkills' HERE vvv
-    public PauseMenuWindow(Skin skin, Runnable onResume, Runnable onSettings, Runnable onSkills, Runnable onExit) {
+    public PauseMenuWindow(Skin skin, Runnable onResume, Runnable onSettings, Runnable onSkills, Runnable onAchievements, Runnable onExit) {
         super("Paused", skin);
         this.getTitleLabel().setAlignment(1);
         this.setMovable(false);
@@ -35,6 +35,16 @@ public class PauseMenuWindow extends Window {
             }
         });
         add(skillsBtn).width(200).padBottom(10).row();
+
+        // ACHIEVEMENTS BUTTON
+        TextButton achievementsBtn = new TextButton("Achievements", skin);
+        achievementsBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                onAchievements.run();
+            }
+        });
+        add(achievementsBtn).width(200).padBottom(10).row();
 
         // SETTINGS BUTTON
         TextButton settingsBtn = new TextButton("Settings", skin);

@@ -43,9 +43,18 @@ public class MazeRunnerGame extends Game {
 
     // Standard Walking Animations
     private Animation<TextureRegion> animDown, animUp, animLeft, animRight;
+    private Animation<TextureRegion> idleDown, idleUp, idleLeft, idleRight;
 
     // Shooting Animations
     private Animation<TextureRegion> shootDownAnim, shootUpAnim, shootLeftAnim, shootRightAnim;
+    private Animation<TextureRegion> gunDownIdleRun;
+    private Animation<TextureRegion> gunUpIdleRun;
+    private Animation<TextureRegion> gunSideIdleRun;
+    private Animation<TextureRegion> gunSideLeftIdleRun;
+    private Animation<TextureRegion> gunDownShoot;
+    private Animation<TextureRegion> gunUpShoot;
+    private Animation<TextureRegion> gunSideShoot;
+    private Animation<TextureRegion> gunSideLeftShoot;
 
     // Bullet Texture
     private TextureRegion bulletRegion;
@@ -133,6 +142,10 @@ public class MazeRunnerGame extends Game {
             this.pendingSaveState = state;
 
             getPreferences().setMaxLevel(Math.max(getPreferences().getMaxLevel(), state.level));
+
+            if (achievementManager != null) {
+                achievementManager.applyUnlockedIds(state.unlockedAchievements);
+            }
 
             if (state.isEndless) {
                 setScreen(new GameScreen(this, 1, null, true, state.currentFloor));
@@ -246,39 +259,75 @@ public class MazeRunnerGame extends Game {
         state.noClip = player.isNoClip();
         state.shouldRestorePosition = true;
         this.pendingSaveState = state;
+
+        if (achievementManager != null) {
+            state.unlockedAchievements = achievementManager.getUnlockedIds();
+        }
     }
 
     public GameState getPendingSaveState() { return pendingSaveState; }
     public void clearPendingSaveState() { pendingSaveState = null; }
 
     private void loadCharacterAnimation() {
-        Texture walkSheet = new Texture(Gdx.files.internal("Main_character.png"));
-        int frameWidth = 16;
-        int frameHeight = 32;
+        // Character 2 assets (6 frames per strip, 64x64 each)
+        animDown = loadStripAnimation("character2/The Male adventurer - Free/Walk/walk_down.png", 0.08f);
+        animUp = loadStripAnimation("character2/The Male adventurer - Free/Walk/walk_up.png", 0.08f);
+        animLeft = loadStripAnimation("character2/The Male adventurer - Free/Walk/walk_left_down.png", 0.08f);
+        animRight = loadStripAnimation("character2/The Male adventurer - Free/Walk/walk_right_down.png", 0.08f);
 
-        TextureRegion[][] tmp = TextureRegion.split(walkSheet, frameWidth, frameHeight);
-
-        Array<TextureRegion> framesDown = new Array<>();
-        for (int i = 0; i < 4; i++) framesDown.add(tmp[0][i]);
-        animDown = new Animation<>(0.15f, framesDown, Animation.PlayMode.LOOP);
-
-        Array<TextureRegion> framesRight = new Array<>();
-        for (int i = 0; i < 4; i++) framesRight.add(tmp[1][i]);
-        animRight = new Animation<>(0.15f, framesRight, Animation.PlayMode.LOOP);
-
-        Array<TextureRegion> framesUp = new Array<>();
-        for (int i = 0; i < 4; i++) framesUp.add(tmp[2][i]);
-        animUp = new Animation<>(0.15f, framesUp, Animation.PlayMode.LOOP);
-
-        Array<TextureRegion> framesLeft = new Array<>();
-        for (int i = 0; i < 4; i++) framesLeft.add(tmp[3][i]);
-        animLeft = new Animation<>(0.15f, framesLeft, Animation.PlayMode.LOOP);
+        idleDown = loadStripAnimation("character2/The Male adventurer - Free/Idle/idle_down.png", 0.12f);
+        idleUp = loadStripAnimation("character2/The Male adventurer - Free/Idle/idle_up.png", 0.12f);
+        idleLeft = loadStripAnimation("character2/The Male adventurer - Free/Idle/idle_left_down.png", 0.12f);
+        idleRight = loadStripAnimation("character2/The Male adventurer - Free/Idle/idle_right_down.png", 0.12f);
 
         // Using same sheet for shooting until you add separate shooting sprites
         shootDownAnim = animDown;
         shootUpAnim = animUp;
         shootLeftAnim = animLeft;
         shootRightAnim = animRight;
+
+        // Paper-doll gun overlays (directional sheets)
+        gunDownIdleRun = loadGunAnimation("Gun/Gun_down_idle-and-run-Sheet6.png", 6, 0.08f);
+        gunUpIdleRun = loadGunAnimation("Gun/Gun_up_idle-and-run-Sheet6.png", 6, 0.08f);
+        gunSideIdleRun = loadGunAnimation("Gun/Gun_side_idle-and-run-Sheet6.png", 6, 0.08f);
+        gunSideLeftIdleRun = loadGunAnimation("Gun/Gun_side-left_idle-and-run-Sheet6.png", 6, 0.08f);
+
+        gunDownShoot = loadGunAnimation("Gun/Gun_down_shoot-Sheet3.png", 3, 0.06f);
+        gunUpShoot = loadGunAnimation("Gun/Gun_up_shoot-Sheet3.png", 3, 0.06f);
+        gunSideShoot = loadGunAnimation("Gun/Gun_side_shoot-Sheet3.png", 3, 0.06f);
+        gunSideLeftShoot = loadGunAnimation("Gun/Gun_side-left_shoot-Sheet3.png", 3, 0.06f);
+    }
+
+    private Animation<TextureRegion> loadStripAnimation(String path, float frameDuration) {
+        Texture texture = new Texture(Gdx.files.internal(path));
+        int frameHeight = texture.getHeight();
+        int frameCount = 8;
+        int frameWidth = texture.getWidth() / frameCount;
+        if (frameWidth <= 0 || texture.getWidth() % frameCount != 0) {
+            // Fallback to square frames
+            frameWidth = frameHeight;
+            frameCount = Math.max(1, texture.getWidth() / frameWidth);
+        }
+
+        TextureRegion[][] split = TextureRegion.split(texture, frameWidth, frameHeight);
+        Array<TextureRegion> frames = new Array<>();
+        for (int i = 0; i < frameCount; i++) {
+            frames.add(split[0][i]);
+        }
+        return new Animation<>(frameDuration, frames, Animation.PlayMode.LOOP);
+    }
+
+    private Animation<TextureRegion> loadGunAnimation(String path, int frames, float frameDuration) {
+        Texture texture = new Texture(Gdx.files.internal(path));
+        int frameWidth = Math.max(1, texture.getWidth() / frames);
+        int frameHeight = texture.getHeight();
+
+        TextureRegion[][] split = TextureRegion.split(texture, frameWidth, frameHeight);
+        Array<TextureRegion> regions = new Array<>();
+        for (int i = 0; i < frames; i++) {
+            regions.add(split[0][i]);
+        }
+        return new Animation<>(frameDuration, regions, Animation.PlayMode.LOOP);
     }
 
     public void markStoryCompleted() {
@@ -309,12 +358,24 @@ public class MazeRunnerGame extends Game {
     public Animation<TextureRegion> getAnimUp() { return animUp; }
     public Animation<TextureRegion> getAnimLeft() { return animLeft; }
     public Animation<TextureRegion> getAnimRight() { return animRight; }
+    public Animation<TextureRegion> getIdleDown() { return idleDown; }
+    public Animation<TextureRegion> getIdleUp() { return idleUp; }
+    public Animation<TextureRegion> getIdleLeft() { return idleLeft; }
+    public Animation<TextureRegion> getIdleRight() { return idleRight; }
     public LeaderboardManager getLeaderboardManager() { return leaderboardManager; }
 
     public Animation<TextureRegion> getShootDownAnim() { return shootDownAnim; }
     public Animation<TextureRegion> getShootUpAnim() { return shootUpAnim; }
     public Animation<TextureRegion> getShootLeftAnim() { return shootLeftAnim; }
     public Animation<TextureRegion> getShootRightAnim() { return shootRightAnim; }
+    public Animation<TextureRegion> getGunDownIdleRun() { return gunDownIdleRun; }
+    public Animation<TextureRegion> getGunUpIdleRun() { return gunUpIdleRun; }
+    public Animation<TextureRegion> getGunSideIdleRun() { return gunSideIdleRun; }
+    public Animation<TextureRegion> getGunSideLeftIdleRun() { return gunSideLeftIdleRun; }
+    public Animation<TextureRegion> getGunDownShoot() { return gunDownShoot; }
+    public Animation<TextureRegion> getGunUpShoot() { return gunUpShoot; }
+    public Animation<TextureRegion> getGunSideShoot() { return gunSideShoot; }
+    public Animation<TextureRegion> getGunSideLeftShoot() { return gunSideLeftShoot; }
     public TextureRegion getBulletRegion() { return bulletRegion; }
 
     public Progression getProgression() { return progression; }

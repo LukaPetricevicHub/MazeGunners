@@ -64,6 +64,9 @@ public class GameState {
     public boolean godMode;
     public boolean noClip;
 
+    // --- Achievements (save-specific) ---
+    public ArrayList<String> unlockedAchievements = new ArrayList<>();
+
     // IMPORTANT: An empty constructor is required for the JSON loader to work!
     public GameState() {
     }

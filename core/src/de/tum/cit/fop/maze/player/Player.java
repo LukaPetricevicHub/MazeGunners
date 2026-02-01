@@ -71,6 +71,7 @@ public class Player {
 
     // Animation - Walking
     private final Animation<TextureRegion> animDown, animUp, animLeft, animRight;
+    private final Animation<TextureRegion> idleDown, idleUp, idleLeft, idleRight;
     private Animation<TextureRegion> currentAnimation;
     private float animTime = 0f;
 
@@ -79,6 +80,14 @@ public class Player {
     private final Animation<TextureRegion> shootRightAnim;
     private final Animation<TextureRegion> shootUpAnim;
     private final Animation<TextureRegion> shootDownAnim;
+    private final Animation<TextureRegion> gunDownIdleRun;
+    private final Animation<TextureRegion> gunUpIdleRun;
+    private final Animation<TextureRegion> gunSideIdleRun;
+    private final Animation<TextureRegion> gunSideLeftIdleRun;
+    private final Animation<TextureRegion> gunDownShoot;
+    private final Animation<TextureRegion> gunUpShoot;
+    private final Animation<TextureRegion> gunSideShoot;
+    private final Animation<TextureRegion> gunSideLeftShoot;
     private boolean shooting = false;
     private Sound shootSound;
 
@@ -188,12 +197,24 @@ public class Player {
         this.animUp = up;
         this.animLeft = left;
         this.animRight = right;
+        this.idleDown = game.getIdleDown();
+        this.idleUp = game.getIdleUp();
+        this.idleLeft = game.getIdleLeft();
+        this.idleRight = game.getIdleRight();
         this.currentAnimation = down;
 
         this.shootLeftAnim = game.getShootLeftAnim();
         this.shootRightAnim = game.getShootRightAnim();
         this.shootUpAnim = game.getShootUpAnim();
         this.shootDownAnim = game.getShootDownAnim();
+        this.gunDownIdleRun = game.getGunDownIdleRun();
+        this.gunUpIdleRun = game.getGunUpIdleRun();
+        this.gunSideIdleRun = game.getGunSideIdleRun();
+        this.gunSideLeftIdleRun = game.getGunSideLeftIdleRun();
+        this.gunDownShoot = game.getGunDownShoot();
+        this.gunUpShoot = game.getGunUpShoot();
+        this.gunSideShoot = game.getGunSideShoot();
+        this.gunSideLeftShoot = game.getGunSideLeftShoot();
 
         this.bulletRegion = game.getBulletRegion();
         this.shootSound = Gdx.audio.newSound(Gdx.files.internal("audio/PlayerShooting.wav"));
@@ -313,8 +334,16 @@ public class Player {
         if (shooting) selectShootingAnimation();
         else selectWalkAnimation(moving);
 
-        if (moving || shooting) animTime += dt;
-        else animTime = 0f;
+        if (moving
+                || shooting
+                || currentAnimation == idleDown
+                || currentAnimation == idleUp
+                || currentAnimation == idleLeft
+                || currentAnimation == idleRight) {
+            animTime += dt;
+        } else {
+            animTime = 0f;
+        }
 
         // Movement
         attemptMove(moveDx, moveDy, maze, game, blockChecker);
@@ -570,11 +599,20 @@ public class Player {
 
     private void selectWalkAnimation(boolean moving) {
         Animation<TextureRegion> next = currentAnimation;
-        switch (currentFacing) {
-            case LEFT -> next = animLeft;
-            case RIGHT -> next = animRight;
-            case UP -> next = animUp;
-            case DOWN -> next = animDown;
+        if (!moving) {
+            switch (currentFacing) {
+                case LEFT -> next = idleLeft;
+                case RIGHT -> next = idleRight;
+                case UP -> next = idleUp;
+                case DOWN -> next = idleDown;
+            }
+        } else {
+            switch (currentFacing) {
+                case LEFT -> next = animLeft;
+                case RIGHT -> next = animRight;
+                case UP -> next = animUp;
+                case DOWN -> next = animDown;
+            }
         }
         if (next != currentAnimation) {
             currentAnimation = next;
@@ -656,8 +694,51 @@ public class Player {
             batch.setColor(1f, 1f, 0f, 1f);
         }
 
-        batch.draw(frame, x, y, 52f, 52f);
+        float drawW = 88f;
+        float drawH = 88f;
+        float drawX = x - (drawW - WIDTH) / 2f;
+        float drawY = y - (drawH - HEIGHT) / 2f;
+        if (hasGun && currentFacing == Facing.UP) {
+            drawGun(batch);
+        }
+        batch.draw(frame, drawX, drawY, drawW, drawH);
+        if (hasGun && currentFacing != Facing.UP) {
+            drawGun(batch);
+        }
         batch.setColor(oldColor);
+    }
+
+    private void drawGun(SpriteBatch batch) {
+        Animation<TextureRegion> gunAnim = pickGunAnimation();
+        if (gunAnim == null) return;
+
+        float xOffset = 10f;
+        float yOffset = 4f;
+        if (currentFacing == Facing.DOWN) {
+            yOffset = -4f;
+        }
+        float gunX = x + xOffset;
+        float gunY = y + yOffset;
+
+        if (currentFacing == Facing.LEFT) {
+            gunX = x - 4f;
+        }
+
+        TextureRegion gunFrame = gunAnim.getKeyFrame(animTime, true);
+        float scale = 2.0f;
+        float gunW = gunFrame.getRegionWidth() * scale;
+        float gunH = gunFrame.getRegionHeight() * scale;
+        batch.draw(gunFrame, gunX, gunY, gunW, gunH);
+    }
+
+    private Animation<TextureRegion> pickGunAnimation() {
+        boolean useShoot = shooting;
+        return switch (currentFacing) {
+            case LEFT -> useShoot ? gunSideLeftShoot : gunSideLeftIdleRun;
+            case RIGHT -> useShoot ? gunSideShoot : gunSideIdleRun;
+            case UP -> useShoot ? gunUpShoot : gunUpIdleRun;
+            case DOWN -> useShoot ? gunDownShoot : gunDownIdleRun;
+        };
     }
 
     // powerups

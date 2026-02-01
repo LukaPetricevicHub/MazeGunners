@@ -86,6 +86,7 @@ public class Hud {
 
     // Console
     private final DevConsole devConsole;
+    private Window achievementPopup;
 
     // ✅ FIXED: constructor back to 3 params (no Label passed in)
     public Hud(Viewport viewport, SpriteBatch batch, Skin skin) {
@@ -416,6 +417,43 @@ public class Hud {
         notificationLabel.setText(text);
         notificationLabel.setVisible(true);
         messageTimer = NOTIF_DURATION;
+    }
+
+    public void showAchievementPopup(String title, String description) {
+        if (achievementPopup != null) {
+            achievementPopup.remove();
+        }
+
+        achievementPopup = new Window("ACHIEVEMENT", skin);
+        achievementPopup.setMovable(false);
+        achievementPopup.setResizable(false);
+        achievementPopup.pad(10f);
+
+        Label titleLabel = new Label(title, skin);
+        titleLabel.setAlignment(Align.left);
+        Label descLabel = new Label(description, skin);
+        descLabel.setAlignment(Align.left);
+
+        achievementPopup.add(titleLabel).left().row();
+        achievementPopup.add(descLabel).left().padTop(4f);
+        achievementPopup.pack();
+
+        float width = Math.min(achievementPopup.getWidth(), stage.getViewport().getWorldWidth() * 0.6f);
+        achievementPopup.setWidth(width);
+        achievementPopup.setPosition(
+                (stage.getViewport().getWorldWidth() - achievementPopup.getWidth()) / 2f,
+                stage.getViewport().getWorldHeight()
+        );
+
+        float targetY = stage.getViewport().getWorldHeight() - achievementPopup.getHeight() - 10f;
+        achievementPopup.addAction(com.badlogic.gdx.scenes.scene2d.actions.Actions.sequence(
+                com.badlogic.gdx.scenes.scene2d.actions.Actions.moveTo(achievementPopup.getX(), targetY, 0.25f),
+                com.badlogic.gdx.scenes.scene2d.actions.Actions.delay(3f),
+                com.badlogic.gdx.scenes.scene2d.actions.Actions.moveTo(achievementPopup.getX(), stage.getViewport().getWorldHeight(), 0.25f),
+                com.badlogic.gdx.scenes.scene2d.actions.Actions.run(() -> achievementPopup.remove())
+        ));
+
+        stage.addActor(achievementPopup);
     }
 
     public void setFloorText(String text) {

@@ -310,7 +310,7 @@ public class GameScreen implements Screen {
                         item.applyEffect(player);
 
                         if (!hadKey && item instanceof KeyItem) {
-                            game.getAchievementManager().unlock("collector");
+                            game.getAchievementManager().unlockAchievement("collector");
                             if (hud != null) {
                                 hud.showNotification("I found the key.");
                             }
@@ -890,6 +890,9 @@ public class GameScreen implements Screen {
 
     private void createHud() {
         hud = new Hud(uiViewport, game.getSpriteBatch(), game.getSkin());
+        if (game.getAchievementManager() != null) {
+            game.getAchievementManager().setHud(hud);
+        }
     }
 
     private void playLevelMusic() {
@@ -918,6 +921,9 @@ public class GameScreen implements Screen {
 
         GameState saved = game.getPendingSaveState();
         boolean loadingSave = (saved != null);
+        if (loadingSave && saved.shouldRestorePosition) {
+            storyShown = true; // don't show story when resuming mid-level
+        }
 
         if (endlessMode) {
             FileHandle endlessFile = getEndlessLevelFile(floor);
@@ -1067,6 +1073,24 @@ public class GameScreen implements Screen {
                             (uiViewport.getWorldWidth() - skillWindow.getWidth()) / 2f,
                             (uiViewport.getWorldHeight() - skillWindow.getHeight()) / 2f
                     );
+                },
+                () -> {
+                    playClickSound();
+                    pauseWindow.setVisible(false);
+                    de.tum.cit.fop.maze.ui.AchievementsWindow window =
+                            new de.tum.cit.fop.maze.ui.AchievementsWindow(
+                                    game.getSkin(),
+                                    game.getAchievementManager().getAchievements().values(),
+                                    () -> {
+                                        playClickSound();
+                                        pauseWindow.setVisible(true);
+                                    }
+                            );
+                    window.setPosition(
+                            (uiViewport.getWorldWidth() - window.getWidth()) / 2f,
+                            (uiViewport.getWorldHeight() - window.getHeight()) / 2f
+                    );
+                    pauseStage.addActor(window);
                 },
                 () -> { playClickSound(); game.goToMenu(); }
         );
