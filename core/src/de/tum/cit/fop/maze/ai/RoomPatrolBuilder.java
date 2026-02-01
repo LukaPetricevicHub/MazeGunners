@@ -6,31 +6,37 @@ import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.map.Room;
 import de.tum.cit.fop.maze.map.Tiles;
 
+/**
+ * Builds simple two-point patrol paths inside a room near an entrance.
+ *
+ * The patrol points are aligned perpendicular to the entrance direction
+ * and limited to a small number of tiles to avoid long or unsafe patrols.
+ */
 public final class RoomPatrolBuilder {
 
     private static final int MAX_PATROL_STEPS = 2; // ← THIS fixes everything
 
     private RoomPatrolBuilder() {}
 
-    public static Array<Vector2> buildPatrol(
-            Maze maze,
-            Room room,
-            RoomEntrance e
-    ) {
+    /**
+     * Creates a two-point patrol inside a room based on an entrance direction.
+     *
+     * @return two patrol points or {@code null} if no valid patrol is possible
+     */
+    public static Array<Vector2> buildPatrol(Maze maze, Room room, RoomEntrance e) {
         float ts = maze.getTileSize();
         Array<Vector2> pts = new Array<>();
 
-        int ax = e.x() - e.dirX(); // move INTO the room
+        int ax = e.x() - e.dirX(); // move in the room
         int ay = e.y() - e.dirY();
 
 
         int tx, ty;
         if (e.dirX() != 0) {
-            // hall on LEFT or RIGHT → patrol UP/DOWN
+
             tx = 0;
             ty = 1;
-        } else {
-            // hall on TOP or BOTTOM → patrol LEFT/RIGHT
+        } else{
             tx = 1;
             ty = 0;
         }
@@ -47,8 +53,6 @@ public final class RoomPatrolBuilder {
 
         Vector2 anchor = new Vector2(axw, ayw);
 
-
-
         Vector2 p1 = findFurthest(maze, room, ax, ay, tx, ty, ts);
         Vector2 p2 = findFurthest(maze, room, ax, ay, -tx, -ty, ts);
 
@@ -57,7 +61,6 @@ public final class RoomPatrolBuilder {
 
         if (p1 == null) p1 = anchor;
         if (p2 == null) p2 = anchor;
-
 
 
         pts.add(p1);
@@ -71,15 +74,10 @@ public final class RoomPatrolBuilder {
                 && y >= r.y() && y < r.y() + r.h();
     }
 
-    private static Vector2 findFurthest(
-            Maze maze,
-            Room room,
-            int ax,
-            int ay,
-            int dx,
-            int dy,
-            float ts
-    ) {
+    /**
+     * Walks from a start tile in one direction to find the furthest valid patrol point.
+     */
+    private static Vector2 findFurthest(Maze maze, Room room, int ax, int ay, int dx, int dy, float ts) {
         int x = ax;
         int y = ay;
         int steps = 0;
@@ -112,9 +110,6 @@ public final class RoomPatrolBuilder {
         }
 
         return new Vector2(px, py);
-
-
-
 
     }
 }

@@ -7,8 +7,18 @@ import com.badlogic.gdx.utils.Array;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Utility class for finding available level files.
+ *
+ * Looks for {@code .properties} files in the {@code maps/} folder
+ * and returns them as a sorted list. If a level exists both internally
+ * and locally, the local version is used.
+ */
 public final class LevelDiscovery {
 
+    /**
+     * Private constructor to prevent creating instances.
+     */
     private LevelDiscovery() {}
 
     /**

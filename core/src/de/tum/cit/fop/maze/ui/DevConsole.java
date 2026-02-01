@@ -11,6 +11,13 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.GameScreen;
 import de.tum.cit.fop.maze.player.Player;
 
+/**
+ * Developer console for debugging and testing during runtime.
+ *
+ * Allows execution of cheat commands such as stat modification,
+ * god mode, level loading, and currency manipulation.
+ * Intended for development and testing purposes only.
+ */
 public class DevConsole extends Table {
 
     private final TextField inputField;
@@ -18,6 +25,12 @@ public class DevConsole extends Table {
     private final MazeRunnerGame game;
     private Player player;
 
+    /**
+     * Creates a developer console UI.
+     *
+     * @param skin UI skin used for styling
+     * @param game Reference to the main game instance
+     */
     public DevConsole(Skin skin, MazeRunnerGame game) {
         super(skin);
         this.game = game;
@@ -57,10 +70,22 @@ public class DevConsole extends Table {
         });
     }
 
+    /**
+     * Assigns the active player to this console.
+     *
+     * Required for commands that modify player state.
+     *
+     * @param player Current player instance
+     */
     public void setPlayer(Player player) {
         this.player = player;
     }
 
+    /**
+     * Toggles the visibility of the developer console.
+     *
+     * When shown, keyboard focus is moved to the input field.
+     */
     public void toggle() {
         boolean visible = !isVisible();
         setVisible(visible);
@@ -71,6 +96,14 @@ public class DevConsole extends Table {
         }
     }
 
+    /**
+     * Parses and executes a developer command entered by the user.
+     *
+     * Supports commands for modifying player stats, toggling debug
+     * modes, loading levels, and adjusting currencies.
+     *
+     * @param rawCommand Command string entered in the console
+     */
     private void executeCommand(String rawCommand) {
         if (rawCommand == null || rawCommand.trim().isEmpty()) return;
 

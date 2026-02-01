@@ -7,6 +7,11 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import de.tum.cit.fop.maze.player.Player;
 
+/**
+ * A collectable heart item that restores one life when picked up.
+ *
+ * The heart is animated using a looping sprite animation.
+ */
 public class HeartItem extends Collectable {
 
     private static final int FRAME_WIDTH = 16;
@@ -18,6 +23,12 @@ public class HeartItem extends Collectable {
     private Animation<TextureRegion> animation;
     private float stateTime = 0f;
 
+    /**
+     * Creates a heart item at the given world position.
+     *
+     * @param x x-position in world coordinates
+     * @param y y-position in world coordinates
+     */
     public HeartItem(float x, float y) {
         super(x, y, "objects.png");
         createAnimation();
@@ -34,6 +45,9 @@ public class HeartItem extends Collectable {
         animation.setPlayMode(Animation.PlayMode.LOOP);
     }
 
+    /**
+     * Renders the animated heart if it is still active.
+     */
     @Override
     public void render(SpriteBatch batch) {
         if (!isActive()) return;
@@ -44,6 +58,11 @@ public class HeartItem extends Collectable {
         batch.draw(frame, bounds.x, bounds.y, 32, 32);
     }
 
+    /**
+     * Applies the heart effect to the player.
+     *
+     * Increases the player's life by one and removes the item.
+     */
     @Override
     public void applyEffect(Player player) {
         player.addLife();

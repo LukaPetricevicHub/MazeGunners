@@ -13,11 +13,22 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.util.Achievement;
 
+/**
+ * Screen displaying all available achievements.
+ *
+ * Shows unlocked and locked achievements in a scrollable list
+ * and allows returning to the main menu.
+ */
 public class AchievementScreen implements Screen {
 
     private final MazeRunnerGame game;
     private final Stage stage;
 
+    /**
+     * Creates the achievement overview screen.
+     *
+     * @param game Reference to the main game instance
+     */
     public AchievementScreen(MazeRunnerGame game) {
         this.game = game;
         this.stage = new Stage(new ScreenViewport(), game.getSpriteBatch());
@@ -29,17 +40,13 @@ public class AchievementScreen implements Screen {
         // Title
         mainTable.add(new Label("Achievements", game.getSkin(), "title")).padBottom(30).row();
 
-        // --- THE SCROLLABLE LIST ---
+        // SCROLLABLE LIST
         Table listTable = new Table();
         listTable.top();
 
-        // 1. Get the achievements from the manager
-        // 2. Loop through them and create a label for each
         for (Achievement a : game.getAchievementManager().getAchievements().values()) {
 
             Table row = new Table();
-            // Optional: Add a dark background to each row so it's easier to read
-            // (If this crashes, remove the .setBackground line)
             if (game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
                 row.setBackground(game.getSkin().newDrawable("white", 0, 0, 0, 0.5f));
             }
@@ -71,7 +78,7 @@ public class AchievementScreen implements Screen {
         ScrollPane scrollPane = new ScrollPane(listTable, game.getSkin());
         mainTable.add(scrollPane).width(600).height(400).padBottom(20).row();
 
-        // --- BACK BUTTON ---
+        // BACK BUTTON
         TextButton backBtn = new TextButton("Back", game.getSkin());
         backBtn.addListener(new ChangeListener() {
             @Override
@@ -82,6 +89,13 @@ public class AchievementScreen implements Screen {
         mainTable.add(backBtn).width(200);
     }
 
+    /**
+     * Updates and renders the achievement screen.
+     *
+     * Handles input for returning to the menu and draws the UI.
+     *
+     * @param delta Time elapsed since the last frame
+     */
     @Override
     public void render(float delta) {
         // Allow ESC to go back
@@ -97,9 +111,24 @@ public class AchievementScreen implements Screen {
         stage.draw();
     }
 
+    /**
+     * Sets the input processor when this screen becomes active.
+     */
     @Override public void show() { Gdx.input.setInputProcessor(stage); }
+
+    /**
+     * Updates the viewport when the window size changes.
+     *
+     * @param width New window width
+     * @param height New window height
+     */
     @Override public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
+
+    /**
+     * Disposes resources used by this screen.
+     */
     @Override public void dispose() { stage.dispose(); }
+
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}

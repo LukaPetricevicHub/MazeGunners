@@ -5,6 +5,13 @@ import com.badlogic.gdx.utils.Array;
 import de.tum.cit.fop.maze.enemies.Enemy;
 import de.tum.cit.fop.maze.map.Maze;
 
+/**
+ * Patrol behavior that moves an enemy back and forth
+ * between two fixed patrol points.
+ *
+ * The enemy walks in a straight line (horizontal or vertical)
+ * and reverses direction when reaching the ends.
+ */
 public class PatrolBehavior implements BehaviorState {
 
     private static final float ARRIVAL_EPSILON = 1.0f;
@@ -13,15 +20,35 @@ public class PatrolBehavior implements BehaviorState {
     private int index = 0;
     private int direction = 1;
 
+    /**
+     * Creates a patrol behavior with the given patrol points.
+     *
+     * @param patrolPoints exactly two world positions to patrol between
+     */
     public PatrolBehavior(Array<Vector2> patrolPoints) {
         this.patrolPoints = patrolPoints;
     }
 
+    /**
+     * Returns the behavior type.
+     *
+     * @return PATROL behavior type
+     */
     @Override
     public BehaviorStateType getType() {
         return BehaviorStateType.PATROL;
     }
 
+    /**
+     * Moves the enemy between patrol points.
+     *
+     * The enemy travels in a straight line and switches direction
+     * when reaching a patrol point.
+     *
+     * @param enemy the enemy using this behavior
+     * @param deltaTime time since last frame
+     * @param maze the maze used for collision checks
+     */
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
         if (patrolPoints.size != 2)
@@ -68,6 +95,13 @@ public class PatrolBehavior implements BehaviorState {
         );
     }
 
+    /**
+     * Resets the patrol to the closest patrol point.
+     *
+     * Used when an enemy returns to patrol after chasing the player.
+     *
+     * @param pos the current enemy position
+     */
     public void resetToClosest(Vector2 pos) {
         float best = Float.MAX_VALUE;
 
@@ -81,7 +115,6 @@ public class PatrolBehavior implements BehaviorState {
 
         direction = (index == 0) ? 1 : -1;
 
-        // ✅ SNAP to patrol line
         pos.set(patrolPoints.get(index));
     }
 

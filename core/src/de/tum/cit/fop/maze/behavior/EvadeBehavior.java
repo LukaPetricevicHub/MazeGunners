@@ -10,6 +10,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * Behavior where an enemy runs away from the player.
+ *
+ * The enemy looks for nearby walkable tiles that are far from the player
+ * and follows a path to one of those tiles.
+ * The escape path is recalculated from time to time or when the player moves.
+ */
 public class EvadeBehavior implements BehaviorState {
     // Attributes
     private static final float RECALC_COOLDOWN = 0.6f;
@@ -22,15 +29,29 @@ public class EvadeBehavior implements BehaviorState {
     private Point previousEnemyTile = null;
     private Point previousPlayerTile = null;
 
-
-    // Return the evade state type
+    /**
+     * Returns the behavior type.
+     *
+     * @return EVADE behavior type
+     */
     @Override
     public BehaviorStateType getType() {
         return BehaviorStateType.EVADE;
     }
 
 
-    // Execute movement away from player
+    /**
+     * Executes evade logic for the enemy.
+     *
+     * The enemy:
+     * - Finds a safe tile away from the player
+     * - Calculates an escape path
+     * - Moves along that path using collision handling
+     *
+     * @param enemy the enemy using this behavior
+     * @param deltaTime time since last frame
+     * @param maze the maze used for movement and pathfinding
+     */
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
         timerSinceLastPath += deltaTime;

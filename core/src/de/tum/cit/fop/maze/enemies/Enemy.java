@@ -8,9 +8,14 @@ import de.tum.cit.fop.maze.behavior.PatrolBehavior;
 import de.tum.cit.fop.maze.collision.CollisionHandler;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
-
 import java.util.List;
 
+/**
+ * Base class for all enemies in the game.
+ *
+ * Handles movement, health, status effects (freeze, poison),
+ * combat locking, collision, and AI behavior switching.
+ */
 public abstract class Enemy {
 
     // Attributes
@@ -68,7 +73,14 @@ public abstract class Enemy {
     protected CombatLockState combatLockState = CombatLockState.NONE;
     protected float combatLockTimer = 0f;
 
-    // Constructor
+    /**
+     * Creates a new enemy instance.
+     *
+     * @param startWorldPosition initial world position
+     * @param movementSpeed movement speed in world units
+     * @param initialBehavior starting AI behavior
+     * @param targetPlayer player this enemy reacts to
+     */
     public Enemy(Vector2 startWorldPosition, float movementSpeed, BehaviorState initialBehavior, Player targetPlayer) {
         this.worldPosition = startWorldPosition;
         this.homeWorldPosition = new Vector2(startWorldPosition);
@@ -86,7 +98,15 @@ public abstract class Enemy {
         this.health = this.maxHealth;
     }
 
-    // Update logic
+    /**
+     * Updates enemy logic for one frame.
+     *
+     * Handles status effects, AI, movement, collision,
+     * combat locking, and stuck recovery.
+     *
+     * @param deltaTime time since last frame (seconds)
+     * @param maze current maze for collision checks
+     */
     public final void update(float deltaTime, Maze maze) {
         if (hitFlashTimer > 0f) hitFlashTimer = Math.max(0f, hitFlashTimer - deltaTime);
         prevPosition.set(worldPosition);
@@ -118,7 +138,13 @@ public abstract class Enemy {
         }
     }
 
-    // AI behavior
+    /**
+     * Updates AI state based on player distance and aggro rules.
+     *
+     * Switches between patrol and chase behaviors.
+     *
+     * @param deltaTime time since last frame
+     */
     protected void updateAI(float deltaTime) {
         if (targetPlayer == null || activeBehavior == null) return;
 
@@ -145,15 +171,27 @@ public abstract class Enemy {
         }
     }
 
+    /**
+     * Executes the currently active behavior.
+     *
+     * @param deltaTime time since last frame
+     * @param maze maze used for movement and collision
+     */
     protected void updateBehavior(float deltaTime, Maze maze) {
         if (activeBehavior != null) {
             activeBehavior.execute(this, deltaTime, maze);
         }
     }
 
+
     protected abstract BehaviorState createChaseBehavior();
     protected abstract BehaviorState createDefaultBehavior();
 
+    /**
+     * Deals damage to the enemy.
+     *
+     * @param amount damage amount
+     */
     public void takeDamage(int amount) {
         if (dying) return;
 
@@ -164,6 +202,9 @@ public abstract class Enemy {
         }
     }
 
+    /**
+     * Triggers the enemy death sequence.
+     */
     protected void die() {
         if (dying) return;
         dying = true;
@@ -174,6 +215,9 @@ public abstract class Enemy {
         return dying;
     }
 
+    /**
+     * Marks the enemy for removal from the game.
+     */
     public void finalizeDeath() {
         markedForRemoval = true;
     }
@@ -186,6 +230,11 @@ public abstract class Enemy {
         return hitFlashTimer > 0f;
     }
 
+    /**
+     * Scales the enemy's health by a multiplier.
+     *
+     * @param mult health multiplier
+     */
     public void scaleHp(float mult) {
         if (mult <= 1f) return;
         maxHealth = Math.max(1, Math.round(maxHealth * mult));
@@ -198,12 +247,23 @@ public abstract class Enemy {
         health = maxHealth;
     }
 
+    /**
+     * Freezes the enemy for a given duration.
+     *
+     * @param duration freeze time in seconds
+     */
     public void applyFreeze(float duration) {
         if (dying) return;
         frozen = true;
         freezeTimer = Math.max(freezeTimer, duration);
     }
 
+    /**
+     * Applies poison damage over time.
+     *
+     * @param duration poison duration in seconds
+     * @param dps damage per second
+     */
     public void applyPoison(float duration, float dps) {
         if (dying) return;
         poisonTimer = Math.max(poisonTimer, duration);
@@ -277,6 +337,14 @@ public abstract class Enemy {
         return interactionRect;
     }
 
+    /**
+     * Pushes enemies apart to prevent overlapping.
+     *
+     * @param others list of other enemies
+     * @param player player reference
+     * @param deltaTime time since last frame
+     * @param maze maze for collision handling
+     */
     public void applyEnemySeparation(List<Enemy> others, Player player, float deltaTime, Maze maze) {
         if (combatLockState == CombatLockState.ATTACKING) return;
         if (isFrozen()) return;
@@ -338,6 +406,9 @@ public abstract class Enemy {
         touchingPlayer = false;
     }
 
+    /**
+     * Notifies the enemy that it is touching the player.
+     */
     public void onPlayerContact() {
         touchingPlayer = true;
 
@@ -359,6 +430,11 @@ public abstract class Enemy {
 
     public boolean ignoresEnemyCollision() { return false; }
 
+    /**
+     * Attempts to free the enemy when stuck.
+     *
+     * @param maze maze used for collision checks
+     */
     protected void onStuck(Maze maze) {
         if (isFrozen()) return;
 
@@ -368,6 +444,14 @@ public abstract class Enemy {
         collisionHandler.move(worldPosition, escape, 0.1f, maze);
     }
 
+    /**
+     * Checks if the enemy can move to a given position.
+     *
+     * @param x target x position
+     * @param y target y position
+     * @param maze maze for wall checks
+     * @return true if movement is possible
+     */
     protected boolean canMoveTo(float x, float y, Maze maze) {
         float inset = 2f;
         return !maze.isWallWorld(x + inset, y + inset) && !maze.isWallWorld(x + 32f - inset, y + inset) && !maze.isWallWorld(x + inset, y + 32f - inset) && !maze.isWallWorld(x + 32f - inset, y + 32f - inset);

@@ -14,12 +14,23 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.score.ScoreEntry;
 
+/**
+ * Screen displaying the game's leaderboards.
+ *
+ * Allows the player to view high scores for individual levels
+ * as well as endless mode.
+ */
 public class LeaderboardScreen implements Screen {
     private final MazeRunnerGame game;
     private final Stage stage;
     private final Table listTable;
     private String activeBoard = null;
 
+    /**
+     * Creates the leaderboard screen and initializes the user interface.
+     *
+     * @param game Reference to the main game instance
+     */
     public LeaderboardScreen(MazeRunnerGame game) {
         this.game = game;
         Viewport viewport = new com.badlogic.gdx.utils.viewport.FitViewport(1280, 720);
@@ -61,13 +72,28 @@ public class LeaderboardScreen implements Screen {
         table.add(backBtn).width(200).height(50);
     }
 
+    /**
+     * Renders and updates the leaderboard screen.
+     *
+     * @param delta Time since last frame
+     */
     @Override public void render(float delta) {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         stage.act(delta);
         stage.draw();
     }
 
+    /**
+     * Updates the viewport when the window size changes.
+     *
+     * @param width New window width
+     * @param height New window height
+     */
     @Override public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
+
+    /**
+     * Disposes all UI resources used by the screen.
+     */
     @Override public void dispose() { stage.dispose(); }
     @Override public void show() {}
     @Override public void hide() {}

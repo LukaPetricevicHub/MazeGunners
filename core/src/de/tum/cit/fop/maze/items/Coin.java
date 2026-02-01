@@ -10,6 +10,12 @@ import de.tum.cit.fop.maze.player.Player;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * A collectable coin that gives the player coins when picked up.
+ *
+ * Coins are animated and shared animations are cached per coin value
+ * to avoid loading the same textures multiple times.
+ */
 public class Coin extends Collectable {
 
     private final int amount;
@@ -20,6 +26,13 @@ public class Coin extends Collectable {
     private static final float DRAW_W = 32f;
     private static final float DRAW_H = 32f;
 
+    /**
+     * Creates a coin at the given position with the given value.
+     *
+     * @param x world x-position
+     * @param y world y-position
+     * @param amount coin value (e.g. 5, 20, 50)
+     */
     public Coin(float x, float y, int amount) {
         super(x, y, "coin5.png"); // placeholder
         this.amount = amount;
@@ -32,12 +45,18 @@ public class Coin extends Collectable {
         ensureLoaded(amount);
     }
 
+    /**
+     * Adds the coin value to the player and marks the coin as collected.
+     */
     @Override
     public void applyEffect(Player player) {
         player.addCoins(amount);
         collect();
     }
 
+    /**
+     * Renders the animated coin.
+     */
     @Override
     public void render(SpriteBatch batch) {
         if (!isActive()) return;
@@ -49,6 +68,7 @@ public class Coin extends Collectable {
 
         batch.draw(frame, bounds.x, bounds.y, DRAW_W, DRAW_H);
     }
+
 
     private static class AnimBundle {
         Texture sheet;
@@ -91,6 +111,10 @@ public class Coin extends Collectable {
         CACHE.put(amount, new AnimBundle(sheet, anim));
     }
 
+    /**
+     * Disposes all shared coin textures and clears the cache.
+     * Should be called once when the game shuts down.
+     */
     public static void disposeShared() {
         for (AnimBundle b : CACHE.values()) {
             b.sheet.dispose();

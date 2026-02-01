@@ -8,6 +8,12 @@ import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Represents a tile-based maze structure.
+ *
+ * Manages tiles, rooms, entry and exit cells, collision queries,
+ * and spatial information used by players, enemies, and pathfinding.
+ */
 public class Maze {
 
     private final int width;
@@ -26,6 +32,13 @@ public class Maze {
     private int enemyOccH = -1;
 
 
+    /**
+     * Creates a new maze initialized entirely with wall tiles.
+     *
+     * @param width number of tiles horizontally
+     * @param height number of tiles vertically
+     * @param tileSize size of a single tile in world units
+     */
     public Maze(int width, int height, int tileSize) {
         this.width = width;
         this.height = height;
@@ -39,19 +52,50 @@ public class Maze {
                 grid[x][y] = Tiles.WALL;
     }
 
+    /**
+     * Basic maze properties.
+     *
+     * @return maze dimensions and tile size
+     */
     public int getWidth() { return width; }
     public int getHeight() { return height; }
     public int getTileSize() { return tileSize; }
 
+    /**
+     * Checks whether the given tile coordinates lie within the maze bounds.
+     *
+     * @param x tile X coordinate
+     * @param y tile Y coordinate
+     * @return true if the coordinates are inside the maze
+     */
     public boolean inBounds(int x, int y) {
         return GridUtils.inBounds(x, y, width, height);
     }
 
+    /**
+     * Returns the tile at the given coordinates.
+     *
+     * Out-of-bounds accesses are treated as walls.
+     *
+     * @param x tile X coordinate
+     * @param y tile Y coordinate
+     * @return tile at the given position, or WALL if out of bounds
+     */
     public Tiles getTile(int x, int y) {
         if (!inBounds(x, y)) return Tiles.WALL;
         return grid[x][y];
     }
 
+    /**
+     * Sets a tile at the given coordinates and updates special maze state.
+     *
+     * Handles entry and exit bookkeeping when SPAWN or EXIT tiles are placed
+     * or removed.
+     *
+     * @param x tile X coordinate
+     * @param y tile Y coordinate
+     * @param tile tile type to place
+     */
     public void setTile(int x, int y, Tiles tile) {
         if (!inBounds(x, y) || tile == null) return;
 
@@ -81,28 +125,51 @@ public class Maze {
         }
     }
 
+    /**
+     * Entry and exit cell accessors.
+     *
+     * Returned points are defensive copies and may be null if not set.
+     */
     public Point getEntryCell() {
         return entryCell == null ? null : new Point(entryCell);
     }
-
     public Point getExitCell() {
         return exitCell == null ? null : new Point(exitCell);
     }
-
     public List<Point> getExitCells() {
         return List.copyOf(exitCells);
     }
 
+    /**
+     * Checks whether a tile cell is a wall.
+     *
+     * @param x tile X coordinate
+     * @param y tile Y coordinate
+     * @return true if the tile is a wall
+     */
     public boolean isWallCell(int x, int y) {
         return getTile(x, y).isWall();
     }
 
+    /**
+     * Checks whether a world-space position lies inside a wall tile.
+     *
+     * @param wx world X coordinate
+     * @param wy world Y coordinate
+     * @return true if the position is blocked by a wall
+     */
     public boolean isWallWorld(float wx, float wy) {
         int cx = GridUtils.worldToTile(wx, tileSize);
         int cy = GridUtils.worldToTile(wy, tileSize);
         return isWallCell(cx, cy);
     }
 
+    /**
+     * Checks whether a rectangle intersects any wall tiles.
+     *
+     * @param r rectangle in world coordinates
+     * @return true if the rectangle overlaps a wall
+     */
     public boolean isWallRect(Rectangle r) {
         float inset = 1f;
         return isWallWorld(r.x + inset, r.y + inset)
@@ -111,11 +178,25 @@ public class Maze {
                 || isWallWorld(r.x + r.width - inset, r.y + r.height - inset);
     }
 
+    /**
+     * Determines whether an exit tile blocks movement.
+     *
+     * Exits block movement until the player has obtained the key.
+     *
+     * @param x tile X coordinate
+     * @param y tile Y coordinate
+     * @param hasKey whether the player currently has the key
+     * @return true if the exit blocks passage
+     */
     public boolean isBlockedExit(int x, int y, boolean hasKey) {
         return getTile(x, y) == Tiles.EXIT && !hasKey;
     }
 
-    // Explicit setters
+    /**
+     * Explicit setters for entry, exit, and room data.
+     *
+     * Values are copied defensively.
+     */
     public void setEntryCell(Point p) {
         entryCell = (p == null) ? null : new Point(p);
     }
@@ -135,6 +216,13 @@ public class Maze {
         return List.copyOf(rooms);
     }
 
+    /**
+     * Checks whether a tile lies inside any defined room.
+     *
+     * @param x tile X coordinate
+     * @param y tile Y coordinate
+     * @return true if the tile is part of a room
+     */
     public boolean isRoomTile(int x, int y) {
         for (Room r : rooms) {
             if (x >= r.x() && x < r.x() + r.w()
@@ -145,6 +233,9 @@ public class Maze {
         return false;
     }
 
+    /**
+     * Clears the internal room mask for all tiles.
+     */
     public void clearRoomMask() {
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
@@ -153,21 +244,40 @@ public class Maze {
         }
     }
 
+    /**
+     * Marks a tile as belonging to a room in the room mask.
+     *
+     * @param x tile X coordinate
+     * @param y tile Y coordinate
+     * @param isRoom whether the tile is part of a room
+     */
     public void setRoomCell(int x, int y, boolean isRoom) {
         if (!inBounds(x, y)) return;
         roomMask[x][y] = isRoom;
     }
 
+    /**
+     * Checks whether a tile is marked as a room cell.
+     *
+     * @param x tile X coordinate
+     * @param y tile Y coordinate
+     * @return true if the tile is part of a room
+     */
     public boolean isRoomCell(int x, int y) {
         if (!inBounds(x, y)) return false;
         return roomMask[x][y];
     }
 
+    /**
+     * Updates the enemy occupancy grid based on current enemy positions.
+     *
+     * Marks all tiles currently occupied by enemy collision boxes,
+     * allowing fast spatial queries.
+     *
+     * @param enemies list of active enemies
+     */
     public void updateEnemyOccupancy(List<Enemy> enemies) {
-        if (enemyOccupancy == null
-                || enemyOccW != width
-                || enemyOccH != height) {
-
+        if (enemyOccupancy == null || enemyOccW != width || enemyOccH != height) {
             enemyOccupancy = new boolean[width][height];
             enemyOccW = width;
             enemyOccH = height;
@@ -187,12 +297,11 @@ public class Maze {
 
             if (e.ignoresEnemyCollision()) continue;
 
-
-            // World → tile
+            // World => tile
 
             Rectangle r = e.getCollisionBox();
 
-            float inset = 4f; // same idea as COLLISION_INSET, but local to Maze
+            float inset = 4f;
 
             int minX = (int) ((r.x + inset) / tileSize);
             int minY = (int) ((r.y + inset) / tileSize);
@@ -210,17 +319,40 @@ public class Maze {
         }
     }
 
+    /**
+     * Checks whether a tile is currently occupied by an enemy.
+     *
+     * @param x tile X coordinate
+     * @param y tile Y coordinate
+     * @return true if an enemy occupies the tile
+     */
     public boolean isEnemyOccupied(int x, int y) {
         if (enemyOccupancy == null) return false;
         if (!inBounds(x, y)) return false;
         return enemyOccupancy[x][y];
     }
 
+    /**
+     * Checks whether a tile is a hallway tile.
+     *
+     * Hall tiles are floor tiles that are not part of any room.
+     *
+     * @param x tile X coordinate
+     * @param y tile Y coordinate
+     * @return true if the tile is a hallway tile
+     */
     public boolean isHallTile(int x, int y) {
         if (!inBounds(x, y)) return false;
         return getTile(x, y) == Tiles.FLOOR && !isRoomCell(x, y);
     }
 
+    /**
+     * Determines the orientation of a hallway tile.
+     *
+     * @param x tile X coordinate
+     * @param y tile Y coordinate
+     * @return hallway orientation, or null if undefined
+     */
     public HallOrientation getHallOrientation(int x, int y) {
         if (!isHallTile(x, y)) return null;
 

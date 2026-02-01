@@ -4,6 +4,13 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 
+/**
+ * A floor-mounted spike trap obstacle.
+ *
+ * Activates when the player steps onto it, plays an animation,
+ * deals damage once per activation cycle, and then enters a cooldown
+ * before it can trigger again.
+ */
 public class SpikeTrap extends Obstacle {
 
     private static final int SPIKE_DAMAGE = 1;
@@ -21,8 +28,6 @@ public class SpikeTrap extends Obstacle {
     private float cooldownTimer = 0f;
     private boolean damageDealtThisCycle = false;
 
-
-
     private static final Texture SPIKE_TEXTURE = new Texture("assets/Traps/SpikeTrap.png");
 
     private final TextureRegion[] frames;
@@ -31,7 +36,11 @@ public class SpikeTrap extends Obstacle {
     private float frameTimer = 0f;
     private boolean activating = false;
 
-
+    /**
+     * Creates a new spike trap at the given world position.
+     *
+     * @param spawnPosition world position where the trap is placed
+     */
     public SpikeTrap(Vector2 spawnPosition) {
         super(spawnPosition, SPIKE_DAMAGE, RESET_COOLDOWN, HITBOX_SIZE, HITBOX_SIZE);
 
@@ -50,7 +59,14 @@ public class SpikeTrap extends Obstacle {
     }
 
 
-    // Called every frame
+    /**
+     * Updates the spike trap state.
+     *
+     * Advances animation frames, handles activation timing,
+     * and manages cooldown and reset behavior.
+     *
+     * @param delta time elapsed since the last frame
+     */
     public void update(float delta) {
 
         frameTimer += delta;
@@ -94,8 +110,11 @@ public class SpikeTrap extends Obstacle {
     }
 
 
-
-    // Activate SpikeTrap
+    /**
+     * Activates the spike trap.
+     *
+     * Resets animation state and plays the spike activation sound.
+     */
     private void activate() {
         activating = true;
         frameTimer = 0f;
@@ -105,13 +124,21 @@ public class SpikeTrap extends Obstacle {
     }
 
 
-
-    // Used by GameScreen for rendering
+    /**
+     * Returns the current animation frame of the spike trap.
+     *
+     * @return current spike trap texture frame
+     */
     public TextureRegion getCurrentFrame() {
         return frames[currentFrame];
     }
 
 
+    /**
+     * Returns the current animation frame of the spike trap.
+     *
+     * @return current spike trap texture frame
+     */
     public boolean shouldDamagePlayerThisFrame() {
 
         if (!playerOnTrap) return false;
@@ -126,6 +153,11 @@ public class SpikeTrap extends Obstacle {
     }
 
 
+    /**
+     * Updates whether the player is currently standing on the trap.
+     *
+     * @param onTrap true if the player is on the trap
+     */
     public void setPlayerOnTrap(boolean onTrap) {
         this.playerOnTrap = onTrap;
     }

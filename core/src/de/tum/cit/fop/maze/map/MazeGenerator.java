@@ -31,8 +31,8 @@ public class MazeGenerator {
     private static final int ROOM_MARGIN = 2;
     private static final float SHRINK_MIN = 0.50f;
     private static final float SHRINK_MAX = 0.58f;
-    private static final float OVERLAP_THRESHOLD = 0.45f; // lower -> more likely to connect neighbors
-    private static final int GRID_SNAP = 1;               // tiles. 1 = no snap. (2 or 4 makes blockier)
+    private static final float OVERLAP_THRESHOLD = 0.45f;
+    private static final int GRID_SNAP = 1;
     private static final int HALL_WIDTH = 2;
 
     private static final int BOSS_ROOM_MARGIN = 1;
@@ -47,13 +47,23 @@ public class MazeGenerator {
     // Target number of rooms per level (min, max)
     private static final int[][] LEVEL_ROOMS = {
             {},            // unused (index 0)
-            {12, 14},        // level 1
-            {14, 16},       // level 2
+            {12, 14},      // level 1
+            {14, 16},      // level 2
             {16, 18},      // level 3
             {18, 20},      // level 4
             {20, 22}       // level 5
     };
 
+    /**
+     * Generates a fully carved maze using BSP dungeon generation.
+     *
+     * @param spec level specification (dimensions and overrides)
+     * @param tileSize size of a single tile in world units
+     * @param seed random seed for deterministic generation
+     * @param level current game level (affects scaling and boss logic)
+     * @return generated maze instance
+     * @throws RuntimeException if generation fails after multiple attempts
+     */
     public Maze generate(MazeLoader.LevelSpec spec, int tileSize, long seed, int level) {
         Objects.requireNonNull(spec, "LevelSpec must not be null");
         spec = applyLevelSize(spec, level);
@@ -99,13 +109,12 @@ public class MazeGenerator {
                 }
             }
 
-            // >>> FORCE BOSS ROOM ON FINAL LEVEL <<<
-            boolean isFinalLevel = (clampLevel(level) == 5); // change if your final level is different
+            boolean isFinalLevel = (clampLevel(level) == 5);
             if (isFinalLevel) {
                 Leaf bossLeaf = pickBossLeaf(leaves);
                 if (bossLeaf == null) continue;
 
-                Room old = bossLeaf.room; // may be null if trimmed out
+                Room old = bossLeaf.room;
                 Room bossRoom = makeBossRoom(bossLeaf, rng);
                 if (bossRoom == null) continue;
 
@@ -133,7 +142,6 @@ public class MazeGenerator {
 
             clearSpecialTiles(maze);
 
-            // >>> IMPORTANT: store rooms in maze so gameplay can find BOSS room <<<
             maze.setRooms(rooms);
 
             PlaceResult placed = assignSpecialRoomsAndPlaceTiles_BORDER_EXIT(maze, rooms, rng, HALL_WIDTH, level);
@@ -198,12 +206,10 @@ public class MazeGenerator {
         int maxRooms = LEVEL_ROOMS[lv][1];
         int targetRooms = rndBetween(rng, minRooms, maxRooms);
 
-        // Overshoot leaves so enough survive shrink+MIN_ROOM filtering
-        int targetLeaves = targetRooms * 2;        // 2x is usually enough
-        int hardCapLeaves = targetRooms * 3;       // safety cap (avoid tiny slivers)
+        int targetLeaves = targetRooms * 2;
+        int hardCapLeaves = targetRooms * 3;
 
-        // Dynamic minLeaf based on map area and desired leaves
-        // (prevents too-small leaves when you ask for many rooms)
+
         int innerW = mapW - 2;
         int innerH = mapH - 2;
         double avgLeafArea = (innerW * (double) innerH) / Math.max(1, targetLeaves);
@@ -224,7 +230,6 @@ public class MazeGenerator {
             List<Leaf> next = new ArrayList<>();
             for (Leaf l : leaves) {
 
-                // If we’re already close, don’t force more splitting
                 if (next.size() >= hardCapLeaves) {
                     next.add(l);
                     continue;
@@ -394,7 +399,7 @@ public class MazeGenerator {
     private static class HallPlan {
         final Orientation orient;
         final Room a, b;
-        final int lineCoord; // if LR => y ; if UD => x
+        final int lineCoord;
 
         HallPlan(Orientation orient, Room a, Room b, int lineCoord) {
             this.orient = orient;
@@ -671,7 +676,7 @@ public class MazeGenerator {
 
     private static class BorderEntryPlan {
         final BorderSide side;
-        final int coord; // LEFT/RIGHT => y centerline, TOP/BOTTOM => x centerline
+        final int coord;
         BorderEntryPlan(BorderSide side, int coord) { this.side = side; this.coord = coord; }
     }
 
@@ -680,14 +685,14 @@ public class MazeGenerator {
         int W = maze.getWidth();
         int H = maze.getHeight();
 
-        int dLeft   = spawnRoom.x();
-        int dRight  = (W - 1) - (spawnRoom.x() + spawnRoom.w() - 1);
-        int dTop    = spawnRoom.y();
+        int dLeft = spawnRoom.x();
+        int dRight = (W - 1) - (spawnRoom.x() + spawnRoom.w() - 1);
+        int dTop = spawnRoom.y();
         int dBottom = (H - 1) - (spawnRoom.y() + spawnRoom.h() - 1);
 
-        int wLeft   = 1 + Math.max(0, 80 - dLeft);
-        int wRight  = 1 + Math.max(0, 80 - dRight);
-        int wTop    = 1 + Math.max(0, 80 - dTop);
+        int wLeft = 1 + Math.max(0, 80 - dLeft);
+        int wRight = 1 + Math.max(0, 80 - dRight);
+        int wTop = 1 + Math.max(0, 80 - dTop);
         int wBottom = 1 + Math.max(0, 80 - dBottom);
 
         for (int attempt = 0; attempt < 120; attempt++) {
@@ -777,7 +782,7 @@ public class MazeGenerator {
 
     private static class BorderExitPlan {
         final BorderSide side;
-        final int coord; // LEFT/RIGHT => y centerline, TOP/BOTTOM => x centerline
+        final int coord;
 
         BorderExitPlan(BorderSide side, int coord) {
             this.side = side;
@@ -786,7 +791,7 @@ public class MazeGenerator {
     }
 
     private PlaceResult assignSpecialRoomsAndPlaceTiles_BORDER_EXIT(Maze maze, List<Room> rooms, Random rng, int hallWidth, int level) {for (Room r : rooms) {
-        if (r.getType() != RoomType.BOSS) {   // keep boss
+        if (r.getType() != RoomType.BOSS) {
             r.setType(RoomType.NORMAL);
         }
     }
@@ -867,7 +872,6 @@ public class MazeGenerator {
         }
         if (candidates.isEmpty()) return null;
 
-        // Score by "far from both": maximize min(distToSpawn, distToExit)
         candidates.sort((a, b) -> {
             int sa = Math.min(dist2(a, spawn), dist2(a, exit));
             int sb = Math.min(dist2(b, spawn), dist2(b, exit));
@@ -972,8 +976,7 @@ public class MazeGenerator {
         return ax0 < bx1 && ax1 > bx0 && ay0 < by1 && ay1 > by0;
     }
 
-    private boolean corridorIntersectsOtherRoom(BorderExitPlan be, Room exitRoom, List<Room> rooms,
-                                                Maze maze, int hallWidth) {
+    private boolean corridorIntersectsOtherRoom(BorderExitPlan be, Room exitRoom, List<Room> rooms, Maze maze, int hallWidth) {
         int W = maze.getWidth();
         int H = maze.getHeight();
 
@@ -1095,12 +1098,10 @@ public class MazeGenerator {
         }
 
         // Endless scaling after 5:
-        // Start from 100x100 and grow by +8 tiles per floor (tweak as you like)
         int extra = (level - 5) * 8;
         int targetW = 100 + extra;
         int targetH = 100 + extra;
 
-        // safety cap (prevents insane memory/cpu)
         targetW = clamp(targetW, 80, 220);
         targetH = clamp(targetH, 80, 220);
 
@@ -1175,16 +1176,23 @@ public class MazeGenerator {
         return a + rng.nextInt(b - a + 1);
     }
 
-    public GeneratedMaze generateWithRooms(
-            MazeLoader.LevelSpec spec,
-            int tileSize,
-            long seed,
-            int level
-    ) {
+    /**
+     * Generates a maze and additionally returns the list of generated rooms.
+     *
+     * <p>This method behaves like {@link #generate(MazeLoader.LevelSpec, int, long, int)}
+     * but exposes the internal room layout for gameplay systems such as enemy
+     * spawning, boss placement, or debugging.</p>
+     *
+     * @param spec level specification containing base dimensions and overrides
+     * @param tileSize size of a single tile in world units
+     * @param seed random seed used for deterministic generation
+     * @param level current game level (affects scaling and boss placement)
+     * @return a {@link GeneratedMaze} containing the maze and its rooms
+     */
+    public GeneratedMaze generateWithRooms(MazeLoader.LevelSpec spec, int tileSize, long seed, int level) {
         Objects.requireNonNull(spec, "LevelSpec must not be null");
 
-        // We reuse the existing generate logic,
-        // but intercept the rooms before returning.
+        // We reuse the existing generate logic, but intercept the rooms before returning.
         GenerationCapture capture = new GenerationCapture();
 
         Maze maze = generateInternal(spec, tileSize, seed, level, capture);
@@ -1196,13 +1204,7 @@ public class MazeGenerator {
         List<Room> rooms;
     }
 
-    private Maze generateInternal(
-            MazeLoader.LevelSpec spec,
-            int tileSize,
-            long seed,
-            int level,
-            GenerationCapture capture
-    ) {
+    private Maze generateInternal(MazeLoader.LevelSpec spec, int tileSize, long seed, int level, GenerationCapture capture) {
         Objects.requireNonNull(spec, "LevelSpec must not be null");
         spec = applyLevelSize(spec, level);
 
@@ -1247,7 +1249,6 @@ public class MazeGenerator {
                 }
             }
 
-// >>> FORCE BOSS ROOM ON FINAL LEVEL <<< (same as generate())
             boolean isFinalLevel = (clampLevel(level) == 5);
             if (isFinalLevel) {
                 Leaf bossLeaf = pickBossLeaf(leaves);
@@ -1275,10 +1276,8 @@ public class MazeGenerator {
             cleanupThinArtifacts(maze, rooms);
             clearSpecialTiles(maze);
 
-// IMPORTANT: store rooms (so boss spawner can find BOSS)
             maze.setRooms(rooms);
 
-// CALL THE NEW METHOD WITH level
             PlaceResult placed =
                     assignSpecialRoomsAndPlaceTiles_BORDER_EXIT(maze, rooms, rng, HALL_WIDTH, level);
 

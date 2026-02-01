@@ -14,8 +14,11 @@ import de.tum.cit.fop.maze.behavior.IdleBehavior;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
-
-
+/**
+ * Melee enemy that chases the player and performs close-range attacks.
+ *
+ * Uses direction-based animations for walking, attacking, and dying.
+ */
 public class MutantWorker extends Enemy {
 
     // Constants
@@ -64,7 +67,13 @@ public class MutantWorker extends Enemy {
     private static Sound attackSound;
     private static Sound deathSound;
 
-    // Initialize mutant worker
+    /**
+     * Creates a MutantWorker enemy.
+     *
+     * @param startWorldPosition initial world position
+     * @param movementSpeed movement speed of the enemy
+     * @param targetPlayer player to chase and attack
+     */
     public MutantWorker(Vector2 startWorldPosition, float movementSpeed, Player targetPlayer) {
         super(startWorldPosition, movementSpeed, new ChaseBehavior(), targetPlayer);
 
@@ -91,6 +100,13 @@ public class MutantWorker extends Enemy {
         return true;
     }
 
+    /**
+     * Updates the enemy behavior, including movement, attacks,
+     * animations, and death handling.
+     *
+     * @param delta time passed since last frame
+     * @param maze current maze for collision checks
+     */
     @Override
     protected void updateBehavior(float delta, Maze maze) {
 
@@ -248,7 +264,11 @@ public class MutantWorker extends Enemy {
         lastPosition.set(position);
     }
 
-    // Returns current animation frame
+    /**
+     * Returns the current animation frame based on state and direction.
+     *
+     * @return texture region to render
+     */
     public TextureRegion getCurrentFrame() {
 
         if (dying) {
@@ -290,7 +310,11 @@ public class MutantWorker extends Enemy {
         return deathRight;
     }
 
-    // Overrides
+    /**
+     * Returns the melee attack radius.
+     *
+     * @return attack radius in world units
+     */
     @Override
     public float getAttackRadius() {
         return ATTACK_RADIUS;
@@ -366,6 +390,13 @@ public class MutantWorker extends Enemy {
         return 0.2f;
     }
 
+    /**
+     * Triggers the death state of the enemy.
+     *
+     * Starts the death animation, plays the death sound,
+     * stops attacking, and locks the facing direction
+     * for the death animation.
+     */
     @Override
     protected void die() {
         if (dying) return;

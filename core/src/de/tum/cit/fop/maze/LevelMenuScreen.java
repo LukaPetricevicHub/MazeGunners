@@ -15,22 +15,44 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
+/**
+ * Screen for selecting story mode levels.
+ *
+ * This screen lists all available story levels found in the {@code maps/}
+ * directory and allows the player to select and start a level.
+ * Levels that are not yet unlocked are shown as locked and cannot be selected.
+ */
 public class LevelMenuScreen implements Screen {
 
     private final MazeRunnerGame game;
     private final Stage stage;
 
+    /**
+     * Creates a new level selection screen for story mode.
+     *
+     * @param game Reference to the main game instance
+     */
     public LevelMenuScreen(MazeRunnerGame game) {
         this.game = game;
         this.stage = new Stage(new ScreenViewport(new OrthographicCamera()), game.getSpriteBatch());
     }
 
+    /**
+     * Called when this screen becomes active.
+     * Sets the input processor and builds the user interface.
+     */
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
         buildUI();
     }
 
+    /**
+     * Builds the UI for the level selection menu.
+     *
+     * Displays a scrollable list of available levels and disables
+     * levels that are locked based on player progression.
+     */
     private void buildUI() {
         stage.clear();
 
@@ -84,6 +106,12 @@ public class LevelMenuScreen implements Screen {
         root.add(back).width(200).padTop(18).row();
     }
 
+    /**
+     * Attempts to extract the level number from a level filename.
+     *
+     * @param filename Name of the level file
+     * @return Parsed level number, or {@code 1} if parsing fails
+     */
     private int guessDifficulty(String filename) {
         String digits = filename.replaceAll("\\D+", "");
         if (digits.isEmpty()) return 1;

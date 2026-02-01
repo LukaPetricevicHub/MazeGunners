@@ -3,6 +3,12 @@ package de.tum.cit.fop.maze.util;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Preferences;
 
+/**
+ * Manages persistent game settings and key bindings.
+ *
+ * This class wraps LibGDX preferences and provides typed
+ * access to audio settings, unlocked progress, and controls.
+ */
 public class GamePreferences {
     private static final String PREF_MUSIC_VOLUME = "volume";
     private static final String PREF_MUSIC_ENABLED = "music.enabled";
@@ -27,6 +33,9 @@ public class GamePreferences {
         return getPrefs().getInteger(PREF_MAX_LEVEL, 1);
     }
 
+    /**
+     * Updates the highest unlocked level if the new value is higher.
+     */
     public void setMaxLevel(int level) {
         if (level > getMaxLevel()) {
             getPrefs().putInteger(PREF_MAX_LEVEL, level);
@@ -56,6 +65,9 @@ public class GamePreferences {
         getPrefs().flush();
     }
 
+    /**
+     * Gets and sets the sound effects volume.
+     */
     public float getSoundVolume() {
         return getPrefs().getFloat(PREF_SOUND_VOL, 0.5f);
     }
@@ -64,6 +76,14 @@ public class GamePreferences {
         getPrefs().flush();
     }
 
+    /**
+     * Gets and sets all configurable key bindings.
+     *
+     * These methods control player movement, combat actions,
+     * camera controls, and special abilities.
+     */
+
+    // Movement
     public int getKeyUp() {
         return getPrefs().getInteger(PREF_KEY_UP, com.badlogic.gdx.Input.Keys.UP);
     }
@@ -100,6 +120,7 @@ public class GamePreferences {
         getPrefs().flush();
     }
 
+    // Gameplay & UI
     public int getKeyPause() {
         return getPrefs().getInteger(PREF_KEY_PAUSE, com.badlogic.gdx.Input.Keys.ESCAPE);
     }
@@ -136,6 +157,7 @@ public class GamePreferences {
         getPrefs().flush();
     }
 
+    // Camera & Skills
     public int getKeyZoomIn() {
         return getPrefs().getInteger(PREF_KEY_ZOOM_IN, com.badlogic.gdx.Input.Keys.E);
     }

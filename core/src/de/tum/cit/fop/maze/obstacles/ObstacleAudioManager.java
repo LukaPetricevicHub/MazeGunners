@@ -4,6 +4,14 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.utils.Timer;
 
+/**
+ * Centralized audio manager for obstacle and trap sound effects.
+ *
+ * Handles loading, playing, looping, and disposing of obstacle-related sounds
+ * such as floor hazards, spike traps, and lightning traps.
+ *
+ * This class is static-only and must be initialized via {@link #init()}.
+ */
 public final class ObstacleAudioManager {
 
     private static Sound floorHazardSound;
@@ -12,8 +20,17 @@ public final class ObstacleAudioManager {
 
     private static boolean initialized = false;
 
+    /**
+     * Prevents instantiation of this static utility class.
+     */
     private ObstacleAudioManager() {}
 
+    /**
+     * Initializes all obstacle-related sound effects.
+     *
+     * This method is safe to call multiple times and will only
+     * load sounds once.
+     */
     public static void init() {
         if (initialized) return;
 
@@ -24,15 +41,23 @@ public final class ObstacleAudioManager {
         initialized = true;
     }
 
+    /**
+     * Plays the spike trap sound effect once.
+     */
     public static void playSpikeTrap() {
-        if (spikeTrapSound != null)
-            spikeTrapSound.play(1f * getSfxVolume());
+        if (spikeTrapSound != null) {
+            spikeTrapSound.play(1f);
+        }
     }
 
+    /**
+     * Plays the lightning trap sound effect once and stops it automatically
+     * after a short duration.
+     */
     public static void playLightningTrap() {
         if (lightningTrapSound == null) return;
 
-        long id = lightningTrapSound.play(1f * getSfxVolume());
+        long id = lightningTrapSound.play(1f);
 
         Timer.schedule(new Timer.Task() {
             @Override
@@ -42,17 +67,36 @@ public final class ObstacleAudioManager {
         }, 1f);
     }
 
+    /**
+     * Starts looping the floor hazard sound effect.
+     *
+     * @param volume playback volume (0.0 to 1.0)
+     * @return sound instance ID, or -1 if playback failed
+     */
     public static long playFloorHazardLoop(float volume) {
-        return -1;
+        if (floorHazardSound == null) {
+            return -1;
+        }
+        return floorHazardSound.loop(volume);
     }
 
+    /**
+     * Stops a previously started floor hazard sound loop.
+     *
+     * @param id sound instance ID returned by {@link #playFloorHazardLoop(float)}
+     */
     public static void stopFloorHazard(long id) {
         if (floorHazardSound != null && id != -1)
             floorHazardSound.stop(id);
     }
 
+    /**
+     * Disposes all loaded obstacle sound effects.
+     *
+     * Should be called when the game shuts down to free audio resources.
+     */
     public static void dispose() {
-        if (floorHazardSound != null) floorHazardSound.dispose();
+        if(floorHazardSound != null) floorHazardSound.dispose();
         if (spikeTrapSound != null) spikeTrapSound.dispose();
         if (lightningTrapSound != null) lightningTrapSound.dispose();
     }

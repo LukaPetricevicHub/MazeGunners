@@ -3,6 +3,10 @@ package de.tum.cit.fop.maze.camera;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.MathUtils;
 
+/**
+ * Manages a smooth-following orthographic camera with zooming
+ * and world-boundary clamping.
+ */
 public class GameCamera {
 
     private static final float FOLLOW_SMOOTHNESS = 8f;
@@ -22,6 +26,14 @@ public class GameCamera {
     private float zoomMultiplier = 1f;
     private float targetZoomMultiplier = 1f;
 
+    /**
+     * Creates a GameCamera with the given viewport and world dimensions.
+     *
+     * @param viewportWidth width of the camera viewport
+     * @param viewportHeight height of the camera viewport
+     * @param worldWidth width of the game world
+     * @param worldHeight height of the game world
+     */
     public GameCamera(float viewportWidth, float viewportHeight, float worldWidth, float worldHeight) {
         this.camera = new OrthographicCamera(viewportWidth, viewportHeight);
         this.camera.position.set(viewportWidth / 2f, viewportHeight / 2f, 0f);
@@ -33,7 +45,13 @@ public class GameCamera {
         this.baseZoom = camera.zoom;
     }
 
-    /** Move camera towards target (NO camera.update here). */
+    /**
+     * Moves the camera smoothly towards a target position.
+     *
+     * @param targetX target x-coordinate
+     * @param targetY target y-coordinate
+     * @param deltaTime time passed since the last frame
+     */
     public void follow(float targetX, float targetY, float deltaTime) {
         // Clamp target to avoid jitter at edges
         float halfW = camera.viewportWidth * camera.zoom * 0.5f;
@@ -53,7 +71,11 @@ public class GameCamera {
         camera.position.y += (clampedY - camera.position.y) * alpha;
     }
 
-    /** Call once per frame AFTER follow() */
+    /**
+     * Updates the camera zoom and applies world clamping.
+     *
+     * @param deltaTime time passed since the last frame
+     */
     public void update(float deltaTime) {
         float alpha = 1f - (float) Math.exp(-ZOOM_SMOOTHNESS * deltaTime);
 
@@ -64,7 +86,11 @@ public class GameCamera {
         camera.update();
     }
 
-    /** Continuous zoom changes (good for holding keys). amount is "multiplier delta". */
+    /**
+     * Continuously zooms the camera in.
+     *
+     * @param amount zoom multiplier change
+     */
     public void zoomInContinuous(float amount) {
         targetZoomMultiplier = MathUtils.clamp(targetZoomMultiplier - amount, MIN_ZOOM, MAX_ZOOM);
     }
@@ -73,7 +99,6 @@ public class GameCamera {
         targetZoomMultiplier = MathUtils.clamp(targetZoomMultiplier + amount, MIN_ZOOM, MAX_ZOOM);
     }
 
-    /** Optional: step zoom if you still want press-to-zoom. */
     public void zoomInStep(float step) {
         zoomInContinuous(step);
     }
@@ -82,6 +107,11 @@ public class GameCamera {
         zoomOutContinuous(step);
     }
 
+    /**
+     * Sets the base zoom value of the camera.
+     *
+     * @param zoom new base zoom value
+     */
     public void setZoom(float zoom) {
         baseZoom = zoom;
         camera.zoom = baseZoom * zoomMultiplier;
@@ -89,6 +119,12 @@ public class GameCamera {
         camera.update();
     }
 
+    /**
+     * Resizes the camera viewport.
+     *
+     * @param viewportWidth new viewport width
+     * @param viewportHeight new viewport height
+     */
     public void resize(float viewportWidth, float viewportHeight) {
         camera.viewportWidth = viewportWidth;
         camera.viewportHeight = viewportHeight;

@@ -3,30 +3,48 @@ package de.tum.cit.fop.maze.progress;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Preferences;
 
+/**
+ * Handles permanent player progression using libGDX Preferences.
+ *
+ * Stores data such as coins, permanent upgrades, unlocked weapons,
+ * and story completion status across game sessions.
+ */
 public class Progression {
 
     private static final String PREF_NAME = "maze_progress";
     private final Preferences prefs;
 
+    /**
+     * Creates a new Progression instance backed by persistent preferences.
+     */
     public Progression() {
         prefs = Gdx.app.getPreferences(PREF_NAME);
     }
 
-    // =====================================================
-    // STORY / MODE UNLOCKS
-    // =====================================================
+    /**
+     * @return true if story mode was completed
+     */
     public boolean isStoryCompleted() {
         return prefs.getBoolean("story_completed", false);
     }
 
+    /**
+     * Sets the story completion flag.
+     *
+     * @param value completion state
+     */
     public void setStoryCompleted(boolean value) {
         prefs.putBoolean("story_completed", value);
         prefs.flush();
     }
 
-    // =====================================================
-    // COINS
-    // =====================================================
+
+    /**
+     * Handles coin management.
+     *
+     * Provides methods to get, add, set, and spend coins.
+     * Coin values are always kept non-negative.
+     */
     public int getCoins() {
         return prefs.getInteger("coins", 0);
     }
@@ -49,9 +67,12 @@ public class Progression {
         return true;
     }
 
-    // =====================================================
-    // PERMANENT HEARTS (1 heart = +2 HP in your design)
-    // =====================================================
+    /**
+     * Handles permanent player upgrades.
+     *
+     * Stores and updates persistent stats such as hearts, speed, strength,
+     * damage and speed multipliers, skill points, and unlocked weapons.
+     */
     public int getPermanentHearts() {
         return prefs.getInteger("perm_hearts", 0);
     }
@@ -62,9 +83,7 @@ public class Progression {
         prefs.flush();
     }
 
-    // =====================================================
-    // PERMANENT STATS (SLOTS) - canonical methods
-    // =====================================================
+
     public int getPermanentSpeed() {
         return prefs.getInteger("perm_speed", 5);
     }
@@ -93,9 +112,6 @@ public class Progression {
         setPermanentStrength(getPermanentStrength() + delta);
     }
 
-    // =====================================================
-    // PERMANENT MULTIPLIERS
-    // =====================================================
     public float getPermanentDamageMult() {
         return prefs.getFloat("perm_dmg_mult", 1.0f);
     }
@@ -114,9 +130,7 @@ public class Progression {
         prefs.flush();
     }
 
-    // =====================================================
-    // HIDDEN ABILITIES
-    // =====================================================
+
     public boolean hasFreezeWeapon() {
         return prefs.getBoolean("freeze_weapon", false);
     }
@@ -135,9 +149,7 @@ public class Progression {
         prefs.flush();
     }
 
-    // =====================================================
-    // SKILL POINTS (for Player compatibility)
-    // =====================================================
+
     public int getPermanentSkillPoints() {
         return prefs.getInteger("perm_skill_points", 0);
     }
@@ -151,10 +163,7 @@ public class Progression {
         setPermanentSkillPoints(getPermanentSkillPoints() + delta);
     }
 
-    // =====================================================
-    // COMPATIBILITY WRAPPERS (so your Player compiles)
-    // These map your Player’s method calls onto the canonical ones above.
-    // =====================================================
+
     public int getPermanentSpeedStat() {
         return getPermanentSpeed();
     }
@@ -173,10 +182,10 @@ public class Progression {
         prefs.flush();
     }
 
-    // =====================================================
-    // CASINO HEARTS (roulette uses this OUTSIDE run)
-    // =====================================================
-    // 1 heart = 2 HP (your note). We'll store hearts count directly.
+
+    /**
+     * Handles casino-related values and full progression reset.
+     */
     public int getCasinoHearts() {
         return prefs.getInteger("casino_hearts", 5);
     }
@@ -186,9 +195,7 @@ public class Progression {
         prefs.flush();
     }
 
-    // =====================================================
-    // DEBUG / RESET (OPTIONAL)
-    // =====================================================
+
     public void wipeAllProgress() {
         prefs.clear();
         prefs.flush();

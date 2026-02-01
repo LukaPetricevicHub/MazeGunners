@@ -10,11 +10,15 @@ import de.tum.cit.fop.maze.map.Room;
 
 import java.util.Random;
 
+/**
+ * Represents the boss enemy of the game.
+ *
+ * Handles movement, attacks, phases, health and rendering.
+ * The boss reacts to the player's position and changes its
+ * behavior based on remaining health.
+ */
 public class Boss {
 
-    // =========================
-    // SIZE (10 x 10 tiles drawn)
-    // =========================
     private final float TILE;
 
     private final float DRAW_W; // 10 tiles
@@ -24,16 +28,13 @@ public class Boss {
     private final float HIT_W;  // 7 tiles
     private final float HIT_H;  // 7 tiles
 
-    // =========================
     // HP / PHASE
-    // =========================
     private static final int MAX_HP = 250;
     private static final float DAMAGE_TAKEN_MULT = 0.5f;
     private static final float RUN2_HP_PCT = 0.25f;
 
-    // =========================
+
     // TUNING
-    // =========================
     private static final float WALK_SPEED_TPS = 2.8f;   // tiles per second
     private static final float RUN_SPEED_TPS  = 5.0f;
     private static final float RUN2_SPEED_TPS = 6.6f;
@@ -58,9 +59,7 @@ public class Boss {
     private static final float COMBO_MAX_TIME = 0.75f;  // seconds
     private static final float COMBO_STOP_DIST_T = 1.0f;
 
-    // =========================
     // CORE FIELDS
-    // =========================
     private final Maze maze;
     private final Room bossRoom;
     private final BossAnimations anims;
@@ -92,6 +91,15 @@ public class Boss {
     private final Rectangle tmpRect1 = new Rectangle();
     private final Rectangle tmpRect2 = new Rectangle();
 
+    /**
+     * Initialize a new boss instance.
+     *
+     * @param maze the maze the boss is placed in
+     * @param bossRoom the room in which the boss spawns
+     * @param anims animations used for rendering the boss
+     * @param spawnWorldX spawn x position in world coordinates
+     * @param spawnWorldY spawn y position in world coordinates
+     */
     public Boss(Maze maze, Room bossRoom, BossAnimations anims, float spawnWorldX, float spawnWorldY) {
         this.maze = maze;
         this.bossRoom = bossRoom;
@@ -115,9 +123,11 @@ public class Boss {
         );
     }
 
-    // =========================
-    // PUBLIC API
-    // =========================
+    /**
+     * Returns whether the boss is fully dead.
+     *
+     * @return true if the death animation has finished
+     */
     public boolean isDead() {
         return state == BossState.DEATH && anims.death.isAnimationFinished(stateTime);
     }
@@ -139,6 +149,11 @@ public class Boss {
         return MAX_HP;
     }
 
+    /**
+     * Scales the boss health by a multiplier.
+     *
+     * @param mult health multiplier
+     */
     public void scaleHp(float mult) {
         if (mult <= 1f) return;
         hp = Math.max(1, Math.round(hp * mult));
@@ -148,6 +163,11 @@ public class Boss {
         return (MAX_HP <= 0) ? 0f : (hp / (float) MAX_HP);
     }
 
+    /**
+     * Applies damage to the boss.
+     *
+     * @param dmg incoming damage amount
+     */
     public void damage(int dmg) {
         if (state == BossState.DEATH) return;
 
@@ -167,6 +187,12 @@ public class Boss {
         vel.setZero();
     }
 
+    /**
+     * Updates the boss logic.
+     *
+     * @param dt time passed since last frame
+     * @param player the player instance
+     */
     public void update(float dt, PlayerLike player) {
         if (state == BossState.DEATH) {
             stateTime += dt;
@@ -182,7 +208,6 @@ public class Boss {
         tmp1.set(player.getPosition()).sub(pos);
         updateFacing(tmp1);
 
-        // phase swap (only if in movement states)
         ensureRunStateByHp();
 
         switch (state) {
@@ -197,6 +222,11 @@ public class Boss {
         }
     }
 
+    /**
+     * Renders the boss.
+     *
+     * @param batch sprite batch used for drawing
+     */
     public void render(Batch batch) {
         Animation<TextureRegion> a = currentAnim();
 
@@ -207,18 +237,11 @@ public class Boss {
 
         TextureRegion frame = a.getKeyFrame(stateTime, loop);
 
-        batch.draw(frame,
-                pos.x - DRAW_W / 2f,
-                pos.y - DRAW_H / 2f,
-                DRAW_W,
-                DRAW_H
+        batch.draw(frame, pos.x - DRAW_W / 2f, pos.y - DRAW_H / 2f, DRAW_W, DRAW_H
         );
     }
 
 
-    // =========================
-    // STATE LOGIC
-    // =========================
     private void updateIdle(PlayerLike player) {
         // immediately start pursuing
         state = (getHpPct() <= RUN2_HP_PCT) ? BossState.RUN_2 : BossState.RUN;
@@ -350,9 +373,6 @@ public class Boss {
         }
     }
 
-    // =========================
-    // ATTACK RECT
-    // =========================
     private Rectangle attackRect() {
         float w = 6f * TILE;
         float h = 4f * TILE;
@@ -366,9 +386,6 @@ public class Boss {
         };
     }
 
-    // =========================
-    // MOVEMENT + COLLISION
-    // =========================
     private void moveToward(float dt, Vector2 target, float speed) {
         Vector2 d = tmp1.set(target).sub(pos);
         if (d.len2() < 1f) {
@@ -401,9 +418,6 @@ public class Boss {
         }
     }
 
-    // =========================
-    // ANIM SELECTION
-    // =========================
     private Animation<TextureRegion> currentAnim() {
         return switch (state) {
             case IDLE -> anims.idle;
@@ -417,9 +431,7 @@ public class Boss {
         };
     }
 
-    // =========================
-    // HELPERS
-    // =========================
+
     private void updateFacing(Vector2 toPlayer) {
         if (Math.abs(toPlayer.x) > Math.abs(toPlayer.y)) {
             facing = (toPlayer.x >= 0) ? Facing.RIGHT : Facing.LEFT;

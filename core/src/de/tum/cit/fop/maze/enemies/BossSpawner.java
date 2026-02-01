@@ -8,8 +8,25 @@ import java.awt.Point;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * Utility class responsible for spawning the boss.
+ *
+ * The boss is only spawned on the final level and is placed
+ * inside a suitable room of the maze.
+ */
 public class BossSpawner {
 
+    /**
+     * Spawns the boss if the given level is the final level.
+     *
+     * The boss is placed in a boss room if available, otherwise
+     * in a large fallback room.
+     *
+     * @param maze the maze in which the boss should be spawned
+     * @param level the current level number
+     * @param anims the animations used for the boss
+     * @return the spawned boss, or {@code null} if no boss is spawned
+     */
     public static Boss spawnBossIfFinalLevel(Maze maze, int level, BossAnimations anims) {
         if (maze == null || anims == null) return null;
         if (level != 5) return null;

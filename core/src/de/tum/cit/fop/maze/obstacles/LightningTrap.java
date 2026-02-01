@@ -6,7 +6,14 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Rectangle;
 
-
+/**
+ * An electric lightning trap obstacle.
+ *
+ * Applies damage and temporary debuffs when the player steps onto it.
+ * The trap triggers an animation, plays a sound effect, and enforces
+ * a cooldown before it can activate again. Can be disabled by shooting
+ * its wall anchors.
+ */
 public class LightningTrap extends Obstacle {
 
     // Gameplay
@@ -77,7 +84,12 @@ public class LightningTrap extends Obstacle {
     private float activeDebuffTimer = 0f;
 
 
-    // Constructor
+    /**
+     * Creates a new lightning trap.
+     *
+     * @param spawnPosition world position of the trap
+     * @param vertical true if the trap is oriented vertically, false if horizontal
+     */
     public LightningTrap(Vector2 spawnPosition, boolean vertical) {
         super(spawnPosition, TRAP_DAMAGE, RETRIGGER_COOLDOWN, 32f, 64f);
 
@@ -98,22 +110,40 @@ public class LightningTrap extends Obstacle {
     }
 
 
+    /**
+     * Checks whether the lightning debuff is currently active.
+     *
+     * @return true if the trap's debuff is active and the trap is not disabled
+     */
     public boolean isEffectActive() {
         if(disabled) return false;
         return activeDebuffTimer > 0f;
     }
 
 
+    /**
+     * @return movement speed multiplier applied while the debuff is active
+     */
     public float getSlowMultiplier() {
         return SPEED_PENALTY;
     }
 
+    /**
+     * @return vision reduction multiplier applied while the debuff is active
+     */
     public float getVisionMultiplier() {
         return VISION_PENALTY;
     }
 
 
-    // Rendering hook
+    /**
+     * Returns the current sprite frame for rendering.
+     *
+     * Uses different animations depending on whether the trap
+     * is idle, triggered, or disabled.
+     *
+     * @return texture region representing the current trap state
+     */
     public TextureRegion getSprite() {
 
         if(disabled) {
@@ -134,13 +164,19 @@ public class LightningTrap extends Obstacle {
         return IDLE_ANIM.getKeyFrame(stateTime);
     }
 
-
+    /**
+     * @return rotation angle in degrees used for rendering the trap
+     */
     public float getRotationDegrees() {
         if(vertical) return 90f;
         return 0f;
     }
 
-
+    /**
+     * Permanently disables the lightning trap.
+     *
+     * Stops all effects, animations, and future activations.
+     */
     public void disable() {
         if (disabled)
             return;
@@ -150,7 +186,13 @@ public class LightningTrap extends Obstacle {
         stateTime = 0f;
     }
 
-
+    /**
+     * Checks whether a bullet hit one of the trap's wall anchors.
+     *
+     * @param worldX bullet world X position
+     * @param worldY bullet world Y position
+     * @return true if the bullet hit a valid disable point
+     */
     public boolean isHitByBullet(float worldX,float worldY) {
         float HALF_TILE = 16f;
         float maxDist2 = HALF_TILE * HALF_TILE;
@@ -160,12 +202,27 @@ public class LightningTrap extends Obstacle {
     }
 
 
+    /**
+     * Checks whether a world position lies inside the trap's collision area.
+     *
+     * @param worldX world X coordinate
+     * @param worldY world Y coordinate
+     * @return true if the point is inside the trap bounds
+     */
     public boolean containsPoint(float worldX,float worldY) {
         Rectangle box = getCollisionBox();
         return box.contains(worldX,worldY);
     }
 
 
+    /**
+     * Updates the lightning trap state.
+     *
+     * Handles cooldowns, triggering logic, animation timing,
+     * and debuff duration.
+     *
+     * @param delta time elapsed since the last frame
+     */
     public void update(float delta) {
         triggeredThisFrame = false;
         stateTime += delta;
@@ -196,10 +253,20 @@ public class LightningTrap extends Obstacle {
     }
 
 
+    /**
+     * Updates whether the player is currently standing on the trap.
+     *
+     * @param onTrap true if the player is on the trap
+     */
     public void setPlayerOnTrap(boolean onTrap) {
         this.playerOnTrap = onTrap;
     }
 
+    /**
+     * Indicates whether the trap was triggered during the current frame.
+     *
+     * @return true if the trap activated this frame
+     */
     public boolean didTriggerThisFrame() {
         return triggeredThisFrame;
     }

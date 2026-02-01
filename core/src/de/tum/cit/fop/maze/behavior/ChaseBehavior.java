@@ -8,6 +8,13 @@ import de.tum.cit.fop.maze.map.Maze;
 import java.awt.Point;
 import java.util.List;
 
+/**
+ * Behavior where an enemy actively chases the player.
+ *
+ * The enemy uses grid-based pathfinding to move toward the player's position.
+ * Paths are recalculated periodically or when the player moves.
+ * If no valid path exists, the enemy temporarily stops and retries later.
+ */
 public class ChaseBehavior implements BehaviorState {
 
     private static final float RECALCULATION_COOLDOWN = 0.3f;
@@ -27,11 +34,29 @@ public class ChaseBehavior implements BehaviorState {
     private Vector2 previousFramePos = null;
     private float timeSinceLastMovement = 0f;
 
+    /**
+     * Returns the behavior type.
+     *
+     * @return CHASE behavior type
+     */
     @Override
     public BehaviorStateType getType() {
         return BehaviorStateType.CHASE;
     }
 
+    /**
+     * Executes chase logic for the enemy.
+     *
+     * The enemy:
+     * - Tracks the player's tile position
+     * - Recalculates paths when needed
+     * - Detects when it is stuck
+     * - Moves along the current path using steering behavior
+     *
+     * @param enemy the enemy using this behavior
+     * @param deltaTime time since last frame
+     * @param maze the maze for collision and pathfinding
+     */
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
         Vector2 currentPosition = enemy.getPosition();

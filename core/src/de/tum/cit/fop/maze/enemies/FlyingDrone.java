@@ -15,6 +15,12 @@ import de.tum.cit.fop.maze.behavior.ReturnToPatrolBehavior;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
+/**
+ * A flying enemy that patrols rooms and attacks the player with lasers.
+ *
+ * The drone switches between patrol and chase behavior, keeps distance
+ * from the player, and cannot be hit by melee attacks.
+ */
 public class FlyingDrone extends Enemy {
 
     public static final float RENDER_WIDTH  = 32f;
@@ -74,7 +80,14 @@ public class FlyingDrone extends Enemy {
     private boolean snapToCenterOnChase = false;
     private boolean snapToCenterOnReturn = false;
 
-    // Initialize flying drone
+    /**
+     * Creates a flying drone enemy.
+     *
+     * @param startWorldPosition initial world position
+     * @param movementSpeed movement speed
+     * @param patrolWorldPositions patrol path
+     * @param targetPlayer player to target
+     */
     public FlyingDrone(Vector2 startWorldPosition, float movementSpeed, Array<Vector2> patrolWorldPositions, Player targetPlayer) {
         super(startWorldPosition, movementSpeed, new PatrolBehavior(patrolWorldPositions), targetPlayer);
 
@@ -87,7 +100,11 @@ public class FlyingDrone extends Enemy {
         ensureAnimationsLoaded();
     }
 
-    // Load drone assets once
+    /**
+     * Loads all drone animations and sounds once.
+     *
+     * Assets are shared between all FlyingDrone instances.
+     */
     private static void ensureAnimationsLoaded() {
         if (idle != null) return;
 
@@ -139,7 +156,9 @@ public class FlyingDrone extends Enemy {
         return anim;
     }
 
-    // Switch between patrol and chase
+    /**
+     * Switches between patrol and chase depending on player distance.
+     */
     @Override
     protected void updateAI(float deltaTime) {
         float dist2 = worldPosition.dst2(getPlayerPosition());
@@ -187,7 +206,12 @@ public class FlyingDrone extends Enemy {
         return new PatrolBehavior(patrolPoints);
     }
 
-    // Main behavior update
+
+    /**
+     * Updates movement, attacks, animations, and death logic.
+     *
+     * Handles laser firing, hovering, and snapping to tile centers.
+     */
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
 
@@ -300,7 +324,10 @@ public class FlyingDrone extends Enemy {
         lastPosition.set(pos);
     }
 
-    // Get current frame
+    /**
+     * Returns the current animation frame for rendering.
+     */
+
     public TextureRegion getCurrentFrame() {
         if (dying) {
             return deathAnim.getKeyFrame(deathTimer, false);
@@ -329,6 +356,9 @@ public class FlyingDrone extends Enemy {
         return HOVER_Y_OFFSETS[frameIndex % HOVER_Y_OFFSETS.length];
     }
 
+    /**
+     * Returns active laser projectiles.
+     */
     public Array<DroneLaser> getLasers() {
         return lasers;
     }
@@ -368,6 +398,9 @@ public class FlyingDrone extends Enemy {
         return dist2 <= ATTACK_RADIUS * ATTACK_RADIUS;
     }
 
+    /**
+     * Stops all active drone sounds.
+     */
     private void startLaserSound() {
         if (laserSound == null) return;
         if (laserSoundId != -1) return;
@@ -433,6 +466,12 @@ public class FlyingDrone extends Enemy {
         return false;
     }
 
+    /**
+     * Starts the death sequence for the flying drone.
+     *
+     * Stops laser attacks, resets death state, and plays the death animation
+     * and sound before removed.
+     */
     @Override
     protected void die() {
         if (dying) return;

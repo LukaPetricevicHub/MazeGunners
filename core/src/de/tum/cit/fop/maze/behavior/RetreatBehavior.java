@@ -8,6 +8,12 @@ import de.tum.cit.fop.maze.util.GridUtils;
 import java.awt.Point;
 import java.util.List;
 
+/**
+ * Retreat behavior that moves an enemy back to its home position.
+ *
+ * The enemy uses pathfinding to return to where it originally spawned.
+ * Paths are recalculated periodically to avoid getting stuck.
+ */
 public class RetreatBehavior implements BehaviorState {
     // Attributes
     private static final float RECALC_COOLDOWN = 0.7f;
@@ -18,15 +24,26 @@ public class RetreatBehavior implements BehaviorState {
     private float timeSinceLastRepath = 0f;
     private Point previousEnemyTile = null;
 
-
-    // Return the retreat state type
+    /**
+     * Returns the behavior type.
+     *
+     * @return RETREAT behavior type
+     */
     @Override
     public BehaviorStateType getType() {
         return BehaviorStateType.RETREAT;
     }
 
 
-    // Execute movement back to home
+    /**
+     * Moves the enemy back to its home position using pathfinding.
+     *
+     * The enemy follows a path tile by tile and stops once it reaches home.
+     *
+     * @param enemy the enemy using this behavior
+     * @param deltaTime time since last frame
+     * @param maze the maze used for pathfinding and collision
+     */
     @Override
     public void execute(Enemy enemy, float deltaTime, Maze maze) {
         timeSinceLastRepath += deltaTime;

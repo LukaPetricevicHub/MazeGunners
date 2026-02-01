@@ -1,5 +1,12 @@
 package de.tum.cit.fop.maze;
 
+/**
+ * Controls the current game state and transitions between running,
+ * win, and loss conditions.
+ *
+ * This class checks whether the player has won or lost the game
+ * and delays the transition back to the menu.
+ */
 public class GameStateController {
 
     public enum State {
@@ -8,12 +15,21 @@ public class GameStateController {
         LOST
     }
 
+    // Attributes
     private State state = State.RUNNING;
     private float timer = 0f;
     private static final float EXIT_DELAY = 2f;
 
 
-    // Update game logic
+    /**
+     * Updates the current game state based on player conditions.
+     *
+     * @param delta   Time passed since last frame
+     * @param onExit  Whether the player is standing on the exit tile
+     * @param hasKey  Whether the player has collected the key
+     * @param lives   Current number of player lives
+     */
+
     public void update(float delta, boolean onExit, boolean hasKey, int lives) {
         if (state == State.RUNNING) {
             if(onExit && hasKey) {
@@ -30,7 +46,11 @@ public class GameStateController {
     }
 
 
-    // When exactly do we return?
+    /**
+     * Checks whether the game should return to the main menu.
+     *
+     * @return true if the game has ended and the exit delay has passed
+     */
     public boolean shouldReturnToMenu() {
         return state != State.RUNNING && timer >= EXIT_DELAY;
     }

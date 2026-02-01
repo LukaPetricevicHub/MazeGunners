@@ -10,13 +10,12 @@ public class Projectile {
     private Vector2 velocity;
     private Texture texture;
     private boolean active = true;
-    private static final float SPEED = 400f; // Pixel per second
+    private static final float SPEED = 400f;
     private static final float SIZE = 16f;
 
     public Projectile(float x, float y, Vector2 direction, Texture texture) {
         this.position = new Vector2(x, y);
         this.texture = texture;
-        // Normalize direction so diagonal shots aren't faster
         this.velocity = new Vector2(direction).nor().scl(SPEED);
     }
 

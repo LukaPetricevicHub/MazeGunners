@@ -7,6 +7,15 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import java.util.EnumMap;
 import java.util.Map;
 
+/**
+ * Draws a Maze using a tileset texture.
+ *
+ * The renderer decides which tile image to use for floors and walls
+ * based on the surrounding tiles.
+ *
+ * Walls are auto-tiled.
+ * Floors use simple weighted variations.
+ */
 public class MazeRenderer {
 
     private enum WallShape {
@@ -42,10 +51,22 @@ public class MazeRenderer {
     private TextureRegion exit;
     private TextureRegion key;
 
+    /**
+     * Creates a maze renderer using a tileset with 16x16 tiles.
+     *
+     * @param tileset the tileset texture
+     */
     public MazeRenderer(Texture tileset) {
         this(tileset, 16, 16);
     }
 
+    /**
+     * Creates a maze renderer with a custom tile size.
+     *
+     * @param tileset the tileset texture
+     * @param tilePxW width of one tile in pixels
+     * @param tilePxH height of one tile in pixels
+     */
     public MazeRenderer(Texture tileset, int tilePxW, int tilePxH) {
         this.tileset = tileset;
         this.tilePxW = tilePxW;
@@ -67,6 +88,14 @@ public class MazeRenderer {
         validatePools();
     }
 
+    /**
+     * Renders the entire maze to the screen.
+     *
+     * Each tile is drawn based on its type and neighbors.
+     *
+     * @param maze the maze to render
+     * @param batch sprite batch used for drawing
+     */
     public void render(Maze maze, SpriteBatch batch) {
         int w = maze.getWidth();
         int h = maze.getHeight();
@@ -83,7 +112,7 @@ public class MazeRenderer {
 
                     case FLOOR -> r = pickFloor(maze, x, y);
 
-                    // DOOR: render like floor (door tile “irrelevant”)
+                    //Render door like floor
                     case DOOR -> r = pickFloor(maze, x, y);
 
                     case SPAWN -> r = spawn;
@@ -98,11 +127,7 @@ public class MazeRenderer {
         }
     }
 
-    public void dispose() {
-        // GameScreen owns the tileset Texture; do not dispose here.
-    }
-
-    // ---------------- FLOOR PICKING (WEIGHTED) ----------------
+    public void dispose() {}
 
     private TextureRegion pickFloor(Maze maze, int x, int y) {
         boolean isRoom = maze.isRoomCell(x, y);
@@ -140,13 +165,12 @@ public class MazeRenderer {
         h *= 0x846ca68b;
         h ^= (h >>> 16);
 
-        // make non-negative
         if (h < 0) h = -h;
 
         return h % bound;
     }
 
-    // ---------------- WALL AUTOTILING ----------------
+
 
     private TextureRegion pickWall(Maze maze, int x, int y) {
         boolean N = isWalkable(maze, x, y + 1);
@@ -186,14 +210,10 @@ public class MazeRenderer {
         return maze.inBounds(x, y) && maze.getTile(x, y).isWalkable();
     }
 
-    // ---------------- TILESET MAPPING ----------------
-    // IMPORTANT: This uses BOTTOM->TOP coordinates:
-    // row=0 is the BOTTOM row (matches your latest labeled image).
 
     private void buildRegions() {
         TilesetMapping m = new TilesetMapping();
 
-        // Room floor pool + weights (weights can be different per tile)
         roomFloors = new TextureRegion[] {
                 tile(m.ROOM_F0_C, m.ROOM_F0_R),
                 tile(m.ROOM_F1_C, m.ROOM_F1_R),
@@ -212,20 +232,20 @@ public class MazeRenderer {
                 tile(m.HALL_F3_C, m.HALL_F3_R)
         };
         hallFloorWeights = new int[] {
-                70, 25, 15, 5  // example: more variety in halls
+                70, 25, 15, 5
         };
 
         // Specials
         spawn = tile(m.SPAWN_C, m.SPAWN_R);
-        exit  = tile(m.EXIT_C,  m.EXIT_R);
-        key   = tile(m.KEY_C,   m.KEY_R);
+        exit  = tile(m.EXIT_C, m.EXIT_R);
+        key   = tile(m.KEY_C, m.KEY_R);
 
         // Walls
-        wall.put(WallShape.SOLID,       tile(m.WALL_SOLID_C,       m.WALL_SOLID_R));
-        wall.put(WallShape.EDGE_TOP,    tile(m.WALL_EDGE_TOP_C,    m.WALL_EDGE_TOP_R));
+        wall.put(WallShape.SOLID, tile(m.WALL_SOLID_C,       m.WALL_SOLID_R));
+        wall.put(WallShape.EDGE_TOP,tile(m.WALL_EDGE_TOP_C,    m.WALL_EDGE_TOP_R));
         wall.put(WallShape.EDGE_BOTTOM, tile(m.WALL_EDGE_BOTTOM_C, m.WALL_EDGE_BOTTOM_R));
-        wall.put(WallShape.EDGE_LEFT,   tile(m.WALL_EDGE_LEFT_C,   m.WALL_EDGE_LEFT_R));
-        wall.put(WallShape.EDGE_RIGHT,  tile(m.WALL_EDGE_RIGHT_C,  m.WALL_EDGE_RIGHT_R));
+        wall.put(WallShape.EDGE_LEFT, tile(m.WALL_EDGE_LEFT_C,   m.WALL_EDGE_LEFT_R));
+        wall.put(WallShape.EDGE_RIGHT, tile(m.WALL_EDGE_RIGHT_C,  m.WALL_EDGE_RIGHT_R));
 
         // corners optional — if your tileset doesn't have some of them, fallbacks handle it
         wall.put(WallShape.OUTER_TL, tile(m.WALL_OUTER_TL_C, m.WALL_OUTER_TL_R));

@@ -14,12 +14,23 @@ import de.tum.cit.fop.maze.player.Player;
 import java.awt.Point;
 import java.util.*;
 
+/**
+ * Spawns enemies into the maze.
+ *
+ * Enemies are placed either as room patrols or as random enemies
+ * on safe floor tiles, avoiding spawn rooms.
+ */
 public class EnemySpawner {
 
     private static final float AVG_ENEMY_W = 32f;
     private static final float AVG_ENEMY_H = 32f;
 
-
+    /**
+     * Spawns enemies into the maze.
+     *
+     * Enemies are placed either as room patrols or as random enemies
+     * on safe floor tiles, avoiding spawn rooms.
+     */
     public List<Enemy> spawnEnemies(Maze maze, List<Room> rooms, Room excludedRoom, Player targetPlayer, int enemyCount, long seed) {
         List<Enemy> enemies = new ArrayList<>();
         Random rng = new Random(seed);

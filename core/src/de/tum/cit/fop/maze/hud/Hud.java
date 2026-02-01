@@ -21,17 +21,24 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.ui.DevConsole;
 
-public class Hud {
+/**
+ * Heads-up display (HUD) for the game.
+ *
+ * Shows player health, XP, level, coins, key status,
+ * boss health bar, hints, objectives, notifications,
+ * minimap, and developer console.
+ */
 
-    // --- CONFIG ---
+public class Hud {
+    // CONFIG
     private static final float TILE_SIZE = 32f;
     private static final float NOTIF_DURATION = 3.0f;
 
-    // --- CORE ---
+    // CORE
     private final Stage stage;
     private final Skin skin;
 
-    // --- TEXTURES ---
+    // TEXTURES
     private final Texture pixelTexture;
     private final Texture keyIconTexture;
     private final Texture arrowTexture;
@@ -40,14 +47,13 @@ public class Hud {
     private final Texture bossBgTexture;
     private final Texture bossFillTexture;
 
-    // --- UI ELEMENTS ---
+    // UI ELEMENTS
     private final Label floorLabel;
     private final Label hintLabel;
     private final Label objectiveLabel;
     private final Image keyIcon;
     private final Label endlessLabel;
 
-    // ✅ NEW: coins
     private final Label coinsLabel;
     private final Label damageLabel;
     private final Label statsLabel;
@@ -87,12 +93,17 @@ public class Hud {
     // Console
     private final DevConsole devConsole;
 
-    // ✅ FIXED: constructor back to 3 params (no Label passed in)
+    /**
+     * Creates and initializes the game HUD.
+     *
+     * @param viewport viewport used by the HUD stage
+     * @param batch sprite batch used for rendering
+     * @param skin UI skin for labels and widgets
+     */
     public Hud(Viewport viewport, SpriteBatch batch, Skin skin) {
         this.stage = new Stage(viewport, batch);
         this.skin = skin;
 
-        // 1x1 pixel texture (for backgrounds/bars)
         Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pm.setColor(Color.WHITE);
         pm.fill();
@@ -110,9 +121,8 @@ public class Hud {
         Drawable panelBg = new TextureRegionDrawable(new TextureRegion(pixelTexture))
                 .tint(new Color(0f, 0f, 0f, 0.55f));
 
-        // =========================
+
         // TOP-LEFT (Hearts + Coins + Key + Floor)
-        // =========================
         Table topLeft = new Table();
         topLeft.pad(6);
         topLeft.left().top();
@@ -159,9 +169,6 @@ public class Hud {
         topLeftWrap.add(topLeft);
         stage.addActor(topLeftWrap);
 
-        // =========================
-        // TOP-CENTER (BOSS HUD) - OVERLAY GROUP (NO LAYOUT DRIFT)
-        // =========================
         bossLabel = new Label("SWORD", skin);
         bossLabel.setAlignment(Align.center);
         bossLabel.setColor(Color.WHITE);
@@ -192,9 +199,6 @@ public class Hud {
 
         layoutBossHud();
 
-        // =========================
-        // BOTTOM-LEFT (Level + XP + Hint)
-        // =========================
         ProgressBar.ProgressBarStyle xpStyle = new ProgressBar.ProgressBarStyle();
         xpStyle.background = new TextureRegionDrawable(new TextureRegion(pixelTexture)).tint(Color.DARK_GRAY);
         xpStyle.knobBefore = new TextureRegionDrawable(new TextureRegion(pixelTexture)).tint(Color.CYAN);
@@ -230,9 +234,7 @@ public class Hud {
         bottomLeftWrap.add(bottomLeft);
         stage.addActor(bottomLeftWrap);
 
-        // =========================
-        // TOP-RIGHT (Arrow)
-        // =========================
+        // ARROW
         arrow = new Image(arrowTexture);
         arrow.setSize(80, 80);
         arrow.setOrigin(arrow.getWidth() / 2f, arrow.getHeight() / 2f);
@@ -246,9 +248,8 @@ public class Hud {
         topRightWrap.add(arrow).size(80, 80).right();
         stage.addActor(topRightWrap);
 
-        // =========================
+
         // BOTTOM-RIGHT (Minimap container)
-        // =========================
         minimapContainer = new Table();
         minimapContainer.pad(6);
 
@@ -258,9 +259,6 @@ public class Hud {
         bottomRightWrap.add(minimapContainer);
         stage.addActor(bottomRightWrap);
 
-        // =========================
-        // Notification (top-right, under arrow)
-        // =========================
         notificationLabel = new Label("", skin);
         notificationLabel.setVisible(false);
         notificationLabel.setAlignment(Align.right);
@@ -291,7 +289,11 @@ public class Hud {
     }
 
     /**
-     * Call this every frame.
+     * Updates all HUD elements based on the current player state.
+     *
+     * Should be called once per frame.
+     *
+     * @param player the current player
      */
     public void update(Player player) {
         int hp = player.getHp();
@@ -301,7 +303,6 @@ public class Hud {
         hpTextLabel.setText("HP: " + hp + " / " + maxHp);
 
 
-        // ✅ Coins text
         coinsLabel.setText("Coins: " + player.getCoins());
 
         // Damage + stats + gambling multipliers
@@ -314,8 +315,7 @@ public class Hud {
 
         damageLabel.setText("DMG: bullet " + bulletDamage + " | melee " + meleeDamage);
         statsLabel.setText("Stats: STR " + player.getStrengthStat() + " | SPD " + player.getSpeedStat());
-        multLabel.setText(String.format("Mult: DMG x%.2f | SPD x%.2f",
-                player.getDamageMult(), player.getBonusSpeedMult()));
+        multLabel.setText(String.format("Mult: DMG x%.2f | SPD x%.2f", player.getDamageMult(), player.getBonusSpeedMult()));
 
         keyIcon.setVisible(player.hasKey());
 
@@ -350,7 +350,11 @@ public class Hud {
     }
 
     /**
-     * Hot/Cold hint based on distance to exit.
+     * Updates the hot/cold hint based on the player's distance to the exit.
+     *
+     * Requires the player to have the key and an exit target set.
+     *
+     * @param player the current player
      */
     public void updateHeatHint(Player player) {
         if (!player.hasKey() || !hasExitTarget) {
@@ -392,6 +396,12 @@ public class Hud {
         hintLabel.setColor(r, g, b, 1f);
     }
 
+    /**
+     * Updates HUD animations and timed notifications.
+     *
+     * @param dt time since last frame (seconds)
+     */
+
     public void act(float dt) {
         stage.act(dt);
 
@@ -403,25 +413,50 @@ public class Hud {
         }
     }
 
+    /**
+     * Renders the HUD to the screen.
+     */
     public void draw() {
         stage.draw();
     }
 
+    /**
+     * Updates the HUD layout when the window size changes.
+     *
+     * @param width new screen width
+     * @param height new screen height
+     * @param centerCamera whether to center the camera
+     */
     public void resize(int width, int height, boolean centerCamera) {
         stage.getViewport().update(width, height, centerCamera);
         layoutBossHud();
     }
 
+    /**
+     * Displays a temporary notification message.
+     *
+     * @param text message to show
+     */
     public void showNotification(String text) {
         notificationLabel.setText(text);
         notificationLabel.setVisible(true);
         messageTimer = NOTIF_DURATION;
     }
 
+    /**
+     * Updates the displayed floor text.
+     *
+     * @param text floor description
+     */
     public void setFloorText(String text) {
         floorLabel.setText(text);
     }
 
+    /**
+     * Shows or hides endless mode information.
+     *
+     * @param text info text (hidden if empty)
+     */
     public void setEndlessInfo(String text) {
         if (text == null || text.isEmpty()) {
             endlessLabel.setVisible(false);
@@ -431,6 +466,12 @@ public class Hud {
         endlessLabel.setVisible(true);
     }
 
+    /**
+     * Sets the world position of the exit for arrow guidance.
+     *
+     * @param x exit x-position
+     * @param y exit y-position
+     */
     public void setExitTarget(float x, float y) {
         this.exitX = x;
         this.exitY = y;
@@ -445,12 +486,21 @@ public class Hud {
         this.exitRoomWorldRect = rect;
     }
 
+    /**
+     * Removes the exit target and hides the guidance arrow.
+     */
     public void clearExitTarget() {
         this.hasExitTarget = false;
         arrow.setVisible(false);
     }
 
-    // Boss control (call from GameScreen)
+    /**
+     * Updates the boss health bar.
+     *
+     * @param current current boss HP
+     * @param max maximum boss HP
+     */
+
     public void setBossHp(float current, float max) {
         if (max <= 0f) return;
 
@@ -463,6 +513,11 @@ public class Hud {
         lastBossRatio = ratio;
     }
 
+    /**
+     * Shows or hides the boss HUD.
+     *
+     * @param visible true to show, false to hide
+     */
     public void setBossVisible(boolean visible) {
         bossTable.setVisible(visible);
         if (!visible) {
@@ -498,6 +553,13 @@ public class Hud {
         ));
     }
 
+    /**
+     * Sets the minimap actor shown in the HUD.
+     *
+     * @param minimapActor minimap actor
+     * @param width display width
+     * @param height display height
+     */
     public void setMinimapActor(Actor minimapActor, float width, float height) {
         minimapContainer.clearChildren();
         minimapContainer.add(minimapActor).size(width, height);
@@ -511,6 +573,9 @@ public class Hud {
         return devConsole;
     }
 
+    /**
+     * Releases all HUD resources.
+     */
     public void dispose() {
         stage.dispose();
         pixelTexture.dispose();

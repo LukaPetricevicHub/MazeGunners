@@ -6,9 +6,23 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 
+/**
+ * Pause menu window displayed while the game is paused.
+ *
+ * Provides buttons to resume the game, open settings, open the skill tree,
+ * or exit back to the main menu.
+ */
 public class PauseMenuWindow extends Window {
 
-    // ADD 'Runnable onSkills' HERE vvv
+    /**
+     * Creates a pause menu with callback actions for each button.
+     *
+     * @param skin UI skin used for styling
+     * @param onResume Action executed when resuming the game
+     * @param onSettings Action executed when opening settings
+     * @param onSkills Action executed when opening the skill tree
+     * @param onExit Action executed when exiting to the main menu
+     */
     public PauseMenuWindow(Skin skin, Runnable onResume, Runnable onSettings, Runnable onSkills, Runnable onExit) {
         super("Paused", skin);
         this.getTitleLabel().setAlignment(1);
@@ -30,7 +44,6 @@ public class PauseMenuWindow extends Window {
         skillsBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                // Now this works because we added it to the constructor
                 onSkills.run();
             }
         });

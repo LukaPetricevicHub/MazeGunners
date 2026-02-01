@@ -9,8 +9,21 @@ import de.tum.cit.fop.maze.player.Player;
 
 import java.awt.Point;
 
+/**
+ * Handles basic interactions between the player and the maze.
+ *
+ * This class encapsulates simple game rules such as key pickup,
+ * exit detection, and tile-based player positioning.
+ */
 public class InteractionLogic {
 
+    /**
+     * Checks whether the player picks up a key on the current tile.
+     *
+     * @param player Player instance
+     * @param maze Maze reference
+     * @return true if a key was picked up
+     */
     public boolean handleKeyPickup(Player player, Maze maze) {
         if (player.hasKey()) return false;
 
@@ -26,22 +39,20 @@ public class InteractionLogic {
         return false;
     }
 
+    /**
+     * Determines whether the player is currently standing on an exit tile.
+     *
+     * @param player Player instance
+     * @param maze Maze reference
+     * @return true if the player overlaps an exit
+     */
     public boolean isPlayerOnExit(Player player, Maze maze) {
-        Rectangle feet = new Rectangle(
-                player.getX() + 4f,
-                player.getY(),
-                24f,
-                20f
-        );
+        Rectangle feet = new Rectangle(player.getX() + 4f, player.getY(), 24f, 20f);
 
         for (Point e : maze.getExitCells()) {
-            Rectangle r = new Rectangle(
-                    e.x * maze.getTileSize(),
-                    e.y * maze.getTileSize(),
-                    maze.getTileSize(),
-                    maze.getTileSize()
-            );
-            if (feet.overlaps(r)) return true;
+            Rectangle r = new Rectangle(e.x * maze.getTileSize(), e.y * maze.getTileSize(), maze.getTileSize(), maze.getTileSize());
+            if(feet.overlaps(r))
+                return true;
         }
         return false;
     }
@@ -68,6 +79,13 @@ public class InteractionLogic {
         return best;
     }
 
+    /**
+     * Computes the maze tile currently occupied by the player.
+     *
+     * @param player Player instance
+     * @param maze Maze reference
+     * @return Tile coordinates of the player
+     */
     public Point getPlayerTile(Player player, Maze maze) {
         int x = (int)((player.getX() + 16f) / maze.getTileSize());
         int y = (int)((player.getY() + 20f) / maze.getTileSize());

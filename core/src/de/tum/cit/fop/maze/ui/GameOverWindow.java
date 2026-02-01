@@ -11,18 +11,29 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.LevelDiscovery;
 import de.tum.cit.fop.maze.player.Player;
 
+/**
+ * Window shown when the game ends.
+ *
+ * Displays the final score, allows the player to submit their name
+ * to the leaderboard, and provides navigation options such as
+ * continuing to the next level or returning to the main menu.
+ */
 public class GameOverWindow extends Window {
 
-    public GameOverWindow(Skin skin,
-                          MazeRunnerGame game,
-                          int currentLevel,
-                          boolean won,
-                          FileHandle currentLevelFile,
-                          int score,
-                          Player player,
-                          boolean endlessMode,
-                          int floor) {
-
+    /**
+     * Creates a game over window for both victory and defeat states.
+     *
+     * @param skin UI skin used for styling
+     * @param game Reference to the main game instance
+     * @param currentLevel Current level number
+     * @param won Whether the player won the level
+     * @param currentLevelFile File of the current level
+     * @param score Final player score
+     * @param player Player instance (used for transitions)
+     * @param endlessMode Whether endless mode is active
+     * @param floor Current floor in endless mode
+     */
+    public GameOverWindow(Skin skin, MazeRunnerGame game, int currentLevel, boolean won, FileHandle currentLevelFile, int score, Player player, boolean endlessMode, int floor) {
         super(won ? "LEVEL COMPLETED" : "GAME OVER", skin);
 
         // 1. VISUAL SETUP
@@ -30,12 +41,10 @@ public class GameOverWindow extends Window {
         this.setMovable(false);
         this.setModal(true);
         this.setResizable(false);
-
-        // --- SPACING FIXES ---
         this.pad(60); // Big internal padding
         this.defaults().spaceBottom(20); // Add gap between every row
         this.defaults().align(Align.center); // Center everything
-        // ---------------------
+
 
         // 2. Message & Score
         String message = won ? "Great Job! You escaped." : "You died.";

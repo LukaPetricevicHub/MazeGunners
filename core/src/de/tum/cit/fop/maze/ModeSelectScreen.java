@@ -13,11 +13,22 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
+/**
+ * Screen that allows the player to select the game mode.
+ *
+ * The player can start the story mode or unlock and play
+ * endless mode after completing the story.
+ */
 public class ModeSelectScreen implements Screen {
 
     private final MazeRunnerGame game;
     private final Stage stage;
 
+    /**
+     * Creates the mode selection screen.
+     *
+     * @param game Reference to the main game instance
+     */
     public ModeSelectScreen(MazeRunnerGame game) {
         this.game = game;
         this.stage = new Stage(new ScreenViewport(new OrthographicCamera()), game.getSpriteBatch());

@@ -8,16 +8,29 @@ import de.tum.cit.fop.maze.enemies.Enemy;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Represents a projectile fired by the player.
+ *
+ * Bullets move in a straight line and can optionally
+ * pierce multiple enemies.
+ */
 public class Bullet {
     private Vector2 position;
     private Vector2 velocity;
     private boolean active = true;
     private static final float SPEED = 600f;
     private static final float SIZE = 8f;
-
-    // Track enemies we already pierced so we don't hit them twice ---
     private List<Enemy> hitEnemies = new ArrayList<>();
 
+
+    /**
+     * Creates a new bullet flying towards a target position.
+     *
+     * @param startX starting X position
+     * @param startY starting Y position
+     * @param targetX target X position
+     * @param targetY target Y position
+     */
     public Bullet(float startX, float startY, float targetX, float targetY) {
         this.position = new Vector2(startX, startY);
         this.velocity = new Vector2(targetX - startX, targetY - startY);
@@ -28,6 +41,12 @@ public class Bullet {
         position.mulAdd(velocity, dt);
     }
 
+    /**
+     * Draws the bullet.
+     *
+     * @param batch sprite batch used for rendering
+     * @param texture bullet texture
+     */
     public void draw(SpriteBatch batch, TextureRegion texture) {
         batch.draw(texture, position.x, position.y, SIZE, SIZE);
     }
@@ -39,7 +58,6 @@ public class Bullet {
     public float getX() { return position.x; }
     public float getY() { return position.y; }
 
-    // --- NEW HELPERS FOR PIERCING ---
     public boolean hasAlreadyHit(Enemy enemy) {
         return hitEnemies.contains(enemy);
     }

@@ -11,11 +11,30 @@ import de.tum.cit.fop.maze.obstacles.*;
 import java.awt.Point;
 import java.util.*;
 
+/**
+ * Handles procedural placement of obstacles inside a maze.
+ *
+ * Obstacles are placed only on valid floor tiles while respecting
+ * gameplay constraints such as spawn room safety, minimum distance
+ * between identical trap types, and tile validity.
+ *
+ * Placement is deterministic when using the same random seed.
+ */
 public class ObstaclePlacer {
 
     private static final int SPAWN_ROOM_BUFFER_TILES = 3;
     private static final int MIN_SAME_TRAP_DISTANCE_TILES = 12;
 
+    /**
+     * Places obstacles throughout the maze.
+     *
+     * @param maze Maze in which obstacles are placed
+     * @param trapCount Maximum number of obstacles
+     * @param seed Random seed for deterministic placement
+     * @param excludedRoom Room where obstacles are not allowed
+     * @param allowLightningTraps Whether lightning traps may be placed
+     * @return List of placed obstacles
+     */
     public List<Obstacle> placeObstacles(Maze maze, int trapCount, long seed, Room excludedRoom, boolean allowLightningTraps) {
 
         List<Obstacle> placementResult = new ArrayList<>();
@@ -61,7 +80,9 @@ public class ObstaclePlacer {
         return tx >= r.x() && tx < r.x() + r.w() && ty >= r.y() && ty < r.y() + r.h();
     }
 
-
+    /**
+     * Collects all valid floor tiles inside the maze.
+     */
     private List<Point> getFloorPoints(Maze maze) {
 
         List<Point> cellList = new ArrayList<>();
@@ -78,7 +99,11 @@ public class ObstaclePlacer {
         return cellList;
     }
 
-
+    /**
+     * Spawns a random obstacle at a tile if placement conditions allow it.
+     *
+     * @return A new obstacle or null if placement is invalid
+     */
     private Obstacle spawnRandomTrap(Point cell, Maze maze, Random rng, boolean allowLightningTraps) {
 
         float tileSize = maze.getTileSize();
@@ -117,7 +142,9 @@ public class ObstaclePlacer {
         return new FloorHazard(spawnPos);
     }
 
-
+    /**
+     * Verifies that the obstacle occupies a fully walkable area.
+     */
     private boolean isValidArea(Obstacle obstacle, Maze maze) {
 
         Rectangle hitBox = obstacle.getCollisionBox();
@@ -179,6 +206,14 @@ public class ObstaclePlacer {
     }
 
 
+    /**
+     * Finds potential lightning trap positions without activating them.
+     *
+     * @param maze Maze reference
+     * @param seed Random seed
+     * @param excludedRoom Room where traps are not allowed
+     * @return List of lightning trap candidates
+     */
     public List<LightningTrap> findLightningTrapCandidates(Maze maze, long seed, Room excludedRoom) {
 
         List<LightningTrap> result = new ArrayList<>();

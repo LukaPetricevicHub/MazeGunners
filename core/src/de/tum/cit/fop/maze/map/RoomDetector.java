@@ -6,17 +6,31 @@ import java.util.Deque;
 import java.util.List;
 
 /**
- * Detects "rooms" from a loaded maze by finding connected floor regions (flood fill)
- * and turning each region into a bounding-box Room.
+ * Utility class that detects rooms in a maze.
  *
- * This is not the original BSP room structure, but it's good enough for:
- * - enemy spawning (pick a random interior point)
- * - "room list not empty" logic
+ * Rooms are detected by flood-filling connected walkable tiles
+ * and converting each connected region into a rectangular Room.
+ *
+ * This does not recreate the original BSP rooms, but is sufficient
+ * for gameplay logic like enemy spawning or room checks.
  */
 public final class RoomDetector {
 
+    /**
+     * Private constructor to prevent instantiation.
+     */
     private RoomDetector() {}
 
+    /**
+     * Detects rooms in the given maze.
+     *
+     * Walkable tiles are grouped using flood fill. Each connected
+     * region is converted into a bounding-box Room.
+     * Very small regions (e.g. corridors) are ignored.
+     *
+     * @param maze the maze to analyze
+     * @return list of detected rooms
+     */
     public static List<Room> detectRooms(Maze maze) {
         int w = maze.getWidth();
         int h = maze.getHeight();

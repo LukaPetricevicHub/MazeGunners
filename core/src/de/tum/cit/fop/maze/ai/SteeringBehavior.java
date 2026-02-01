@@ -6,12 +6,32 @@ import de.tum.cit.fop.maze.enemies.Enemy;
 import java.awt.Point;
 import java.util.List;
 
+/**
+ * Utility class that handles smooth enemy movement along a tile-based path.
+ *
+ * The movement uses simple steering toward waypoints and advances the path
+ * index once a waypoint is reached.
+ */
 public final class SteeringBehavior {
 
     private static final float ARRIVAL_THRESHOLD = 4f;
 
     private SteeringBehavior() {}
 
+    /**
+     * Moves the given enemy along the provided tile path.
+     *
+     * The enemy steers toward the current waypoint and advances to the next
+     * waypoint once it is close enough. If the enemy is attack-locked,
+     * movement is paused and the waypoint index is not advanced.
+     *
+     * @param enemy the enemy to move
+     * @param maze the maze used for collision checks
+     * @param path the tile path to follow
+     * @param currentWaypointIndex index of the current waypoint in the path
+     * @param deltaTime time elapsed since last frame
+     * @return the updated waypoint index
+     */
     public static int followPath(Enemy enemy, Maze maze, List<Point> path, int currentWaypointIndex, float deltaTime) {
         if (path == null || currentWaypointIndex >= path.size())
             return currentWaypointIndex;
@@ -86,6 +106,13 @@ public final class SteeringBehavior {
             return new Vector2(from.x, target.y);
     }
 
+    /**
+     * Computes a world-space target position for transitioning between two
+     * adjacent tiles.
+     *
+     * Instead of moving directly to the center of the next tile, it
+     * guids through the shared edge.
+     */
     private static Vector2 getTransitionTarget(Point fromTile, Point toTile, Vector2 currentPos, float tileSize) {
         float centerX = fromTile.x * tileSize + tileSize * 0.5f;
         float centerY = fromTile.y * tileSize + tileSize * 0.5f;

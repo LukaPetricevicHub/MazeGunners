@@ -11,8 +11,15 @@ import com.badlogic.gdx.graphics.glutils.FrameBuffer;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import de.tum.cit.fop.maze.player.Bullet;
-
 import java.util.List;
+
+/**
+ * Renders a fog-of-war overlay on top of the game world.
+ *
+ * The fog hides unexplored areas and creates a visible radius
+ * around the player. The visibility adapts to the camera zoom
+ * so the vision distance stays consistent in world units.
+ */
 
 public class FogOfWarRenderer {
 
@@ -28,12 +35,24 @@ public class FogOfWarRenderer {
 
     private final Vector3 tmp = new Vector3();
 
+    /**
+     * Creates a new fog-of-war renderer.
+     *
+     * Initializes textures and frame buffers based on the
+     * current screen size.
+     */
     public FogOfWarRenderer() {
         black1x1 = createSolidTexture(1, 1, 0x000000ff);
         holeMask = createRadialMask(256, 256); // alpha=1 center -> 0 edge
         resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
     }
 
+    /**
+     * Updates internal buffers when the screen size changes.
+     *
+     * @param width  new screen width
+     * @param height new screen height
+     */
     public void resize(int width, int height) {
         screenW = Math.max(1, width);
         screenH = Math.max(1, height);
@@ -52,10 +71,7 @@ public class FogOfWarRenderer {
      * Draw fog overlay on top of the world.
      * Call AFTER world is rendered (after batch.end()).
      */
-    public void render(SpriteBatch batch,
-                       OrthographicCamera worldCam,
-                       float playerWorldX,
-                       float playerWorldY) {
+    public void render(SpriteBatch batch, OrthographicCamera worldCam, float playerWorldX, float playerWorldY) {
         render(batch, worldCam, playerWorldX, playerWorldY, null, 0f);
     }
 
@@ -74,12 +90,12 @@ public class FogOfWarRenderer {
         float pxScreen = tmp.x;
         float pyScreen = screenH - tmp.y;
 
-        // Convert WORLD radius -> SCREEN radius (so zoom doesn't change gameplay vision distance)
-        float zoom = worldCam.zoom;                 // <1 zoom in, >1 zoom out
-        float radiusScreen = radiusWorld / zoom;    // keep world-distance constant
-        float softScreen   = softEdgeWorld / zoom;  // optional: keep softness constant in world too
 
-        // 1) Render fog into FBO (screen-sized)
+        float zoom = worldCam.zoom;
+        float radiusScreen = radiusWorld / zoom;
+        float softScreen   = softEdgeWorld / zoom;
+
+        // 1) Render fog into FBO
         fbo.begin();
         Gdx.gl.glClearColor(0, 0, 0, 0);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -95,18 +111,14 @@ public class FogOfWarRenderer {
         batch.draw(black1x1, 0, 0, screenW, screenH);
 
         // 2) Punch hole in the fog layer (make fog alpha transparent near player)
-        // alpha becomes: dstA = dstA * (1 - srcA)
         batch.setColor(1f, 1f, 1f, 1f);
         batch.setBlendFunctionSeparate(
-                GL20.GL_ZERO, GL20.GL_ONE,                 // keep RGB
-                GL20.GL_ZERO, GL20.GL_ONE_MINUS_SRC_ALPHA  // reduce alpha using mask
+                GL20.GL_ZERO, GL20.GL_ONE,
+                GL20.GL_ZERO, GL20.GL_ONE_MINUS_SRC_ALPHA
         );
 
         float size = (radiusScreen + softScreen) * 2f;
-        batch.draw(holeMask,
-                pxScreen - size / 2f,
-                pyScreen - size / 2f,
-                size, size);
+        batch.draw(holeMask, pxScreen - size / 2f, pyScreen - size / 2f, size, size);
 
         // 2b) Bullet light holes (temporary)
         if (bullets != null && bulletRadiusWorld > 0f) {
@@ -146,10 +158,8 @@ public class FogOfWarRenderer {
 
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
-        // libGDX FBO texture is typically flipped vertically
-        batch.draw(fogTex,
-                0, 0, screenW, screenH,
-                0, 1, 1, 0);
+
+        batch.draw(fogTex, 0, 0, screenW, screenH, 0, 1, 1, 0);
         batch.end();
     }
 
@@ -163,8 +173,7 @@ public class FogOfWarRenderer {
         holeMask = null;
     }
 
-    // -------- helpers --------
-
+    // Helpers
     private static Texture createSolidTexture(int w, int h, int rgba8888) {
         Pixmap pm = new Pixmap(w, h, Format.RGBA8888);
         pm.setColor(
@@ -179,7 +188,7 @@ public class FogOfWarRenderer {
         return t;
     }
 
-    // alpha=1 center -> 0 edge (used as "eraser")
+
     private static Texture createRadialMask(int w, int h) {
         Pixmap pm = new Pixmap(w, h, Format.RGBA8888);
 

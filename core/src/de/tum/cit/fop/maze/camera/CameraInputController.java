@@ -4,20 +4,36 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
 
+/**
+ * Handles keyboard input for controlling the game camera.
+ *
+ * Supports continuous zooming while zoom keys are held down.
+ */
 public class CameraInputController extends InputAdapter {
 
     private final GameCamera gameCamera;
     private final de.tum.cit.fop.maze.util.GamePreferences preferences;
 
-    // speed: "steps per second" while holding keys
     private static final float ZOOM_HOLD_SPEED = 2.5f;
 
+    /**
+     * Creates a new camera input controller.
+     *
+     * @param gameCamera the camera to control
+     * @param preferences game preferences containing key bindings
+     */
     public CameraInputController(GameCamera gameCamera, de.tum.cit.fop.maze.util.GamePreferences preferences) {
         this.gameCamera = gameCamera;
         this.preferences = preferences;
     }
 
-    /** Call once per frame from GameScreen.render(delta). */
+    /**
+     * Updates camera zoom based on held keyboard input.
+     *
+     * Should be called once per frame.
+     *
+     * @param delta time since last frame (seconds)
+     */
     public void update(float delta) {
         // Hold key to zoom in/out
         int zoomInKey = preferences.getKeyZoomIn();

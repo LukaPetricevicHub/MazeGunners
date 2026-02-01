@@ -19,8 +19,15 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * Represents the player character.
+ *
+ * Handles movement, combat, skills, health, leveling,
+ * input handling, and rendering of the player.
+ */
+
 public class Player {
-    // Attributestree
+    // Attributes
     private float x;
     private float y;
 
@@ -46,7 +53,6 @@ public class Player {
     private int coins = 0;
     private final Progression progression;
     private final MazeRunnerGame gameRef;
-
 
     private boolean hasKey = false;
     private int score = 0;
@@ -178,7 +184,18 @@ public class Player {
         boolean isBlocked(Rectangle playerRect);
     }
 
-    // Constructor
+    /**
+     * Creates a new player instance.
+     *
+     * @param startX starting X position in world coordinates
+     * @param startY starting Y position in world coordinates
+     * @param progression permanent progression data
+     * @param down walking animation (down)
+     * @param up walking animation (up)
+     * @param left walking animation (left)
+     * @param right walking animation (right)
+     * @param game reference to the main game instance
+     */
     public Player(float startX, float startY, Progression progression, Animation<TextureRegion> down, Animation<TextureRegion> up, Animation<TextureRegion> left, Animation<TextureRegion> right, MazeRunnerGame game) {
 
         this.x = startX;
@@ -238,7 +255,18 @@ public class Player {
         if (hp > max) hp = max;
     }
 
-    // Main update loop
+    /**
+     * Updates the player state.
+     *
+     * Handles input, movement, combat actions, skills,
+     * timers, collisions, and bullets.
+     *
+     * @param dt time since last frame
+     * @param maze current maze
+     * @param game main game reference
+     * @param blockChecker collision checker for obstacles
+     * @param camera active game camera
+     */
     public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker, Camera camera) {
         updateTimers(dt);
 
@@ -583,7 +611,11 @@ public class Player {
     }
 
 
-    // Dmg, traps and laser
+    /**
+     * Applies damage to the player if not shielded.
+     *
+     * @param amount damage value
+     */
     public void takeDamage(int amount) {
         if (godMode || isShielded || invulnerable) return;
 
@@ -630,7 +662,11 @@ public class Player {
         return 1f;
     }
 
-    // Player render
+    /**
+     * Draws the player and all active bullets.
+     *
+     * @param batch sprite batch used for rendering
+     */
     public void draw(SpriteBatch batch) {
         for (Bullet b : bullets) b.draw(batch, bulletRegion);
 
@@ -687,9 +723,7 @@ public class Player {
         isSliding = true;
     }
 
-    // =========================
     // LEVELING
-    // =========================
     public void addExperience(int amount) {
         experience += amount;
         checkLevelUp();

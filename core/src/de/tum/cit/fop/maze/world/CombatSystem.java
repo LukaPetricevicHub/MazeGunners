@@ -13,10 +13,17 @@ import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.obstacles.*;
 import de.tum.cit.fop.maze.player.Bullet;
 import de.tum.cit.fop.maze.player.Player;
-
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * Handles all combat-related interactions in the game.
+ *
+ * This includes damage calculation, enemy and boss updates,
+ * projectile handling, player attacks, and obstacle-based damage.
+ * The combat system acts as the single authority for applying
+ * combat rules and resolving damage.
+ */
 public class CombatSystem {
 
     private static final float ENEMY_WAKE_UP_DIST = 24 * 16f;
@@ -36,25 +43,33 @@ public class CombatSystem {
         enemyDamageMult = Math.max(0.1f, mult);
     }
 
-    public void update(float deltaTime,
-                       Player player,
-                       PlayerLike bossTarget,
-                       Boss boss,
-                       Maze maze,
-                       List<Enemy> enemies,
-                       List<Obstacle> obstacles,
-                       GameCamera gameCamera) {
-
+    /**
+     * Updates all combat interactions for the current frame.
+     *
+     * This method processes:
+     * <ul>
+     *   <li>Projectile collisions</li>
+     *   <li>Melee attacks</li>
+     *   <li>Enemy and boss behavior</li>
+     *   <li>Player damage from enemies and obstacles</li>
+     *   <li>Status effects and skill interactions</li>
+     * </ul>
+     *
+     * @param deltaTime Time elapsed since the last frame
+     * @param player Player instance
+     * @param bossTarget Target adapter for boss AI
+     * @param boss Active boss instance (may be null)
+     * @param maze Maze reference
+     * @param enemies List of active enemies
+     * @param obstacles List of active obstacles
+     * @param gameCamera Camera used for visual effects
+     */
+    public void update(float deltaTime, Player player, PlayerLike bossTarget, Boss boss, Maze maze, List<Enemy> enemies, List<Obstacle> obstacles, GameCamera gameCamera) {
         this.enemies = enemies;
 
-        if (maze != null && enemies != null) {
+        if (maze != null && enemies != null)
             maze.updateEnemyOccupancy(enemies);
-        }
 
-        // ==========================================
-        // DAMAGE CALC (single source of truth)
-        // Use raw strength directly, scaled by dmg multiplier
-        // ==========================================
         int strength = player.getStrengthStat();
         float dmgMult = player.getDamageMult();
 
@@ -63,9 +78,8 @@ public class CombatSystem {
         int meleeDamage  = Math.max(1, Math.round(base * dmgMult));
         int repulseDamage = Math.max(1, Math.round(base * dmgMult));
 
-        // -------------------------
-        // 1) BULLETS → ENEMIES/BOSS
-        // -------------------------
+
+        // 1) BULLETS => ENEMIES/BOSS
         if (player.getBullets() != null) {
 
             Iterator<Bullet> bIter = player.getBullets().iterator();
@@ -113,9 +127,8 @@ public class CombatSystem {
             }
         }
 
-        // -------------------------
-        // 1b) DRONE LASERS → PLAYER
-        // -------------------------
+
+        // 1b) DRONE LASERS => PLAYER
         boolean playerHitByAnyLaser = false;
 
         for (Enemy enemy : enemies) {
@@ -160,9 +173,8 @@ public class CombatSystem {
             player.resetLaserHeat();
         }
 
-        // -------------------------
-        // 2) PLAYER MELEE → BOSS
-        // -------------------------
+
+        // 2) PLAYER MELEE => BOSS
         if (boss != null && !boss.isDead()
                 && player.isAttacking()
                 && player.getAttackHitbox() != null
@@ -172,16 +184,13 @@ public class CombatSystem {
             boss.damage(bossMelee);
         }
 
-        // -------------------------
+
         // 3) BOSS AI
-        // -------------------------
         if (boss != null && !boss.isDead() && bossTarget != null) {
             boss.update(deltaTime, bossTarget);
         }
 
-        // -------------------------
         // 4) REPULSE SKILL
-        // -------------------------
         if (player.isRepulseActive()) {
 
             float repulseRange = 200f;
@@ -201,9 +210,7 @@ public class CombatSystem {
             }
         }
 
-        // -------------------------
         // 5) ENEMIES (touch dmg + melee hit)
-        // -------------------------
         if (!wasPlayerAttacking && player.isAttacking()) {
             meleeHitThisSwing.clear();
         }
@@ -262,10 +269,7 @@ public class CombatSystem {
                 // Gloves knockback
                 float kb = player.getGloveKnockbackStrength();
                 if (kb > 0f) {
-                    Vector2 push = enemy.getPosition().cpy()
-                            .sub(new Vector2(player.getX() + 16f, player.getY() + 32f))
-                            .nor()
-                            .scl(kb);
+                    Vector2 push = enemy.getPosition().cpy().sub(new Vector2(player.getX() + 16f, player.getY() + 32f)).nor().scl(kb);
                     enemy.getPosition().add(push.x * deltaTime, push.y * deltaTime);
                 }
             }
@@ -284,9 +288,7 @@ public class CombatSystem {
             }
         }
 
-        // -------------------------
         // 6) OBSTACLES
-        // -------------------------
         float speedModifier = 1f;
         float visibilityFactor = 1f;
 
@@ -385,6 +387,11 @@ public class CombatSystem {
         gameCamera.setZoomMultiplier(visibilityFactor);
     }
 
+    /**
+     * Renders all active enemy projectiles.
+     *
+     * @param batch Sprite batch used for rendering
+     */
     public void renderProjectiles(SpriteBatch batch) {
 
         if (enemies == null) return;
@@ -409,19 +416,14 @@ public class CombatSystem {
             float glowAlpha = MathUtils.lerp(0.4f, 1f, charge);
 
             batch.setColor(1f, 0.3f, 0.3f, glowAlpha);
-            batch.draw(droneLaserTexture,
-                    start.x, start.y - beamThickness * 0.5f,
-                    0f, beamThickness * 0.5f,
-                    length, beamThickness,
-                    1f, 1f,
-                    angleDeg,
-                    0, 0,
-                    droneLaserTexture.getWidth(), droneLaserTexture.getHeight(),
-                    false, false);
+            batch.draw(droneLaserTexture, start.x, start.y - beamThickness * 0.5f, 0f, beamThickness * 0.5f, length, beamThickness, 1f, 1f, angleDeg, 0, 0, droneLaserTexture.getWidth(), droneLaserTexture.getHeight(), false, false);
             batch.setColor(1f, 1f, 1f, 1f);
         }
     }
 
+    /**
+     * Stops any looping combat-related sound effects.
+     */
     public void stopLoopingSfx() {
         if (floorHazardSoundPlaying) {
             ObstacleAudioManager.stopFloorHazard(floorHazardSoundId);

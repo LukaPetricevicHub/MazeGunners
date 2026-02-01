@@ -12,6 +12,12 @@ import de.tum.cit.fop.maze.behavior.PatrolBehavior;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.player.Player;
 
+/**
+ * Enemy that patrols a fixed path and attacks the player
+ * when they enter its directional attack range.
+ *
+ * Uses directional animations for walking, attacking, and dying.
+ */
 public class RobotGuard extends Enemy {
 
     private static final int MAX_HP = 14; // tweak
@@ -80,7 +86,14 @@ public class RobotGuard extends Enemy {
 
     private final Vector2 lastPosition = new Vector2();
 
-    // Initialize robot guard
+    /**
+     * Creates a RobotGuard enemy.
+     *
+     * @param startWorldPosition initial world position
+     * @param movementSpeed movement speed of the enemy
+     * @param patrolWorldPositions patrol path points
+     * @param targetPlayer player to attack
+     */
     public RobotGuard(Vector2 startWorldPosition, float movementSpeed, Array<Vector2> patrolWorldPositions, Player targetPlayer) {
         super(startWorldPosition, movementSpeed, new PatrolBehavior(patrolWorldPositions), targetPlayer);
         initHp(MAX_HP);
@@ -92,7 +105,7 @@ public class RobotGuard extends Enemy {
         ensureAnimationsLoaded();
     }
 
-    // Load robot animations once
+
     private static void ensureAnimationsLoaded() {
         if (walkDown != null) return;
 
@@ -160,7 +173,12 @@ public class RobotGuard extends Enemy {
         return defaultPatrol;
     }
 
-    // Main behavior update
+    /**
+     * Updates movement, attacks, animations, and death logic.
+     *
+     * @param deltaTime time passed since last frame
+     * @param maze current maze for collision handling
+     */
     @Override
     protected void updateBehavior(float deltaTime, Maze maze) {
 
@@ -227,7 +245,11 @@ public class RobotGuard extends Enemy {
         lastPosition.set(pos);
     }
 
-    // Get current sprite frame
+    /**
+     * Returns the current animation frame based on state and direction.
+     *
+     * @return texture region to render
+     */
     public TextureRegion getCurrentFrame() {
 
         if (dying){
@@ -360,6 +382,12 @@ public class RobotGuard extends Enemy {
         return 20f;
     }
 
+    /**
+     * Puts the enemy into the dying state.
+     *
+     * Starts the death animation, stops attacking,
+     * and locks the facing direction for rendering.
+     */
     @Override
     protected void die() {
         if (dying) return;

@@ -7,11 +7,21 @@ import de.tum.cit.fop.maze.hud.Hud;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Manages game achievements and their persistent state.
+ *
+ * Achievements are registered on startup, stored using libGDX
+ * preferences, and unlocked via in-game events. When an achievement
+ * is unlocked, the player is notified through the HUD.
+ */
 public class AchievementManager {
     private final Preferences prefs;
     private final Map<String, Achievement> achievements;
-    private Hud hud; // Reference to HUD to show popup
+    private Hud hud;
 
+    /**
+     * Registers all achievements and loads their saved unlock states.
+     */
     public AchievementManager() {
         // Use a specific preference file for achievements
         this.prefs = Gdx.app.getPreferences("MazeRunner_Achievements");
@@ -38,6 +48,14 @@ public class AchievementManager {
         this.hud = hud;
     }
 
+    /**
+     * Unlocks an achievement by its identifier.
+     *
+     * The achievement is persisted and a notification is shown
+     * if it was not previously unlocked.
+     *
+     * @param id Achievement identifier
+     */
     public void unlock(String id) {
         Achievement a = achievements.get(id);
         if (a != null && !a.isUnlocked()) {
@@ -57,6 +75,9 @@ public class AchievementManager {
         }
     }
 
+    /**
+     * Returns all noted achievements.
+     */
     public Map<String, Achievement> getAchievements() {
         return achievements;
     }

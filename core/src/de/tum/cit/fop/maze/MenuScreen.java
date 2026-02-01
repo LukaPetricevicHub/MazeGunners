@@ -15,14 +15,32 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.ui.AchievementScreen;
 import de.tum.cit.fop.maze.ui.LeaderboardScreen;
 
+/**
+ * Main menu screen of the game.
+ *
+ * This screen is shown when the game starts and allows the player
+ * to navigate to different parts of the game such as starting a new
+ * game, loading a save file, opening settings, viewing achievements,
+ * leaderboards, or exiting the game.
+ *
+ * All navigation to other screens is handled from here.
+ */
 public class MenuScreen implements Screen {
 
+    // Core game reference
     private final Stage stage;
     private final MazeRunnerGame game;
-    private Texture background;
-    private com.badlogic.gdx.audio.Sound clickSound;
     private final Viewport viewport;
 
+    // Visuals & audio
+    private Texture background;
+    private com.badlogic.gdx.audio.Sound clickSound;
+
+    /**
+     * Creates the main menu screen and initializes all UI elements.
+     *
+     * @param game Reference to the main game instance
+     */
     public MenuScreen(MazeRunnerGame game) {
         this.game = game;
 
@@ -61,13 +79,12 @@ public class MenuScreen implements Screen {
             }
         });
 
-        // ✅ Gambling is MENU-ONLY (no Player instance)
         TextButton gamblingBtn = new TextButton("The Casino", game.getSkin());
         gamblingBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 playClickSound();
-                game.goToGambling(); // opens menu-only GamblingScreen
+                game.goToGambling();
             }
         });
 
@@ -134,6 +151,14 @@ public class MenuScreen implements Screen {
         }
     }
 
+    /**
+     * Renders the menu screen.
+     *
+     * Draws the background image and all UI elements and updates
+     * the stage each frame.
+     *
+     * @param delta Time elapsed since the last frame
+     */
     @Override
     public void render(float delta) {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -151,6 +176,9 @@ public class MenuScreen implements Screen {
 
     @Override public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
 
+    /**
+     * Disposes all resources used by the menu screen.
+     */
     @Override
     public void dispose() {
         stage.dispose();
@@ -158,6 +186,10 @@ public class MenuScreen implements Screen {
         if (clickSound != null) clickSound.dispose();
     }
 
+    /**
+     * Called when this screen becomes active.
+     * Sets the input processor and loads the click sound.
+     */
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);

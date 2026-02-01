@@ -6,21 +6,42 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+/**
+ * Spawns collectable items at random walkable positions in a maze.
+ *
+ * Items are placed only on free floor tiles and never overlap.
+ * A gun is always spawned, followed by other items and coins.
+ */
 public class ItemSpawner {
 
     private final Random random = new Random();
 
-    // =========================
-    // COIN VALUES + WEIGHTS
-    // =========================
     private static final int[] COIN_VALUES  = { 5, 20, 50};
     private static final int[] COIN_WEIGHTS = { 80, 16, 4}; // sums to 100
 
+    /**
+     * Spawns items with a default number of coins.
+     *
+     * @param maze  the maze where items are placed
+     * @param count number of non-coin items to spawn
+     * @return list of spawned collectable items
+     */
     public List<Collectable> spawnItems(Maze maze, int count) {
         int defaultCoinCount = Math.max(6, count * 2);
         return spawnItems(maze, count, defaultCoinCount);
     }
 
+    /**
+     * Spawns items with a custom number of coins.
+     *
+     * A gun is always spawned first, followed by random items
+     * (heart, speed, shield) and coins.
+     *
+     * @param maze      the maze where items are placed
+     * @param count     number of non-coin items to spawn
+     * @param coinCount number of coins to spawn
+     * @return list of spawned collectable items
+     */
     public List<Collectable> spawnItems(Maze maze, int count, int coinCount) {
         List<Collectable> items = new ArrayList<>();
 
@@ -41,6 +62,9 @@ public class ItemSpawner {
         return items;
     }
 
+    /**
+     * Spawns a single item of the given type on a random free tile.
+     */
     private void spawnSingleItem(Maze maze, List<Collectable> items, int type) {
         int x, y;
         int attempts = 300;
@@ -66,6 +90,9 @@ public class ItemSpawner {
         }
     }
 
+    /**
+     * Returns a coin value based on predefined weights.
+     */
     private int rollCoinValue() {
         int total = 0;
         for (int w : COIN_WEIGHTS) total += w;
@@ -80,6 +107,9 @@ public class ItemSpawner {
         return 1;
     }
 
+    /**
+     * Checks whether a tile already contains an item.
+     */
     private boolean tileUsed(List<Collectable> items, Maze maze, int tx, int ty) {
         float ts = maze.getTileSize();
         float wx = tx * ts;

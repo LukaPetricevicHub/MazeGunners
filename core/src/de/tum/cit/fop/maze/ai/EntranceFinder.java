@@ -7,6 +7,12 @@ import de.tum.cit.fop.maze.map.Tiles;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Utility class that finds entrances of a room in the maze.
+ *
+ * An entrance is a floor tile on the edge of a room that connects
+ * to a hallway tile outside the room.
+ */
 public class EntranceFinder {
 
     private static final int[][] DIRS = {
@@ -15,6 +21,19 @@ public class EntranceFinder {
 
     private EntranceFinder() {}
 
+    /**
+     * Finds all valid entrances of a given room.
+     *
+     * An entrance is detected when:
+     * - the tile is on the edge of the room
+     * - the tile itself is a floor tile
+     * - one of its neighbors is a hallway tile (floor or door)
+     *   that does not belong to any room
+     *
+     * @param maze the maze to scan
+     * @param room the room whose entrances should be found
+     * @return a list of room entrances
+     */
     public static List<RoomEntrance> findEntrances(Maze maze, Room room) {
         List<RoomEntrance> entrances = new ArrayList<>();
 
@@ -34,8 +53,7 @@ public class EntranceFinder {
                     if (t != Tiles.FLOOR && t != Tiles.DOOR) continue;
 
 
-                    // ✅ HALL = floor tile that is NOT part of THIS room
-                    // AND not part of ANY other room
+
                     if (!roomContains(room, nx, ny)
                             && !maze.isRoomTile(nx, ny)) {
 
@@ -58,4 +76,3 @@ public class EntranceFinder {
                 && y >= r.y() && y < r.y() + r.h();
     }
 }
-

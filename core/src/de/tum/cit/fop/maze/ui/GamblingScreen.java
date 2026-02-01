@@ -17,10 +17,16 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.progress.Progression;
 
+/**
+ * Screen providing a casino-style gameplay hub.
+ *
+ * Allows the player to gamble coins and permanent stats through
+ * different game modes such as Slots, Russian Roulette, and Blackjack.
+ * Can be accessed both from the main menu and during a run.
+ */
 public class GamblingScreen implements Screen {
 
     private enum Mode { MENU, SHOP, SLOTS, RUSSIAN_ROULETTE, BLACKJACK }
-
 
     private final MazeRunnerGame game;
     private final Progression prog;
@@ -59,10 +65,26 @@ public class GamblingScreen implements Screen {
     // Blackjack
     private BlackjackGame blackjack;
 
+    /**
+     * Creates the gambling screen without an active player.
+     *
+     * Used when the screen is opened from the main menu.
+     *
+     * @param game Reference to the main game instance
+     */
     public GamblingScreen(MazeRunnerGame game) {
         this(game, null);
     }
 
+    /**
+     * Creates the gambling screen for an active run.
+     *
+     * Allows interaction with player-specific data such as lives
+     * and immediate progression effects.
+     *
+     * @param game Reference to the main game instance
+     * @param player Active player instance
+     */
     public GamblingScreen(MazeRunnerGame game, Player player) {
         this.game = game;
         this.prog = game.getProgression();
@@ -71,9 +93,6 @@ public class GamblingScreen implements Screen {
         buildUI();
     }
 
-    // =========================================================
-    // UI BUILD
-    // =========================================================
 
     private void buildUI() {
         root = new Stack();
@@ -157,8 +176,7 @@ public class GamblingScreen implements Screen {
 
 
     private void clearBelowTop() {
-        // Keep first 3 rows (title + coins + status). Remove everything else.
-        // Easiest: rebuild full content below by clearing & re-adding top area.
+
         contentRoot.clearChildren();
 
         contentRoot.add(titleLabel).expandX().fillX().row();
@@ -168,9 +186,6 @@ public class GamblingScreen implements Screen {
         contentRoot.add(new Label("", game.getSkin())).padTop(10).row();
     }
 
-    // =========================================================
-    // MAIN MENU
-    // =========================================================
 
     private void showMenu() {
         mode = Mode.MENU;
@@ -428,10 +443,7 @@ public class GamblingScreen implements Screen {
         contentRoot.setVisible(true);
     }
 
-    // =========================================================
-    // SLOTS
-    // =========================================================
-
+    // Slots
     private void showSlots() {
         mode = Mode.SLOTS;
         contentRoot.setVisible(true);
@@ -541,15 +553,11 @@ public class GamblingScreen implements Screen {
             return "Not enough coins to spin.";
         }
 
-        // Outcomes:
-        // 0-54: stat change (win/lose)
-        // 55-69: unlock freeze weapon (if not already)
-        // 70-84: unlock poison knuckles (if not already)
-        // 85-99: nothing
+
         int roll = MathUtils.random(0, 99);
 
         if (roll <= 54) {
-            boolean win = MathUtils.randomBoolean(0.55f); // slightly favorable
+            boolean win = MathUtils.randomBoolean(0.55f);
             int amt = MathUtils.random(1, 5);
 
             // pick which stat
@@ -599,10 +607,7 @@ public class GamblingScreen implements Screen {
         return "Nothing happened. The house always wins... sometimes.";
     }
 
-    // =========================================================
     // RUSSIAN ROULETTE
-    // =========================================================
-
     private void showRussianRoulette() {
         mode = Mode.RUSSIAN_ROULETTE;
         contentRoot.setVisible(true);
@@ -700,10 +705,7 @@ public class GamblingScreen implements Screen {
         return "BANG!\nYou lost 1 casino heart. Casino Hearts = " + prog.getCasinoHearts();
     }
 
-    // =========================================================
     // BLACKJACK
-    // =========================================================
-
     private void showBlackjack() {
         mode = Mode.BLACKJACK;
         contentRoot.setVisible(true);
@@ -761,7 +763,6 @@ public class GamblingScreen implements Screen {
 
                 setBlackjackButtonsEnabled(placeBetBtn, hitBtn, standBtn, false);
 
-                // Dramatic pause: draw -> update -> maybe resolve
                 stage.addAction(Actions.sequence(
                         Actions.delay(0.35f),
                         Actions.run(() -> {
@@ -773,7 +774,6 @@ public class GamblingScreen implements Screen {
                         Actions.delay(0.35f),
                         Actions.run(() -> {
                             if (!blackjack.inHand) {
-                                // hand resolved (bust or 21 auto-stand)
                                 setBlackjackButtonsEnabled(placeBetBtn, hitBtn, standBtn, true);
                                 hitBtn.setDisabled(true);
                                 standBtn.setDisabled(true);
@@ -864,7 +864,6 @@ public class GamblingScreen implements Screen {
         if (!blackjack.inHand) return "No active hand.";
 
         if (blackjack.playerValue() > 21) {
-            // Player busts -> loses bet (already spent)
             blackjack.inHand = false;
             setDealerLine("Bust. Better luck next hand.");
             return "You BUSTED. You lose your bet (" + blackjack.bet + ").";
@@ -872,7 +871,7 @@ public class GamblingScreen implements Screen {
 
         if (blackjack.playerValue() == 21) {
             blackjack.revealDealer = true;
-            blackjack.dealerPlay(); // dealer finishes immediately here
+            blackjack.dealerPlay();
             return resolveBlackjackAndMaybeGrantHeart();
         }
 
@@ -893,10 +892,9 @@ public class GamblingScreen implements Screen {
             // Gain a permanent heart on win
             prog.addPermanentHeart();
 
-            // If we are in-game, refresh player max HP immediately
             if (player != null) {
                 player.refreshPermanentProgression(game);
-                player.setHp(player.getMaxHp()); // optional: fill to new max
+                player.setHp(player.getMaxHp());
             }
 
             boolean bigWin = blackjack.bet > 1000;
@@ -922,10 +920,8 @@ public class GamblingScreen implements Screen {
     }
 
 
-    // =========================================================
-    // BLACKJACK GAME LOGIC (simple) (simple)
-    // =========================================================
 
+    // BLACKJACK GAME LOGIC
     private static class BlackjackGame {
         boolean revealDealer = false;
         int bet = 0;
@@ -938,7 +934,6 @@ public class GamblingScreen implements Screen {
         }
 
 
-        // each card is 1..11 (Ace=11), face cards treated as 10
         int[] player = new int[12];
         int playerCount = 0;
 
@@ -1016,7 +1011,7 @@ public class GamblingScreen implements Screen {
                 if (c == 11) aces++;
             }
 
-            // Convert Ace 11 -> 1 if bust
+            // Convert Ace 11 => 1 if bust
             while (sum > 21 && aces > 0) {
                 sum -= 10;
                 aces--;
@@ -1041,7 +1036,6 @@ public class GamblingScreen implements Screen {
         }
 
         private int drawCard() {
-            // 1..13 mapped to values: Ace=11, 2..10=2..10, J/Q/K=10
             int r = MathUtils.random(1, 13);
             if (r == 1) return 11;        // Ace
             if (r >= 11) return 10;       // Face
@@ -1049,15 +1043,22 @@ public class GamblingScreen implements Screen {
         }
     }
 
-    // =========================================================
-    // Screen lifecycle
-    // =========================================================
 
+    /**
+     * Sets the input processor when this screen becomes active.
+     */
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
     }
 
+    /**
+     * Updates and renders the gambling screen.
+     *
+     * Handles user input, UI updates, and animations.
+     *
+     * @param delta Time elapsed since the last frame
+     */
     @Override
     public void render(float delta) {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
@@ -1106,6 +1107,12 @@ public class GamblingScreen implements Screen {
     }
 
 
+    /**
+     * Updates the viewport and background when the window size changes.
+     *
+     * @param width New window width
+     * @param height New window height
+     */
     @Override public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
         if (dealerImage != null) dealerImage.setSize(width, height);
@@ -1113,15 +1120,13 @@ public class GamblingScreen implements Screen {
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
+
+    /**
+     * Disposes all resources used by this screen.
+     */
     @Override public void dispose() {
         stage.dispose();
         if (dealerTexture != null) dealerTexture.dispose();
     }
 }
-
-
-
-
-
-
 

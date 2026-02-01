@@ -13,6 +13,14 @@ import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 
+/**
+ * Screen for configuring game settings such as audio, display,
+ * and key bindings.
+ *
+ * Provides UI controls for volume adjustment, fullscreen mode,
+ * and custom key mappings.
+ */
+
 public class SettingsScreen implements Screen {
 
     private final MazeRunnerGame game;
@@ -22,6 +30,11 @@ public class SettingsScreen implements Screen {
     private static final float VIRTUAL_WIDTH = 1280;
     private static final float VIRTUAL_HEIGHT = 720;
 
+    /**
+     * Creates the settings screen and initializes all UI elements.
+     *
+     * @param game Reference to the main game instance
+     */
     public SettingsScreen(MazeRunnerGame game) {
         this.game = game;
         this.stage = new Stage(new ExtendViewport(VIRTUAL_WIDTH, VIRTUAL_HEIGHT), game.getSpriteBatch());
@@ -36,13 +49,11 @@ public class SettingsScreen implements Screen {
 
         Value elementWidth = Value.percentWidth(0.5f, mainTable);
 
-        // --- TITLE ---
-        // If "title" style is also missing, remove the "title" parameter here too.
         Label title = new Label("Settings", game.getSkin());
         title.setFontScale(1.5f);
         contentTable.add(title).padBottom(40).row();
 
-        // --- AUDIO SECTION ---
+        // Audio section
         contentTable.add(new Label("Audio", game.getSkin())).padBottom(15).row();
 
         // FIXED: Removed "small" - uses default font now
@@ -89,7 +100,7 @@ public class SettingsScreen implements Screen {
         });
         contentTable.add(fullscreenBtn).width(elementWidth).height(50).padBottom(40).row();
 
-        // --- CONTROLS SECTION ---
+        // Controls section
         contentTable.add(new Label("Controls", game.getSkin())).padBottom(20).row();
 
         addKeyBindRow(contentTable, "Up", game.getPreferences().getKeyUp(),
@@ -147,6 +158,16 @@ public class SettingsScreen implements Screen {
         mainTable.add(scrollPane).grow().center();
     }
 
+
+    /**
+     * Adds a row to the settings menu for rebinding a key.
+     *
+     * @param table   Parent table
+     * @param name    Action name
+     * @param key     Currently assigned key
+     * @param onSave  Callback to store the new key
+     * @param width   Width of the UI element
+     */
     private void addKeyBindRow(Table table, String name, int key, java.util.function.Consumer<Integer> onSave, Value width) {
         table.add(createKeyBindButton(name, key, onSave)).width(width).height(50).padBottom(10).row();
     }
@@ -176,6 +197,11 @@ public class SettingsScreen implements Screen {
         return button;
     }
 
+    /**
+     * Toggles between fullscreen and windowed mode.
+     *
+     * @param button Button whose label reflects the current mode
+     */
     private void toggleFullscreen(TextButton button) {
         if (Gdx.graphics.isFullscreen()) {
             Gdx.graphics.setWindowedMode(1280, 720);

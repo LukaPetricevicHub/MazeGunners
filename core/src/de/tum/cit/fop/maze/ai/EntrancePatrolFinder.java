@@ -9,11 +9,26 @@ import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Utility class that finds patrol routes for enemies guarding door entrances.
+ *
+ * An entrance patrol consists of exactly two world-space points located
+ * just inside a room next to a two-tile-wide door. These patrols are used
+ * to make enemies guard doorways realistically.
+ */
 public final class EntrancePatrolFinder {
 
     private EntrancePatrolFinder() {}
 
-
+    /**
+     * Scans the entire maze and finds all valid entrance patrols.
+     *
+     * Only doors consisting of exactly two adjacent DOOR tiles are considered.
+     * Each door produces at most one patrol.
+     *
+     * @param maze the maze to scan
+     * @return list of entrance patrols
+     */
     public static List<EntrancePatrol> findAllEntrancePatrols(Maze maze) {
         List<EntrancePatrol> patrols = new ArrayList<>();
         boolean[][] usedDoor = new boolean[maze.getWidth()][maze.getHeight()];
@@ -41,13 +56,20 @@ public final class EntrancePatrolFinder {
         return patrols;
     }
 
-
-    private static List<Point> collectExactTwoTileDoorway(
-            Maze maze,
-            int sx,
-            int sy,
-            boolean[][] used
-    ) {
+    /**
+     * Collects exactly two adjacent DOOR tiles starting from a given position.
+     *
+     * The doorway is only valid if it consists of exactly two directly adjacent
+     * tiles (horizontal or vertical). Each tile is marked as used to prevent
+     * duplicate patrols.
+     *
+     * @param maze the maze
+     * @param sx starting x tile
+     * @param sy starting y tile
+     * @param used bookkeeping array for used door tiles
+     * @return list of two door tiles, or null if invalid
+     */
+    private static List<Point> collectExactTwoTileDoorway(Maze maze, int sx, int sy, boolean[][] used) {
         List<Point> tiles = new ArrayList<>(2);
         tiles.add(new Point(sx, sy));
 
@@ -74,11 +96,17 @@ public final class EntrancePatrolFinder {
         return tiles;
     }
 
-
-    private static EntrancePatrol buildExactTwoPointPatrol(
-            Maze maze,
-            List<Point> doorTiles
-    ) {
+    /**
+     * Builds a two-point patrol just inside the room next to a doorway.
+     *
+     * The method determines which side of the door belongs to the room and
+     * places two patrol points one tile inside that room, parallel to the door.
+     *
+     * @param maze the maze
+     * @param doorTiles exactly two adjacent door tiles
+     * @return entrance patrol or null if no valid patrol can be built
+     */
+    private static EntrancePatrol buildExactTwoPointPatrol(Maze maze, List<Point> doorTiles) {
         Point d0 = doorTiles.get(0);
         Point d1 = doorTiles.get(1);
 
@@ -88,19 +116,20 @@ public final class EntrancePatrolFinder {
         if (!horizontalDoor && !verticalDoor)
             return null;
 
-        // Determine which side is the ROOM
+
         int roomDx = 0;
         int roomDy = 0;
 
         if (horizontalDoor) {
-            // hallway LEFT/RIGHT → room is UP or DOWN
-            if (isRoomTile(maze, d0.x, d0.y - 1)) roomDy = -1;
-            else if (isRoomTile(maze, d0.x, d0.y + 1)) roomDy = 1;
-            else return null;
+            if (isRoomTile(maze, d0.x, d0.y - 1)) {
+                roomDy = -1;
+            } else if(isRoomTile(maze, d0.x, d0.y + 1)) {
+                roomDy = 1;
+            } else
+                return null;
         } else {
-            // hallway TOP/BOTTOM → room is LEFT or RIGHT
             if (isRoomTile(maze, d0.x - 1, d0.y)) roomDx = -1;
-            else if (isRoomTile(maze, d0.x + 1, d0.y)) roomDx = 1;
+            else if(isRoomTile(maze, d0.x + 1, d0.y)) roomDx = 1;
             else return null;
         }
 
@@ -124,19 +153,17 @@ public final class EntrancePatrolFinder {
         return (points.size == 2) ? new EntrancePatrol(points) : null;
     }
 
-
-
+    /**
+     * Checks whether a tile is a valid room interior tile.
+     */
     private static boolean isRoomTile(Maze maze, int x, int y) {
         return maze.inBounds(x, y) && maze.getTile(x, y) == Tiles.FLOOR;
     }
 
-    private static void addPointIfValid(
-            Maze maze,
-            Array<Vector2> points,
-            int x,
-            int y,
-            float ts
-    ) {
+    /**
+     * Adds a world-space patrol point if the tile is a valid floor tile.
+     */
+    private static void addPointIfValid(Maze maze, Array<Vector2> points, int x, int y, float ts) {
         if (!maze.inBounds(x, y)) return;
         if (maze.getTile(x, y) != Tiles.FLOOR) return;
 

@@ -30,6 +30,13 @@ import de.tum.cit.fop.maze.util.AudioManager;
 import de.tum.cit.fop.maze.util.GamePreferences;
 import games.spooky.gdx.nativefilechooser.NativeFileChooser;
 
+/**
+ * Main entry point of the game.
+ *
+ * Initializes global resources like render, audio, preferences,
+ * animations, and controls transitions between different game screens.
+ * Also handles saving and loading the game state.
+ */
 public class MazeRunnerGame extends Game {
 
     private SpriteBatch spriteBatch;
@@ -60,10 +67,19 @@ public class MazeRunnerGame extends Game {
     private GameState pendingSaveState = null;
     private LeaderboardManager leaderboardManager;
 
+    /**
+     * Create a new MazeRunnerGame instance.
+     *
+     * @param fileChooser Native file chooser used for loading external files
+     */
     public MazeRunnerGame(NativeFileChooser fileChooser) {
         super();
     }
 
+    /**
+     * Initialize the game when it starts.
+     * Loads assets, preferences, audio, animations, and opens the main menu.
+     */
     @Override
     public void create() {
         spriteBatch = new SpriteBatch();
@@ -112,10 +128,7 @@ public class MazeRunnerGame extends Game {
         setScreen(new MenuScreen(this));
     }
 
-    /**
-     * ✅ MENU-ONLY gambling.
-     * GamblingScreen must NOT require a Player instance.
-     */
+
     public void goToGambling() {
         setScreen(new GamblingScreen(this));
     }
@@ -148,15 +161,19 @@ public class MazeRunnerGame extends Game {
         }
     }
 
-    public void saveGame(
-            Player player,
-            int currentLevel,
-            List<Enemy> enemies,
-            List<Collectable> items,
-            boolean endlessMode,
-            int floor,
-            long currentSeed
-    ) {
+    /**
+     * Saves the current game state, including player data, enemies,
+     * items, and progression information.
+     *
+     * @param player        The current player
+     * @param currentLevel  The current level number
+     * @param enemies       List of active enemies
+     * @param items         List of collectable items
+     * @param endlessMode   Whether the game is in endless mode
+     * @param floor         Current floor in endless mode
+     * @param currentSeed   Seed used for maze generation
+     */
+    public void saveGame(Player player, int currentLevel, List<Enemy> enemies, List<Collectable> items, boolean endlessMode, int floor, long currentSeed) {
         Json json = new Json();
         GameState state = new GameState();
 
@@ -248,6 +265,11 @@ public class MazeRunnerGame extends Game {
         this.pendingSaveState = state;
     }
 
+    /**
+     * Returns a pending game state that should be restored on the next screen.
+     *
+     * @return The pending game state or null if none exists
+     */
     public GameState getPendingSaveState() { return pendingSaveState; }
     public void clearPendingSaveState() { pendingSaveState = null; }
 
@@ -274,7 +296,6 @@ public class MazeRunnerGame extends Game {
         for (int i = 0; i < 4; i++) framesLeft.add(tmp[3][i]);
         animLeft = new Animation<>(0.15f, framesLeft, Animation.PlayMode.LOOP);
 
-        // Using same sheet for shooting until you add separate shooting sprites
         shootDownAnim = animDown;
         shootUpAnim = animUp;
         shootLeftAnim = animLeft;
@@ -285,6 +306,9 @@ public class MazeRunnerGame extends Game {
         progression.setStoryCompleted(true);
     }
 
+    /**
+     * Disposes all loaded resources when the game is closed.
+     */
     @Override
     public void dispose() {
         if (getScreen() != null) {
@@ -299,6 +323,9 @@ public class MazeRunnerGame extends Game {
         if (audioManager != null) audioManager.dispose();
     }
 
+    /**
+     * Getters & Setters
+     */
     public Skin getSkin() { return skin; }
     public SpriteBatch getSpriteBatch() { return spriteBatch; }
     public TextureRegion getTile(int row, int col) { return tiles[row][col]; }
