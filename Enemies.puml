@@ -1,0 +1,451 @@
+@startuml
+abstract class de.tum.cit.fop.maze.enemies.Enemy {
+- {static} float COLLISION_INSET
+- {static} float COLLISION_SIZE
+- {static} float COLLISION_OFFSET
+- float chaseMemoryTimer
+- {static} float CHASE_MEMORY_DURATION
+- float hitFlashTimer
+- {static} float HIT_FLASH_DURATION
+- boolean frozen
+- float freezeTimer
+- float poisonTimer
+- float poisonDps
+- float poisonTickAccumulator
+- Vector2 prevPosition
+- float stuckTimer
+- {static} float STUCK_TIME_THRESHOLD
+- {static} float MIN_MOVEMENT_EPSILON
+- Rectangle interactionRect
++ void update(float,Maze)
++ void takeDamage(int)
++ boolean isDying()
++ void finalizeDeath()
++ boolean isDead()
++ boolean isHitFlashing()
++ void scaleHp(float)
++ void addHp(int)
++ void applyFreeze(float)
++ void applyPoison(float,float)
++ boolean isFrozen()
+- void updateStatusEffects(float)
++ Vector2 getPosition()
++ float getSpeed()
++ Rectangle getCollisionBox()
++ CollisionHandler getCollisionHandler()
++ Vector2 getHomePosition()
++ float getX()
++ float getY()
++ Vector2 getPlayerPosition()
++ void setCurrentBehavior(BehaviorState)
++ Rectangle getInteractionRect()
++ void applyEnemySeparation(List<Enemy>,Player,float,Maze)
++ void onPlayerContact()
++ boolean isAggroLocked()
++ boolean isAttackingLocked()
++ boolean canBeHitByMelee()
++ boolean ignoresEnemyCollision()
++ int getPathfindingFootprint()
++ float getAttackRadius()
++ float getSeparationRadius()
++ float getRenderWidth()
++ float getRenderHeight()
+}
+
+
+enum de.tum.cit.fop.maze.enemies.CombatLockState {
++  NONE
++  ATTACKING
++  POST_ATTACK_DELAY
+}
+
+class de.tum.cit.fop.maze.enemies.RobotGuard {
+- {static} int MAX_HP
++ {static} float RENDER_WIDTH
++ {static} float RENDER_HEIGHT
+- {static} int WALK_FRAMES
+- {static} int ATTACK_FRAMES
+- {static} float WALK_FRAME_DURATION
+- {static} float ATTACK_FRAME_DURATION
+- {static} float ATTACK_RANGE_X
+- {static} float ATTACK_RANGE_Y
+- {static} float MIN_SAFE_RANGE_X
+- {static} float MIN_SAFE_RANGE_DOWN
+- {static} float MIN_SAFE_RANGE_UP
+- {static} int SHEET_COLS
+- {static} int SHEET_ROWS
+- {static} int WALK_ROW
+- {static} int ATTACK_ROW
+- {static} int DEATH_ROW
+- {static} int DEATH_FRAMES
+- {static} float DEATH_FRAME_DURATION
+- {static} Sound attackSound
+- boolean attackSoundPlayed
+- Direction currentDirection
+- PatrolBehavior defaultPatrol
+- {static} Texture sheetDown
+- {static} Texture sheetUp
+- {static} Texture sheetLeft
+- {static} Texture sheetRight
+- {static} Animation<TextureRegion> walkDown
+- {static} Animation<TextureRegion> walkUp
+- {static} Animation<TextureRegion> walkLeft
+- {static} Animation<TextureRegion> walkRight
+- {static} Animation<TextureRegion> attackDown
+- {static} Animation<TextureRegion> attackUp
+- {static} Animation<TextureRegion> attackLeft
+- {static} Animation<TextureRegion> attackRight
+- {static} Animation<TextureRegion> deathDown
+- {static} Animation<TextureRegion> deathUp
+- {static} Animation<TextureRegion> deathLeft
+- {static} Animation<TextureRegion> deathRight
+- boolean attacking
+- float attackTimer
+- float animationTimer
+- boolean deathAnimating
+- float deathTimer
+- Vector2 lastPosition
+- {static} void ensureAnimationsLoaded()
+- {static} void setNearest(Texture)
+- {static} Animation<TextureRegion> buildRowAnim(Texture,int,int,int,float,boolean)
+- void updateDirectionFromMovement()
++ TextureRegion getCurrentFrame()
+- void stepBackFromPlayer(float,Maze)
+- Animation<TextureRegion> getAttackAnimation()
+- Animation<TextureRegion> getDeathAnimation()
+- boolean isPlayerInAttackRangeDirectional()
+- boolean isPlayerTooCloseDirectional()
+- Direction getAttackDirection()
++ float getRenderWidth()
++ float getRenderHeight()
++ float getAttackRadius()
++ float getSeparationRadius()
+- float getSfxVolume()
+}
+
+
+enum de.tum.cit.fop.maze.enemies.Direction {
++  DOWN
++  LEFT
++  RIGHT
++  UP
+}
+
+enum de.tum.cit.fop.maze.enemies.BossState {
++  IDLE
++  WALK
++  RUN
++  RUN_2
++  ATTACK
++  COMBO
++  HIT
++  DEATH
+}
+
+class de.tum.cit.fop.maze.enemies.DroneLaser {
+- Vector2 position
+- Vector2 velocity
+- boolean alive
+- float lifeTime
+- {static} float SPEED
+- {static} float SIZE
++ void update(float)
++ Rectangle getBounds()
++ boolean isAlive()
++ void kill()
++ Vector2 getPosition()
+}
+
+
+class de.tum.cit.fop.maze.enemies.Boss {
+- float TILE
+- float DRAW_W
+- float DRAW_H
+- float HIT_W
+- float HIT_H
+- {static} int MAX_HP
+- {static} float DAMAGE_TAKEN_MULT
+- {static} float RUN2_HP_PCT
+- {static} float WALK_SPEED_TPS
+- {static} float RUN_SPEED_TPS
+- {static} float RUN2_SPEED_TPS
+- {static} float COMBO_SPEED_TPS
+- {static} float ATTACK_START_DIST_T
+- {static} float COMBO_START_DIST_T
+- {static} int ATTACK_DMG
+- {static} int COMBO_DMG
+- {static} float ATTACK_WINDUP_T
+- {static} float ATTACK_ACTIVE_T
+- {static} float HIT_STUN_T
+- {static} float ATTACK_CD
+- {static} float COMBO_CD
+- {static} float COMBO_OVERSHOOT_T
+- {static} float COMBO_MAX_TIME
+- {static} float COMBO_STOP_DIST_T
+- Maze maze
+- Room bossRoom
+- BossAnimations anims
+- Sound roarSound
+- Sound crySound
+- Sound attack1Sound
+- Sound attack2Sound
+- boolean roarPlayed
+- boolean cryPlayed
+- Vector2 pos
+- Vector2 vel
+- Rectangle hitbox
+- BossState state
+- Facing facing
+- float stateTime
+- int hp
+- float damageMult
+- float attackCd
+- float comboCd
+- boolean attackDamageApplied
+- boolean comboHitApplied
+- Random rng
+- Vector2 comboTarget
+- Vector2 tmp1
+- Vector2 tmp2
+- Rectangle tmpRect1
+- Rectangle tmpRect2
++ boolean isDead()
++ Rectangle getHitbox()
++ Vector2 getPosition()
++ int getHp()
++ int getMaxHp()
++ void scaleHp(float)
++ float getHpPct()
++ void damage(int)
++ void update(float,PlayerLike)
++ void render(Batch)
+- void updateIdle(PlayerLike)
+- void updateWalk(float,PlayerLike)
+- void updateRun(float,PlayerLike,float)
+- void startAttack()
+- void updateAttack(PlayerLike)
+- void startComboDashTowardPlayer(PlayerLike)
+- void updateCombo(float,PlayerLike)
+- void updateHit()
+- void ensureRunStateByHp()
+- Rectangle attackRect()
+- void moveToward(float,Vector2,float)
+- void moveWithCollision(float,Vector2)
+- Animation<TextureRegion> currentAnim()
+- void updateFacing(Vector2)
+- void clampToBossRoom(Vector2)
+- boolean isPlayerInBossRoom(PlayerLike)
+- float getSfxVolume()
++ void dispose()
++ void setDamageMult(float)
+}
+
+
+class de.tum.cit.fop.maze.enemies.EnemySpawner {
+- {static} float AVG_ENEMY_W
+- {static} float AVG_ENEMY_H
++ List<Enemy> spawnEnemies(Maze,List<Room>,Room,Player,int,long)
+- void spawnRoomPatrolEnemies(Maze,List<Room>,Player,Random,List<Enemy>,Map<Room,Integer>)
+- void spawnRandomEnemies(Maze,List<Room>,Room,Player,int,Random,List<Enemy>,Map<Room,Integer>)
+- Enemy createRandomEnemyType(Maze,Random,Point,Player)
+- Array<Vector2> buildSimplePatrol(Maze,Random,Point)
+- List<Point> collectFloorCells(Maze,Room)
+- boolean isSafeToSpawn(float,float,Maze)
+- List<Point> collectSafeRoomInteriorTiles(Maze,List<Room>)
+}
+
+
+interface de.tum.cit.fop.maze.enemies.PlayerLike {
+}
+class de.tum.cit.fop.maze.enemies.FlyingDrone {
++ {static} float RENDER_WIDTH
++ {static} float RENDER_HEIGHT
+- {static} int FLY_FRAMES
+- {static} float FLY_FRAME_DURATION
+- {static} float[] HOVER_Y_OFFSETS
+- {static} float ATTACK_RADIUS
+- {static} float MIN_SAFE_RADIUS
+- boolean attacking
+- float attackTimer
+- {static} int MAX_HP
+- Array<DroneLaser> lasers
+- float laserLockTime
+- {static} float MAX_LASER_LOCK
+- {static} float LASER_GUN_OFFSET_X
+- {static} float LASER_GUN_OFFSET_Y
+- float laserCooldown
+- {static} float LASER_INTERVAL
+- {static} int DEATH_FRAMES
+- {static} float DEATH_FRAME_DURATION
+- {static} Animation<TextureRegion> deathAnim
+- {static} Sound deathSound
+- {static} Sound laserSound
+- long laserSoundId
+- {static} float LASER_VOLUME_MIN
+- {static} float LASER_VOLUME_MAX
+- float deathTimer
+- boolean deathSoundPlayed
+- Direction currentDirection
+- Array<Vector2> patrolPoints
+- {static} Animation<TextureRegion> idle
+- {static} Animation<TextureRegion> patrolScan
+- {static} Animation<TextureRegion> flyLeft
+- {static} Animation<TextureRegion> flyRight
+- {static} Animation<TextureRegion> scan
+- float animationTimer
+- Vector2 lastPosition
+- boolean snapToCenterOnChase
+- boolean snapToCenterOnReturn
+- {static} void ensureAnimationsLoaded()
+- {static} void setNearest(Texture)
+- {static} Animation<TextureRegion> buildStripAnim(Texture,int,float)
++ Vector2 getClosestPatrolPoint()
++ BehaviorState createPatrolBehavior()
+- void fireLaserAtPlayer()
+- void moveAwayFromPlayer(float,Maze)
+- void updateDirectionFromMovement()
++ TextureRegion getCurrentFrame()
++ float getHoverYOffset()
++ Array<DroneLaser> getLasers()
++ boolean isLaserActive()
++ Vector2 getLaserStart()
++ Vector2 getLaserEnd()
++ void increaseLaserLock(float)
++ void resetLaserLock()
++ float getLaserCharge()
++ float getLaserLockTime()
+- boolean isPlayerInAttackRange()
+- void startLaserSound()
+- void updateLaserSoundVolume()
+- void stopLaserSound()
++ void stopAllSounds()
++ int getPathfindingFootprint()
++ float getRenderWidth()
++ float getRenderHeight()
++ float getAttackRadius()
++ boolean ignoresEnemyCollision()
++ boolean canBeHitByMelee()
+- float getSfxVolume()
+}
+
+
+enum de.tum.cit.fop.maze.enemies.Direction {
++  DOWN
++  LEFT
++  RIGHT
++  UP
+}
+
+enum de.tum.cit.fop.maze.enemies.Facing {
++  UP
++  DOWN
++  LEFT
++  RIGHT
+}
+
+class de.tum.cit.fop.maze.enemies.MutantWorker {
+- {static} float WALK_FRAME_DURATION
+- {static} float ATTACK_FRAME_DURATION
+- {static} float DEATH_FRAME_DURATION
+- {static} float ATTACK_RADIUS
+- {static} float MIN_SAFE_RADIUS
+- {static} float ATTACK_COOLDOWN
+- {static} float HIT_MOMENT
+- float attackCooldownTimer
+- float attackTimer
+- float animationTimer
+- float deathTimer
+- boolean attacking
+- boolean hitApplied
+- boolean attackSoundPlayed
+- boolean deathSoundPlayed
+- {static} int MAX_HP
+- Direction currentDirection
+- Vector2 lastPosition
+- {static} Animation<TextureRegion> walkDown
+- {static} Animation<TextureRegion> walkLeft
+- {static} Animation<TextureRegion> walkRight
+- {static} Animation<TextureRegion> walkUp
+- {static} Animation<TextureRegion> attackDown
+- {static} Animation<TextureRegion> attackLeft
+- {static} Animation<TextureRegion> attackRight
+- {static} Animation<TextureRegion> attackUp
+- {static} Animation<TextureRegion> deathLeft
+- {static} Animation<TextureRegion> deathRight
+- TextureRegion idleFrame
+- {static} Sound attackSound
+- {static} Sound deathSound
+- void handleAttackLockedState(float)
+- void handleAttackAnimation(float)
+- void moveAwayFromPlayer(float,Maze)
+- void trySideStep(float,Maze)
+- void updateDirectionFromPlayer()
+- void updateDirectionFromMovement()
++ TextureRegion getCurrentFrame()
+- Animation<TextureRegion> getAttackAnim()
+- Animation<TextureRegion> getWalkAnim()
+- Animation<TextureRegion> getDeathAnim()
++ float getAttackRadius()
++ float getSeparationRadius()
+- {static} void ensureAnimationsLoaded()
+- {static} Animation<TextureRegion> loadStrip(String,int,float,boolean)
+- float getSfxVolume()
+}
+
+
+enum de.tum.cit.fop.maze.enemies.Direction {
++  DOWN
++  LEFT
++  RIGHT
++  UP
+}
+
+class de.tum.cit.fop.maze.enemies.BossAnimations {
+- {static} int FRAME_W
+- {static} int FRAME_H
+- {static} int ROW_IDLE
+- {static} int ROW_WALK
+- {static} int ROW_RUN_1
+- {static} int ROW_RUN_2
+- {static} int ROW_ATTACK
+- {static} int ROW_COMBO
+- {static} int ROW_HIT
+- {static} int ROW_DEATH
+- Texture texture
++ Animation<TextureRegion> idle
++ Animation<TextureRegion> walk
++ Animation<TextureRegion> run
++ Animation<TextureRegion> run2
++ Animation<TextureRegion> attack
++ Animation<TextureRegion> combo
++ Animation<TextureRegion> hit
++ Animation<TextureRegion> death
+- Animation<TextureRegion> anim(TextureRegion[][],int,float,boolean)
++ void dispose()
+}
+
+
+class de.tum.cit.fop.maze.enemies.BossSpawner {
++ {static} Boss spawnBossIfFinalLevel(Maze,int,BossAnimations)
+- {static} Room findBossRoomOrFallbackBiggest(List<Room>)
+- {static} Point randomInteriorWithPadding(Room,Random,int)
+}
+
+class de.tum.cit.fop.maze.enemies.PlayerAdapter {
+- Player p
+- Vector2 tmp
+- Rectangle tmpRect
++ Vector2 getPosition()
++ Rectangle getHitbox()
++ void damage(int)
+}
+
+
+
+
+de.tum.cit.fop.maze.enemies.Enemy <|-- de.tum.cit.fop.maze.enemies.RobotGuard
+de.tum.cit.fop.maze.enemies.Enemy <|-- de.tum.cit.fop.maze.enemies.FlyingDrone
+de.tum.cit.fop.maze.enemies.Enemy <|-- de.tum.cit.fop.maze.enemies.MutantWorker
+com.badlogic.gdx.utils.Disposable <|.. de.tum.cit.fop.maze.enemies.BossAnimations
+de.tum.cit.fop.maze.enemies.PlayerLike <|.. de.tum.cit.fop.maze.enemies.PlayerAdapter
+@enduml

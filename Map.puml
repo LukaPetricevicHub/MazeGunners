@@ -1,0 +1,242 @@
+@startuml
+class de.tum.cit.fop.maze.map.Hall {
+- Point a
+- Point b
++ Point b()
++ Point a()
+}
+
+
+class de.tum.cit.fop.maze.map.MazeLoader {
++ LevelSpec loadFromProperties(FileHandle)
++ Maze buildMaze(LevelSpec,int)
+- {static} Tiles parseTileNumericOnly(String)
++ Maze loadMazeFromProperties(FileHandle,int)
+}
+
+class de.tum.cit.fop.maze.map.MazeLoader$LevelSpec {
++ int width
++ int height
++ Map<Point,Tiles> overrides
+}
+
+interface de.tum.cit.fop.maze.map.TileDrawer {
+}
+class de.tum.cit.fop.maze.map.GeneratedMaze {
+- Maze maze
+- List<Room> rooms
++ Maze getMaze()
++ List<Room> getRooms()
+}
+
+
+enum de.tum.cit.fop.maze.map.Tiles {
++  WALL
++  FLOOR
++  SPAWN
++  EXIT
++  KEY
++  DOOR
++ int id
++ boolean isWall()
++ boolean isWalkable()
++ {static} Tiles fromId(int)
+}
+
+
+class de.tum.cit.fop.maze.map.Maze {
+- int width
+- int height
+- int tileSize
+- Tiles[][] grid
+- Point entryCell
+- Point exitCell
+- List<Point> exitCells
+- List<Room> rooms
+- boolean[][] roomMask
+- boolean[][] enemyOccupancy
+- int enemyOccW
+- int enemyOccH
++ int getWidth()
++ int getHeight()
++ int getTileSize()
++ boolean inBounds(int,int)
++ Tiles getTile(int,int)
++ void setTile(int,int,Tiles)
++ Point getEntryCell()
++ Point getExitCell()
++ List<Point> getExitCells()
++ boolean isWallCell(int,int)
++ boolean isWallWorld(float,float)
++ boolean isWallRect(Rectangle)
++ boolean isBlockedExit(int,int,boolean,boolean)
++ void setEntryCell(Point)
++ void setExitCell(Point)
++ void setRooms(List<Room>)
++ List<Room> getRooms()
++ boolean isRoomTile(int,int)
++ void clearRoomMask()
++ void setRoomCell(int,int,boolean)
++ boolean isRoomCell(int,int)
++ void updateEnemyOccupancy(List<Enemy>)
++ boolean isEnemyOccupied(int,int)
++ boolean isHallTile(int,int)
++ HallOrientation getHallOrientation(int,int)
+}
+
+
+class de.tum.cit.fop.maze.map.RoomDetector {
++ {static} List<Room> detectRooms(Maze)
+- {static} Bounds floodBounds(Maze,int,int,boolean[][])
+- {static} void tryPush(Maze,int,int,boolean[][],int,int,Deque<int[]>)
+}
+
+class de.tum.cit.fop.maze.map.RoomDetector$Bounds {
+}
+class de.tum.cit.fop.maze.map.Room {
+- int x
+- RoomType type
++ int x()
++ int y()
++ int w()
++ int h()
++ RoomType getType()
++ void setType(RoomType)
++ int centerX()
++ int centerY()
++ Point center()
++ Point randomInterior(Random)
+}
+
+
+class de.tum.cit.fop.maze.map.MazeUtils {
++ {static} int dist2(Point,Point)
++ {static} boolean reachable(Maze,Point,Point)
++ {static} Point pickRandomWalkable(Maze,Random,Point,Point)
+}
+
+class de.tum.cit.fop.maze.map.MazeExporter {
++ {static} void saveToProperties(Maze,FileHandle)
+}
+
+enum de.tum.cit.fop.maze.map.RoomType {
++  SPAWN
++  EXIT
++  KEY
++  BOSS
++  NORMAL
++  GAMBLING
+}
+
+class de.tum.cit.fop.maze.map.MazeGenerator {
+- {static} int MAX_ATTEMPTS
+- {static} int MIN_LEAF
+- {static} int MIN_ROOM
+- {static} int ROOM_MARGIN
+- {static} float SHRINK_MIN
+- {static} float SHRINK_MAX
+- {static} float OVERLAP_THRESHOLD
+- {static} int GRID_SNAP
+- {static} int HALL_WIDTH
+- {static} int BOSS_ROOM_MARGIN
+- {static} float BOSS_SHRINK_MIN
+- {static} float BOSS_SHRINK_MAX
+- {static} int BOSS_MIN_SIZE
+- {static} int[] LEVEL_W
+- {static} int[] LEVEL_H
+- {static} int[][] LEVEL_ROOMS
++ Maze generate(MazeLoader.LevelSpec,int,long,int)
+- List<Leaf> splitLeaves(Leaf,Random,int,int,int)
+- void discoverNeighbors(List<Leaf>)
+- boolean touchingAndOverlapping(Leaf,Leaf)
+- int intervalOverlap(int,int,int,int)
+- Room makeShrunkRoom(Leaf,Random)
+- List<CandidateEdge> buildHallCandidates(List<Leaf>)
+- CandidateEdge makeCandidateIfOverlapEnough(Leaf,Leaf,Room,Room)
+- long pairKey(Room,Room)
+- int dist2(Room,Room)
+- List<HallPlan> buildMSTPlans(List<Room>,List<CandidateEdge>,Random)
+- int hallPad(int)
+- int pickDoorLineCoord(CandidateEdge,Random,int)
+- void carveRooms(Maze,List<Room>)
+- void carveStraightHallsWide(Maze,List<HallPlan>,int)
+- void carveVerticalBandExact(Maze,int,int,int)
+- void carveHorizontalBandExact(Maze,int,int,int)
+- void carveDoorMouthLR(Maze,Room,int,int,boolean)
+- void carveDoorMouthUD(Maze,Room,int,int,boolean)
+- void placeDoorBandLRAligned(Maze,Room,int,int,boolean)
+- void placeDoorBandUDAligned(Maze,Room,int,int,boolean)
+- void snapRooms(List<Room>,int,Maze)
+- void snapHallPlans(List<HallPlan>,int,Maze)
+- int snapDown(int,int)
+- void cleanupThinArtifacts(Maze,List<Room>)
+- int walkableNeighbors4(Maze,int,int)
+- BorderEntryPlan pickBorderEntryPlan(Room,Maze,Random,int,List<Room>)
+- Point carveStraightToBorderAndPlaceSpawn(Maze,Room,BorderEntryPlan,int)
+- PlaceResult assignSpecialRoomsAndPlaceTiles_BORDER_EXIT(Maze,List<Room>,Random,int,int)
+- Room farthestRoom(List<Room>,Room)
+- Room pickKeyRoom(List<Room>,Room,Room,Random)
+- void clearSpecialTiles(Maze)
+- BorderExitPlan pickBorderExitPlan(Room,Maze,Random,int,List<Room>)
+- BorderSide weightedPick(Random,BorderSide[],int[])
+- boolean rectsOverlap(int,int,int,int,int,int,int,int)
+- boolean corridorIntersectsOtherRoom(BorderExitPlan,Room,List<Room>,Maze,int)
+- Point carveStraightToBorderAndPlaceExit(Maze,Room,BorderExitPlan,int)
+- Room biggestRoom(List<Room>)
+- MazeLoader.LevelSpec applyLevelSize(MazeLoader.LevelSpec,int)
+- void fill(Maze,Tiles)
+- Leaf pickBossLeaf(List<Leaf>)
+- boolean isInsideRoomTile(Room,int,int)
+- Room makeBossRoom(Leaf,Random)
+- int clamp(int,int,int)
+- {static} int clampLevel(int)
+- {static} int rndBetween(Random,int,int)
++ GeneratedMaze generateWithRooms(MazeLoader.LevelSpec,int,long,int)
+- Maze generateInternal(MazeLoader.LevelSpec,int,long,int,GenerationCapture)
+- Room pickBossRoomNearExitFarFromSpawn(List<Room>,Room,Room,Random)
+}
+
+
+class de.tum.cit.fop.maze.map.MazeGenerator$Leaf {
+}
+enum de.tum.cit.fop.maze.map.Orientation {
++  LR
++  UD
+}
+
+class de.tum.cit.fop.maze.map.MazeGenerator$CandidateEdge {
+}
+class de.tum.cit.fop.maze.map.MazeGenerator$HallPlan {
+}
+enum de.tum.cit.fop.maze.map.BorderSide {
++  LEFT
++  RIGHT
++  TOP
++  BOTTOM
+}
+
+class de.tum.cit.fop.maze.map.MazeGenerator$BorderEntryPlan {
+}
+class de.tum.cit.fop.maze.map.MazeGenerator$BorderExitPlan {
+}
+class de.tum.cit.fop.maze.map.MazeGenerator$PlaceResult {
+}
+class de.tum.cit.fop.maze.map.MazeGenerator$GenerationCapture {
+}
+enum de.tum.cit.fop.maze.map.HallOrientation {
++  LEFT_RIGHT
++  UP_DOWN
+}
+
+
+
+de.tum.cit.fop.maze.map.MazeLoader +.. de.tum.cit.fop.maze.map.MazeLoader$LevelSpec
+de.tum.cit.fop.maze.map.RoomDetector +.. de.tum.cit.fop.maze.map.RoomDetector$Bounds
+de.tum.cit.fop.maze.map.MazeGenerator +.. de.tum.cit.fop.maze.map.MazeGenerator$Leaf
+de.tum.cit.fop.maze.map.MazeGenerator +.. de.tum.cit.fop.maze.map.MazeGenerator$CandidateEdge
+de.tum.cit.fop.maze.map.MazeGenerator +.. de.tum.cit.fop.maze.map.MazeGenerator$HallPlan
+de.tum.cit.fop.maze.map.MazeGenerator +.. de.tum.cit.fop.maze.map.MazeGenerator$BorderEntryPlan
+de.tum.cit.fop.maze.map.MazeGenerator +.. de.tum.cit.fop.maze.map.MazeGenerator$BorderExitPlan
+de.tum.cit.fop.maze.map.MazeGenerator +.. de.tum.cit.fop.maze.map.MazeGenerator$PlaceResult
+de.tum.cit.fop.maze.map.MazeGenerator +.. de.tum.cit.fop.maze.map.MazeGenerator$GenerationCapture
+@enduml

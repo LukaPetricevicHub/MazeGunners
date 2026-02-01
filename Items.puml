@@ -1,0 +1,119 @@
+@startuml
+abstract class de.tum.cit.fop.maze.items.Collectable {
+- boolean active
++ {abstract}void applyEffect(Player)
++ void render(SpriteBatch)
++ Rectangle getBounds()
++ boolean isActive()
++ void collect()
++ void dispose()
+}
+
+
+class de.tum.cit.fop.maze.items.ShieldItem {
+- {static} Sound powerupSound
++ void applyEffect(Player)
++ void dispose()
+}
+
+
+class de.tum.cit.fop.maze.items.KeyItem {
+- {static} Sound pickupSound
++ void applyEffect(Player)
++ void dispose()
+}
+
+
+class de.tum.cit.fop.maze.items.AmmoItem {
+- {static} int AMMO_GAIN
+- {static} Sound pickupSound
++ void applyEffect(Player)
++ void dispose()
+}
+
+
+class de.tum.cit.fop.maze.items.StoryItem {
+- String itemName
++ String getItemName()
++ void applyEffect(Player)
+- {static} String resolveTexture(String)
+}
+
+
+class de.tum.cit.fop.maze.items.BossRelicItem {
++ void applyEffect(Player)
+}
+
+class de.tum.cit.fop.maze.items.GunCollectable {
+- {static} Sound pickupSound
++ void collect()
++ void applyEffect(Player)
++ void dispose()
+}
+
+
+class de.tum.cit.fop.maze.items.ItemSpawner {
+- Random random
+- {static} int[] COIN_VALUES
+- {static} int[] COIN_WEIGHTS
++ List<Collectable> spawnItems(Maze,int)
++ List<Collectable> spawnItems(Maze,int,int)
+- void spawnSingleItem(Maze,List<Collectable>,int)
+- int rollCoinValue()
+- boolean tileUsed(List<Collectable>,Maze,int,int)
+- boolean isExitCell(Maze,int,int)
+}
+
+
+class de.tum.cit.fop.maze.items.Coin {
+- int amount
+- float stateTime
+- {static} Map<Integer,AnimBundle> CACHE
+- {static} Sound pickupSound
+- {static} float DRAW_W
+- {static} float DRAW_H
++ void applyEffect(Player)
++ void render(SpriteBatch)
+- {static} void ensureLoaded(int)
++ {static} void disposeShared()
+}
+
+
+class de.tum.cit.fop.maze.items.Coin$AnimBundle {
+}
+class de.tum.cit.fop.maze.items.SpeedItem {
+- {static} Sound powerupSound
++ void applyEffect(Player)
++ void dispose()
+}
+
+
+class de.tum.cit.fop.maze.items.HeartItem {
+- {static} Sound powerupSound
+- {static} int FRAME_WIDTH
+- {static} int FRAME_HEIGHT
+- {static} int START_X
+- {static} int ROW_Y
+- {static} int FRAME_COUNT
+- Animation<TextureRegion> animation
+- float stateTime
+- void createAnimation()
++ void render(SpriteBatch)
++ void applyEffect(Player)
++ void dispose()
+}
+
+
+
+
+de.tum.cit.fop.maze.items.Collectable <|-- de.tum.cit.fop.maze.items.ShieldItem
+de.tum.cit.fop.maze.items.Collectable <|-- de.tum.cit.fop.maze.items.KeyItem
+de.tum.cit.fop.maze.items.Collectable <|-- de.tum.cit.fop.maze.items.AmmoItem
+de.tum.cit.fop.maze.items.Collectable <|-- de.tum.cit.fop.maze.items.StoryItem
+de.tum.cit.fop.maze.items.Collectable <|-- de.tum.cit.fop.maze.items.BossRelicItem
+de.tum.cit.fop.maze.items.Collectable <|-- de.tum.cit.fop.maze.items.GunCollectable
+de.tum.cit.fop.maze.items.Collectable <|-- de.tum.cit.fop.maze.items.Coin
+de.tum.cit.fop.maze.items.Coin +.. de.tum.cit.fop.maze.items.Coin$AnimBundle
+de.tum.cit.fop.maze.items.Collectable <|-- de.tum.cit.fop.maze.items.SpeedItem
+de.tum.cit.fop.maze.items.Collectable <|-- de.tum.cit.fop.maze.items.HeartItem
+@enduml
