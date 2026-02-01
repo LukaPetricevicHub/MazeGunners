@@ -42,7 +42,9 @@ public class EnemySpawner {
         if (rooms != null && excludedRoom != null) {
             usableRooms = new ArrayList<>();
             for (Room r : rooms) {
-                if (r != excludedRoom && r.getType() != RoomType.SPAWN) {
+                if (r != excludedRoom
+                        && r.getType() != RoomType.SPAWN
+                        && r.getType() != RoomType.BOSS) {
                     usableRooms.add(r);
                 }
             }
@@ -52,15 +54,22 @@ public class EnemySpawner {
                 (usableRooms == null ? 0 : usableRooms.size()) +
                 " enemyCount=" + enemyCount);
 
+        Map<Room, Integer> roomCounts = new HashMap<>();
+        if (usableRooms != null) {
+            for (Room r : usableRooms) {
+                roomCounts.put(r, 0);
+            }
+        }
+
         // 1) Patrol enemies
         if (usableRooms != null && !usableRooms.isEmpty()) {
-            spawnRoomPatrolEnemies(maze, usableRooms, targetPlayer, rng, enemies);
+            spawnRoomPatrolEnemies(maze, usableRooms, targetPlayer, rng, enemies, roomCounts);
         } else {
             System.out.println("[EnemySpawner] No rooms available -> skipping patrol enemies");
         }
 
         // 2) Random enemies
-        spawnRandomEnemies(maze, usableRooms, excludedRoom, targetPlayer, enemyCount, rng, enemies);
+        spawnRandomEnemies(maze, usableRooms, excludedRoom, targetPlayer, enemyCount, rng, enemies, roomCounts);
 
         System.out.println("[EnemySpawner] Spawned total enemies=" + enemies.size());
         return enemies;
@@ -76,11 +85,11 @@ public class EnemySpawner {
      * @param rng Random generator
      * @param out Output list to append to
      */
-    private void spawnRoomPatrolEnemies(Maze maze, List<Room> rooms, Player targetPlayer, Random rng, List<Enemy> out) {
+    private void spawnRoomPatrolEnemies(Maze maze, List<Room> rooms, Player targetPlayer, Random rng, List<Enemy> out, Map<Room, Integer> roomCounts) {
         int roomsWithPatrol = 0;
         for (Room room : rooms) {
 
-            if (room.getType() == RoomType.SPAWN)
+            if (room.getType() == RoomType.SPAWN || room.getType() == RoomType.BOSS)
                 continue;
 
             // 1) Entrances
@@ -113,6 +122,9 @@ public class EnemySpawner {
 
             out.add(enemy);
             roomsWithPatrol++;
+            if (roomCounts != null && roomCounts.containsKey(room)) {
+                roomCounts.put(room, roomCounts.get(room) + 1);
+            }
 
             System.out.println(
                     "[EnemySpawner] Patrol enemies=" +
@@ -121,7 +133,6 @@ public class EnemySpawner {
         }
     }
 
-    // Random enemies
     /**
      * Spawns random enemies across valid tiles.
      *
@@ -132,23 +143,93 @@ public class EnemySpawner {
      * @param maxEnemies Maximum number of enemies
      * @param rng Random generator
      * @param out Output list to append to
+     * @param roomCounts Per-room enemy counts for balancing
      */
-    private void spawnRandomEnemies(Maze maze, List<Room> rooms, Room excludedRoom, Player targetPlayer, int maxEnemies, Random rng, List<Enemy> out) {
-        List<Point> candidates;
+    private void spawnRandomEnemies(Maze maze, List<Room> rooms, Room excludedRoom, Player targetPlayer, int maxEnemies, Random rng, List<Enemy> out, Map<Room, Integer> roomCounts) {
 
         // Prefer room interiors
         if (rooms != null && !rooms.isEmpty()) {
-            candidates = collectSafeRoomInteriorTiles(maze, rooms);
-
-            // Fallback if room detection fails
-            if (candidates.isEmpty()) {
-                System.out.println("[EnemySpawner] Room interiors empty -> fallback to floor cells");
-                candidates = collectFloorCells(maze, excludedRoom);
+            List<Room> roomPool = new ArrayList<>();
+            for (Room r : rooms) {
+                if (r == null) continue;
+                if (r == excludedRoom) continue;
+                if (r.getType() == RoomType.SPAWN || r.getType() == RoomType.BOSS) continue;
+                roomPool.add(r);
             }
-        } else {
-            candidates = collectFloorCells(maze, excludedRoom);
+
+            if (!roomPool.isEmpty()) {
+                Collections.shuffle(roomPool, rng);
+                List<List<Point>> perRoom = new ArrayList<>();
+                List<Room> perRoomRef = new ArrayList<>();
+                for (Room r : roomPool) {
+                    List<Point> pts = new ArrayList<>();
+                    for (int x = r.x() + 1; x < r.x() + r.w() - 1; x++) {
+                        for (int y = r.y() + 1; y < r.y() + r.h() - 1; y++) {
+                            if (!maze.inBounds(x, y)) continue;
+                            if (maze.getTile(x, y) != Tiles.FLOOR) continue;
+                            pts.add(new Point(x, y));
+                        }
+                    }
+                    Collections.shuffle(pts, rng);
+                    perRoom.add(pts);
+                    perRoomRef.add(r);
+                }
+
+                int spawned = 0;
+                while (spawned < maxEnemies) {
+                    int bestIdx = -1;
+                    int bestCount = Integer.MAX_VALUE;
+                    for (int i = 0; i < perRoom.size(); i++) {
+                        if (perRoom.get(i).isEmpty()) continue;
+                        int count = 0;
+                        if (roomCounts != null) {
+                            Integer c = roomCounts.get(perRoomRef.get(i));
+                            count = (c == null) ? 0 : c;
+                        }
+                        if (count < bestCount) {
+                            bestCount = count;
+                            bestIdx = i;
+                        }
+                    }
+
+                    if (bestIdx == -1) break;
+
+                    List<Point> pts = perRoom.get(bestIdx);
+                    boolean placed = false;
+                    while (!pts.isEmpty()) {
+                        Point cell = pts.remove(pts.size() - 1);
+                        float wx = cell.x * maze.getTileSize();
+                        float wy = cell.y * maze.getTileSize();
+                        if (!isSafeToSpawn(wx, wy, maze)) continue;
+
+                        Enemy enemy = createRandomEnemyType(maze, rng, cell, targetPlayer);
+                        if (enemy == null) {
+                            out.add(new MutantWorker(new Vector2(wx, wy), 100f, targetPlayer));
+                        } else {
+                            out.add(enemy);
+                        }
+                        spawned++;
+                        placed = true;
+                        if (roomCounts != null) {
+                            Room r = perRoomRef.get(bestIdx);
+                            roomCounts.put(r, roomCounts.getOrDefault(r, 0) + 1);
+                        }
+                        break;
+                    }
+
+                    if (!placed) {
+                        // no valid cells left in this room
+                        continue;
+                    }
+                }
+
+                System.out.println("[EnemySpawner] Random enemies spawned=" + spawned + " (requested " + maxEnemies + ")");
+                return;
+            }
         }
 
+        // Fallback: no rooms or no valid room interiors
+        List<Point> candidates = collectFloorCells(maze, excludedRoom);
         Collections.shuffle(candidates, rng);
 
         int spawned = 0;
@@ -246,6 +327,7 @@ public class EnemySpawner {
      */
     private List<Point> collectFloorCells(Maze maze, Room excludedRoom) {
         List<Point> cells = new ArrayList<>();
+        List<Room> rooms = maze.getRooms();
         for (int y = 1; y < maze.getHeight() - 1; y++) {
             for (int x = 1; x < maze.getWidth() - 1; x++) {
                 if (maze.getTile(x, y) == Tiles.FLOOR) {
@@ -254,6 +336,18 @@ public class EnemySpawner {
                                 && y >= excludedRoom.y() && y < excludedRoom.y() + excludedRoom.h()) {
                             continue;
                         }
+                    }
+                    if (rooms != null) {
+                        boolean inBoss = false;
+                        for (Room r : rooms) {
+                            if (r == null || r.getType() != RoomType.BOSS) continue;
+                            if (x >= r.x() && x < r.x() + r.w()
+                                    && y >= r.y() && y < r.y() + r.h()) {
+                                inBoss = true;
+                                break;
+                            }
+                        }
+                        if (inBoss) continue;
                     }
                     cells.add(new Point(x, y));
                 }
@@ -292,7 +386,7 @@ public class EnemySpawner {
         List<Point> result = new ArrayList<>();
 
         for(Room room : rooms) {
-            if (room.getType() == RoomType.SPAWN)
+            if (room.getType() == RoomType.SPAWN || room.getType() == RoomType.BOSS)
                 continue;
 
             for (int x = room.x() + 1; x < room.x() + room.w() - 1; x++) {

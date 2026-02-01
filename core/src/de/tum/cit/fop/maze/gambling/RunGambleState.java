@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.progress;
+package de.tum.cit.fop.maze.gambling;
 
 /**
  * Stores temporary run-specific gamble modifiers.

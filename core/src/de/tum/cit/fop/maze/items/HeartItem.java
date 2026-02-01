@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.items;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -13,6 +14,7 @@ import de.tum.cit.fop.maze.player.Player;
  * The heart is animated using a looping sprite animation.
  */
 public class HeartItem extends Collectable {
+    private static Sound powerupSound;
 
     /** Width of each animation frame in pixels. */
     private static final int FRAME_WIDTH = 16;
@@ -38,6 +40,9 @@ public class HeartItem extends Collectable {
      */
     public HeartItem(float x, float y) {
         super(x, y, "objects.png");
+        if (powerupSound == null) {
+            powerupSound = Gdx.audio.newSound(Gdx.files.internal("powerups.mp3"));
+        }
         createAnimation();
     }
 
@@ -80,7 +85,20 @@ public class HeartItem extends Collectable {
     @Override
     public void applyEffect(Player player) {
         player.addLife();
+        if (powerupSound != null) {
+            float vol = Gdx.app.getPreferences("maze_runner_prefs").getFloat("sound_vol", 0.5f);
+            powerupSound.play(vol);
+        }
         collect();
+    }
+
+    @Override
+    public void dispose() {
+        super.dispose();
+        if (powerupSound != null) {
+            powerupSound.dispose();
+            powerupSound = null;
+        }
     }
 }
 

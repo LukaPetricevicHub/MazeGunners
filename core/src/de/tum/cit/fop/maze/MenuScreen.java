@@ -43,7 +43,7 @@ public class MenuScreen implements Screen {
         table.setFillParent(true);
         stage.addActor(table);
 
-        Label title = new Label("THE MAZE RUNNER", game.getSkin(), "title");
+        Label title = new Label("ESCAPE THE FACILITY", game.getSkin(), "title");
         title.setFontScale(1.2f);
         table.add(title).padBottom(80).padTop(-40).row();
 
@@ -51,7 +51,6 @@ public class MenuScreen implements Screen {
         goToGameButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                playClickSound();
                 if (game.getAchievementManager() != null) {
                     game.getAchievementManager().resetAll();
                 }
@@ -63,7 +62,6 @@ public class MenuScreen implements Screen {
         loadButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                playClickSound();
                 if (game.loadGame()) {
                     System.out.println("Save loaded successfully!");
                 } else {
@@ -77,7 +75,6 @@ public class MenuScreen implements Screen {
         gamblingBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                playClickSound();
                 game.goToGambling(); // opens menu-only GamblingScreen
             }
         });
@@ -87,7 +84,6 @@ public class MenuScreen implements Screen {
         leaderboardBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                playClickSound();
                 game.setScreen(new LeaderboardScreen(game));
             }
         });
@@ -96,7 +92,6 @@ public class MenuScreen implements Screen {
         settingsButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                playClickSound();
                 game.setScreen(new SettingsScreen(game));
             }
         });
@@ -105,7 +100,6 @@ public class MenuScreen implements Screen {
         exitButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                playClickSound();
                 Gdx.app.exit();
             }
         });
@@ -176,7 +170,6 @@ public class MenuScreen implements Screen {
     public void dispose() {
         stage.dispose();
         if (background != null) background.dispose();
-        if (clickSound != null) clickSound.dispose();
     }
 
     /**
@@ -185,12 +178,6 @@ public class MenuScreen implements Screen {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
-
-        if (Gdx.files.internal("audio/click.mp3").exists()) {
-            clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/click.mp3"));
-        } else if (Gdx.files.internal("audio/pickup.mp3").exists()) {
-            clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/pickup.mp3"));
-        }
     }
 
     /**

@@ -1,0 +1,16 @@
+[33mcommit 831bf2602ba25d1b3eee2206d40635629b739ea2[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: anton <antoniojosejalanndoni@gmail.com>
+Date:   Fri Jan 30 16:37:46 2026 +0100
+
+    gambling still in progress but the gun will spawn again
+
+1	0	core/src/de/tum/cit/fop/maze/GameScreen.java
+12	18	core/src/de/tum/cit/fop/maze/items/ItemSpawner.java
+273	281	core/src/de/tum/cit/fop/maze/player/Player.java
+7	0	core/src/de/tum/cit/fop/maze/progress/Progression.java
+39	1	core/src/de/tum/cit/fop/maze/ui/DevConsole.java
+480	92	core/src/de/tum/cit/fop/maze/ui/GamblingScreen.java
+2901	2901	maps/level-3.properties
+2594	2594	maps/level-4.properties
+3498	3498	maps/level-5.properties
+1	1	scores.json
