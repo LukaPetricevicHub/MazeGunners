@@ -91,6 +91,8 @@ public class Player {
     private final Animation<TextureRegion> gunSideLeftShoot;
     private boolean shooting = false;
     private Sound shootSound;
+    private Sound reloadSound;
+    private Sound slipSound;
 
 
     // Powerups
@@ -130,6 +132,8 @@ public class Player {
 
     // Floor hazard effect
     private float hazardWallDamageTimer = 0f;
+    private float slideTimer = 0f;
+    private static final float SLIDE_DURATION = 3.5f;
     private static final int HAZARD_WALL_DAMAGE = 1;
     private float controlMultiplier = 1f;
 
@@ -222,6 +226,8 @@ public class Player {
 
         this.bulletRegion = game.getBulletRegion();
         this.shootSound = Gdx.audio.newSound(Gdx.files.internal("audio/PlayerShooting.wav"));
+        this.reloadSound = Gdx.audio.newSound(Gdx.files.internal("reload.mp3"));
+        this.slipSound = Gdx.audio.newSound(Gdx.files.internal("slip.mp3"));
 
         this.progression = progression;
         this.gameRef = game;
@@ -415,6 +421,13 @@ public class Player {
             if (slideVelocity.len() < 50f) {
                 slideVelocity.setZero();
                 isSliding = false;
+            }
+            if (slideTimer > 0f) {
+                slideTimer -= dt;
+                if (slideTimer <= 0f) {
+                    slideVelocity.setZero();
+                    isSliding = false;
+                }
             }
         }
 
@@ -788,6 +801,10 @@ public class Player {
 
         slideVelocity.set(lastMovementDir).nor().scl(getWalkSpeed() * speedBoost);
         isSliding = true;
+        slideTimer = SLIDE_DURATION;
+        if (slipSound != null) {
+            slipSound.play(gameRef.getPreferences().getSoundVolume());
+        }
     }
 
     // =========================
@@ -1034,6 +1051,9 @@ public class Player {
         int taken = Math.min(needed, ammoReserve);
         ammoInClip += taken;
         ammoReserve -= taken;
+        if (reloadSound != null) {
+            reloadSound.play(gameRef.getPreferences().getSoundVolume());
+        }
     }
 
     public boolean isDamageFlashing() { return damageFlash; }
@@ -1048,7 +1068,11 @@ public class Player {
     public void unlockRapidFire() { skillRapidFire = true; }
     public void unlockShotgun() { skillShotgun = true; }
     public void unlockPiercing() { skillPiercing = true; }
-    public void dispose() {if (shootSound != null) shootSound.dispose();}
+    public void dispose() {
+        if (shootSound != null) shootSound.dispose();
+        if (reloadSound != null) reloadSound.dispose();
+        if (slipSound != null) slipSound.dispose();
+    }
 
 
     public void unlockDash() { skillDash = true; }

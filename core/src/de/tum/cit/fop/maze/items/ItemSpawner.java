@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.items;
 
 import de.tum.cit.fop.maze.map.Maze;
+import de.tum.cit.fop.maze.map.Tiles;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +55,12 @@ public class ItemSpawner {
             spawnSingleItem(maze, items, type);
         }
 
+        // Extra ammo pickups
+        int extraAmmo = Math.max(2, count);
+        for (int i = 0; i < extraAmmo; i++) {
+            spawnSingleItem(maze, items, 3);
+        }
+
         // 3) COINS
         for (int i = 0; i < coinCount; i++) {
             spawnSingleItem(maze, items, 5);
@@ -73,9 +80,17 @@ public class ItemSpawner {
             x = random.nextInt(maze.getWidth());
             y = random.nextInt(maze.getHeight());
             attempts--;
-        } while ((maze.isWallCell(x, y) || tileUsed(items, maze, x, y)) && attempts > 0);
+        } while ((maze.isWallCell(x, y)
+                || maze.getTile(x, y) == Tiles.EXIT
+                || maze.getTile(x, y) == Tiles.SPAWN
+                || isExitCell(maze, x, y)
+                || tileUsed(items, maze, x, y)) && attempts > 0);
 
-        if (maze.isWallCell(x, y) || tileUsed(items, maze, x, y)) return;
+        if (maze.isWallCell(x, y)
+                || maze.getTile(x, y) == Tiles.EXIT
+                || maze.getTile(x, y) == Tiles.SPAWN
+                || isExitCell(maze, x, y)
+                || tileUsed(items, maze, x, y)) return;
 
         float ts = maze.getTileSize();
         float wx = x * ts;
@@ -118,6 +133,13 @@ public class ItemSpawner {
 
         for (Collectable c : items) {
             if (c.getBounds().x == wx && c.getBounds().y == wy) return true;
+        }
+        return false;
+    }
+
+    private boolean isExitCell(Maze maze, int tx, int ty) {
+        for (var p : maze.getExitCells()) {
+            if (p.x == tx && p.y == ty) return true;
         }
         return false;
     }

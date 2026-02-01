@@ -12,6 +12,7 @@ import com.badlogic.gdx.audio.Music;
 public class AudioManager {
     private Music backgroundMusic;
     private final GamePreferences prefs;
+    private String currentTrack;
 
     public AudioManager() {
         this.prefs = new GamePreferences();
@@ -24,6 +25,15 @@ public class AudioManager {
      * @param filePath Path to the music file
      */
     public void playBackgroundMusic(String filePath) {
+        if (backgroundMusic != null && filePath != null && filePath.equals(currentTrack)) {
+            backgroundMusic.setLooping(true);
+            backgroundMusic.setVolume(prefs.getMusicVolume());
+            if (prefs.isMusicEnabled() && !backgroundMusic.isPlaying()) {
+                backgroundMusic.play();
+            }
+            return;
+        }
+
         // 1. Stop remove old music
         if (backgroundMusic != null) {
             backgroundMusic.stop();
@@ -41,6 +51,7 @@ public class AudioManager {
             backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal(filePath));
             backgroundMusic.setLooping(true);
             backgroundMusic.setVolume(prefs.getMusicVolume());
+            currentTrack = filePath;
 
             if (prefs.isMusicEnabled()) {
                 backgroundMusic.play();

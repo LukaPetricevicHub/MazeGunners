@@ -14,7 +14,6 @@ import com.badlogic.gdx.utils.Timer;
  */
 public final class ObstacleAudioManager {
 
-    private static Sound floorHazardSound;
     private static Sound spikeTrapSound;
     private static Sound lightningTrapSound;
 
@@ -34,7 +33,6 @@ public final class ObstacleAudioManager {
     public static void init() {
         if (initialized) return;
 
-        floorHazardSound = Gdx.audio.newSound(Gdx.files.internal("assets/Traps/FloorHazard.wav"));
         spikeTrapSound = Gdx.audio.newSound(Gdx.files.internal("assets/Traps/SpikeTrap.wav"));
         lightningTrapSound = Gdx.audio.newSound(Gdx.files.internal("assets/Traps/LightningTrap.wav"));
 
@@ -46,7 +44,7 @@ public final class ObstacleAudioManager {
      */
     public static void playSpikeTrap() {
         if (spikeTrapSound != null) {
-            spikeTrapSound.play(1f);
+            spikeTrapSound.play(getSfxVolume());
         }
     }
 
@@ -57,7 +55,7 @@ public final class ObstacleAudioManager {
     public static void playLightningTrap() {
         if (lightningTrapSound == null) return;
 
-        long id = lightningTrapSound.play(1f);
+        long id = lightningTrapSound.play(getSfxVolume());
 
         Timer.schedule(new Timer.Task() {
             @Override
@@ -73,30 +71,12 @@ public final class ObstacleAudioManager {
      * @param volume playback volume (0.0 to 1.0)
      * @return sound instance ID, or -1 if playback failed
      */
-    public static long playFloorHazardLoop(float volume) {
-        if (floorHazardSound == null) {
-            return -1;
-        }
-        return floorHazardSound.loop(volume);
-    }
-
-    /**
-     * Stops a previously started floor hazard sound loop.
-     *
-     * @param id sound instance ID returned by {@link #playFloorHazardLoop(float)}
-     */
-    public static void stopFloorHazard(long id) {
-        if (floorHazardSound != null && id != -1)
-            floorHazardSound.stop(id);
-    }
-
     /**
      * Disposes all loaded obstacle sound effects.
      *
      * Should be called when the game shuts down to free audio resources.
      */
     public static void dispose() {
-        if(floorHazardSound != null) floorHazardSound.dispose();
         if (spikeTrapSound != null) spikeTrapSound.dispose();
         if (lightningTrapSound != null) lightningTrapSound.dispose();
     }

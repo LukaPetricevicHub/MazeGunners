@@ -1,6 +1,7 @@
 package de.tum.cit.fop.maze.items;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -22,6 +23,7 @@ public class Coin extends Collectable {
     private float stateTime = 0f;
 
     private static final Map<Integer, AnimBundle> CACHE = new HashMap<>();
+    private static Sound pickupSound;
 
     private static final float DRAW_W = 32f;
     private static final float DRAW_H = 32f;
@@ -51,6 +53,13 @@ public class Coin extends Collectable {
     @Override
     public void applyEffect(Player player) {
         player.addCoins(amount);
+        if (pickupSound == null) {
+            pickupSound = Gdx.audio.newSound(Gdx.files.internal("coinpickup.mp3"));
+        }
+        if (pickupSound != null) {
+            float vol = Gdx.app.getPreferences("maze_runner_prefs").getFloat("sound_vol", 0.5f);
+            pickupSound.play(vol);
+        }
         collect();
     }
 
@@ -120,5 +129,9 @@ public class Coin extends Collectable {
             b.sheet.dispose();
         }
         CACHE.clear();
+        if (pickupSound != null) {
+            pickupSound.dispose();
+            pickupSound = null;
+        }
     }
 }

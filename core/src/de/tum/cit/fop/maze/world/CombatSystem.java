@@ -32,8 +32,7 @@ public class CombatSystem {
     private List<Enemy> enemies;
     private float enemyDamageMult = 1f;
 
-    private long floorHazardSoundId = -1;
-    private boolean floorHazardSoundPlaying = false;
+    // floor hazard loop sound removed
     private boolean wasPlayerAttacking = false;
     private final java.util.HashSet<Enemy> meleeHitThisSwing = new java.util.HashSet<>();
 
@@ -180,7 +179,7 @@ public class CombatSystem {
                 && player.getAttackHitbox() != null
                 && player.getAttackHitbox().overlaps(boss.getHitbox())) {
 
-            int bossMelee = Math.max(1, Math.round(Math.max(1, strength) * dmgMult * 0.6f));
+            int bossMelee = Math.max(1, Math.round(Math.max(1, strength) * dmgMult * 0.3f));
             boss.damage(bossMelee);
         }
 
@@ -295,8 +294,6 @@ public class CombatSystem {
         float playerCenterX = player.getX() + 16f;
         float playerCenterY = player.getY() + 32f;
 
-        boolean nearAnyFloorHazard = false;
-
         float playerX = player.getX() + 16f;
         float playerY = player.getY() + 32f;
         float tileSize = maze.getTileSize();
@@ -308,9 +305,7 @@ public class CombatSystem {
                 if (hazard.justEntered(playerFeetHitbox)) {
                     player.activateFloorHazard(2.5f, hazard.getSpeedBoost());
                 }
-                if (hazard.isPlayerInRange(playerX, playerY, tileSize)) {
-                    nearAnyFloorHazard = true;
-                }
+                // no floor hazard loop sound
                 continue;
             }
 
@@ -374,14 +369,7 @@ public class CombatSystem {
             }
         }
 
-        if (nearAnyFloorHazard && !floorHazardSoundPlaying) {
-            floorHazardSoundId = ObstacleAudioManager.playFloorHazardLoop(0.6f);
-            floorHazardSoundPlaying = true;
-        } else if (!nearAnyFloorHazard && floorHazardSoundPlaying) {
-            ObstacleAudioManager.stopFloorHazard(floorHazardSoundId);
-            floorHazardSoundId = -1;
-            floorHazardSoundPlaying = false;
-        }
+        // floor hazard loop sound removed
 
         player.setSpeedMultiplier(speedModifier);
         gameCamera.setZoomMultiplier(visibilityFactor);
@@ -425,11 +413,7 @@ public class CombatSystem {
      * Stops any looping combat-related sound effects.
      */
     public void stopLoopingSfx() {
-        if (floorHazardSoundPlaying) {
-            ObstacleAudioManager.stopFloorHazard(floorHazardSoundId);
-            floorHazardSoundId = -1;
-            floorHazardSoundPlaying = false;
-        }
+        // floor hazard loop sound removed
     }
 
     private boolean isWall(Rectangle rect, Maze maze) {

@@ -368,10 +368,7 @@ public class MutantWorker extends Enemy {
 
     private float getSfxVolume() {
         if (Gdx.app == null) return 1f;
-        if (Gdx.app.getApplicationListener() instanceof de.tum.cit.fop.maze.MazeRunnerGame game) {
-            return game.getPreferences().getSoundVolume();
-        }
-        return 1f;
+        return Gdx.app.getPreferences("maze_runner_prefs").getFloat("sound_vol", 0.5f);
     }
 
     // Overrides

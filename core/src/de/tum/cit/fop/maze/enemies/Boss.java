@@ -110,8 +110,8 @@ public class Boss {
         this.DRAW_W = 10f * TILE;
         this.DRAW_H = 10f * TILE;
 
-        this.HIT_W = 7f * TILE;
-        this.HIT_H = 7f * TILE;
+        this.HIT_W = 3f * TILE;
+        this.HIT_H = 3f * TILE;
 
         this.pos.set(spawnWorldX, spawnWorldY);
 
@@ -196,6 +196,13 @@ public class Boss {
     public void update(float dt, PlayerLike player) {
         if (state == BossState.DEATH) {
             stateTime += dt;
+            return;
+        }
+
+        if (!isPlayerInBossRoom(player)) {
+            vel.setZero();
+            state = BossState.IDLE;
+            stateTime = 0f;
             return;
         }
 
@@ -450,5 +457,15 @@ public class Boss {
 
         worldPos.x = Math.max(minX, Math.min(maxX, worldPos.x));
         worldPos.y = Math.max(minY, Math.min(maxY, worldPos.y));
+    }
+
+    private boolean isPlayerInBossRoom(PlayerLike player) {
+        if (bossRoom == null || player == null) return true;
+        Vector2 p = player.getPosition();
+        float minX = bossRoom.x() * TILE;
+        float minY = bossRoom.y() * TILE;
+        float maxX = (bossRoom.x() + bossRoom.w()) * TILE;
+        float maxY = (bossRoom.y() + bossRoom.h()) * TILE;
+        return p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY;
     }
 }

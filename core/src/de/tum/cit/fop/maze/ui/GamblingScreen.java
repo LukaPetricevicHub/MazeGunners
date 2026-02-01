@@ -3,6 +3,7 @@ package de.tum.cit.fop.maze.ui;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.MathUtils;
@@ -42,6 +43,7 @@ public class GamblingScreen implements Screen {
     private TextButton dialogueNextBtn;
     private Image dealerImage;
     private Texture dealerTexture;
+    private Sound cardsSound;
     private String[] dialogueLines = null;
     private int dialogueIndex = 0;
     private Runnable dialogueOnDone = null;
@@ -547,6 +549,7 @@ public class GamblingScreen implements Screen {
                         Actions.delay(0.35f),
                         Actions.run(() -> {
                             blackjack.playerHit();
+                            playCardsSound();
                             String msg = maybeResolveBlackjackAfterPlayerAction();
                             state.setText(msg + "\n\n" + blackjack.renderState(false));
                             refreshTopBar();
@@ -838,6 +841,9 @@ public class GamblingScreen implements Screen {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
+        if (game.getAudioManager() != null) {
+            game.getAudioManager().playBackgroundMusic("casino.mp3");
+        }
     }
 
     @Override
@@ -867,6 +873,7 @@ public class GamblingScreen implements Screen {
 
         if (blackjack.dealerValue() < 17) {
             blackjack.dealerDraw(); // draw exactly ONE card
+            playCardsSound();
 
             state.setText("Dealer draws...\n\n" + blackjack.renderState(true));
 
@@ -898,6 +905,15 @@ public class GamblingScreen implements Screen {
     @Override public void dispose() {
         stage.dispose();
         if (dealerTexture != null) dealerTexture.dispose();
+        if (cardsSound != null) cardsSound.dispose();
+    }
+
+    private void playCardsSound() {
+        if (cardsSound == null) {
+            cardsSound = Gdx.audio.newSound(Gdx.files.internal("cards.mp3"));
+        }
+        float vol = game.getPreferences().getSoundVolume();
+        cardsSound.play(vol);
     }
 }
 

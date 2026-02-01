@@ -135,7 +135,7 @@ public class MazeRunnerGame extends Game {
 
     public void goToMenu() {
         if (audioManager != null) {
-            audioManager.playBackgroundMusic("music/background.mp3");
+            audioManager.playBackgroundMusic("mainmenu.mp3");
         }
         setScreen(new MenuScreen(this));
     }

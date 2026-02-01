@@ -57,36 +57,16 @@ public class BossSpawner {
     }
 
     private static Room findBossRoomOrFallbackBiggest(List<Room> rooms) {
-        // 1) Prefer explicit boss room
-        for (Room r : rooms) {
-            if (r != null && r.getType() == RoomType.BOSS) return r;
-        }
-
-        // 2) Fallback: biggest non-spawn/exit/key
+        // Always use the biggest room overall
         Room best = null;
         int bestArea = -1;
 
         for (Room r : rooms) {
             if (r == null) continue;
-            RoomType t = r.getType();
-            if (t == RoomType.SPAWN || t == RoomType.EXIT || t == RoomType.KEY) continue;
-
             int area = r.w() * r.h();
             if (area > bestArea) {
                 bestArea = area;
                 best = r;
-            }
-        }
-
-        // 3) Absolute fallback: biggest room of anything
-        if (best == null) {
-            for (Room r : rooms) {
-                if (r == null) continue;
-                int area = r.w() * r.h();
-                if (area > bestArea) {
-                    bestArea = area;
-                    best = r;
-                }
             }
         }
 

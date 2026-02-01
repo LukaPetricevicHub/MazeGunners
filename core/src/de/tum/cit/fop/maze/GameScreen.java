@@ -231,7 +231,7 @@ public class GameScreen implements Screen {
         }
 
         // Story intro (once per level)
-        if (!storyShown && !isPaused && hud != null) {
+        if (!endlessMode && !storyShown && !isPaused && hud != null) {
             storyShown = true;
             storyBlocking = true;
             int introLevel = endlessMode ? floor : level; // TODO verify correct source for story mode level
@@ -693,6 +693,12 @@ public class GameScreen implements Screen {
         if (savedState != null && savedState.items != null && !savedState.items.isEmpty()) {
             items = new ArrayList<>();
             for (GameState.ItemState is : savedState.items) {
+                if (is == null || is.type == null) continue;
+                int tx = (int) (is.x / TILE_SIZE);
+                int ty = (int) (is.y / TILE_SIZE);
+                if (maze.getTile(tx, ty) == Tiles.EXIT || maze.getTile(tx, ty) == Tiles.SPAWN) {
+                    continue;
+                }
                 if (is.type.equals("gun")) items.add(new GunCollectable(is.x, is.y));
                 else if (is.type.equals("heart")) items.add(new HeartItem(is.x, is.y));
                 else if (is.type.equals("speed")) items.add(new SpeedItem(is.x, is.y));
