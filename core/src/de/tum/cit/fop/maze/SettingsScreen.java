@@ -104,6 +104,30 @@ public class SettingsScreen implements Screen {
         addKeyBindRow(contentTable, "Right", game.getPreferences().getKeyRight(),
                 key -> game.getPreferences().setKeyRight(key), elementWidth);
 
+        addKeyBindRow(contentTable, "Pause", game.getPreferences().getKeyPause(),
+                key -> game.getPreferences().setKeyPause(key), elementWidth);
+
+        addKeyBindRow(contentTable, "Map (Hold)", game.getPreferences().getKeyMap(),
+                key -> game.getPreferences().setKeyMap(key), elementWidth);
+
+        addKeyBindRow(contentTable, "Melee", game.getPreferences().getKeyMelee(),
+                key -> game.getPreferences().setKeyMelee(key), elementWidth);
+
+        addKeyBindRow(contentTable, "Shoot", game.getPreferences().getKeyShoot(),
+                key -> game.getPreferences().setKeyShoot(key), elementWidth);
+
+        addKeyBindRow(contentTable, "Zoom In", game.getPreferences().getKeyZoomIn(),
+                key -> game.getPreferences().setKeyZoomIn(key), elementWidth);
+
+        addKeyBindRow(contentTable, "Zoom Out", game.getPreferences().getKeyZoomOut(),
+                key -> game.getPreferences().setKeyZoomOut(key), elementWidth);
+
+        addKeyBindRow(contentTable, "Dash", game.getPreferences().getKeyDash(),
+                key -> game.getPreferences().setKeyDash(key), elementWidth);
+
+        addKeyBindRow(contentTable, "Repulse", game.getPreferences().getKeyRepulse(),
+                key -> game.getPreferences().setKeyRepulse(key), elementWidth);
+
 
         // --- BACK BUTTON ---
         TextButton backButton = new TextButton("Back to Menu", game.getSkin());

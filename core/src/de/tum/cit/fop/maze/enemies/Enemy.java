@@ -178,6 +178,18 @@ public abstract class Enemy {
         return markedForRemoval;
     }
 
+    public void scaleHp(float mult) {
+        if (mult <= 1f) return;
+        maxHealth = Math.max(1, Math.round(maxHealth * mult));
+        health = maxHealth;
+    }
+
+    public void addHp(int delta) {
+        if (delta == 0) return;
+        maxHealth = Math.max(1, maxHealth + delta);
+        health = maxHealth;
+    }
+
     public void applyFreeze(float duration) {
         if (dying) return;
         frozen = true;

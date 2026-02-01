@@ -280,23 +280,25 @@ public class Player {
         }
 
         // Dash skill
-        if (skillDash && Gdx.input.isKeyJustPressed(Input.Keys.E) && dashCooldown <= 0 && moving) {
+        if (skillDash && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyDash()) && dashCooldown <= 0 && moving) {
             startDash(input.dx, input.dy);
         }
 
         // Repulse skill
-        if (skillRepulse && Gdx.input.isKeyJustPressed(Input.Keys.Q) && repulseCooldownTimer <= 0) {
+        if (skillRepulse && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyRepulse()) && repulseCooldownTimer <= 0) {
             isRepulsing = true;
             repulseCooldownTimer = 5.0f;
         }
 
         // Melee
-        if (!isParalyzed() && Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+        if (!isParalyzed() && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyMelee())) {
             attack();
         }
 
         // Shooting
-        if (!isParalyzed() && Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && hasGun) {
+        boolean shootPressed = Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)
+                || Gdx.input.isKeyJustPressed(game.getPreferences().getKeyShoot());
+        if (!isParalyzed() && shootPressed && hasGun) {
             if (shootTimer <= 0) {
                 spawnBullet(camera);
                 shootTimer = skillRapidFire ? 0.2f : 0.4f;
@@ -739,6 +741,11 @@ public class Player {
     // Gambling buff
     public float getDamageMult() { return damageMult; }
 
+    // Dev override (no clamp, not persisted)
+    public void setDamageMultRaw(float v) {
+        damageMult = v;
+    }
+
     public void addDamageMult(float delta) {
         damageMult = MathUtils.clamp(damageMult + delta, 0.5f, 3.0f);
         if (progression != null) progression.setPermanentDamageMult(damageMult);
@@ -772,6 +779,11 @@ public class Player {
     public void setStrengthStat(int v) {
         strengthStat = MathUtils.clamp(v, 1, 10);
         if (progression != null) progression.setPermanentStrength(strengthStat);
+    }
+
+    // Dev override (no clamp, not persisted)
+    public void setStrengthStatRaw(int v) {
+        strengthStat = v;
     }
 
     public void setSpeedStat(int v) {

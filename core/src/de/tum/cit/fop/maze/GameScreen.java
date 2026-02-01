@@ -31,6 +31,7 @@ import de.tum.cit.fop.maze.enemies.*;
 import de.tum.cit.fop.maze.hud.Hud;
 import de.tum.cit.fop.maze.items.*;
 import de.tum.cit.fop.maze.map.*;
+import de.tum.cit.fop.maze.map.RoomDetector;
 import de.tum.cit.fop.maze.obstacles.*;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.ui.SkillWindow;
@@ -50,7 +51,7 @@ public class GameScreen implements Screen {
     // Attributes
     private ShapeRenderer shapeRenderer; // Tool to draw simple shapes
     private float minimapZoom = 6.0f;    // How "zoomed out" the map is
-    private float minimapSize = 200f;    // Size of the box in pixels (200x200)
+    private float minimapSize = 200f;    // Size of the box in pixels (overridden per frame)
 
     private final MazeRunnerGame game;
     private final FileHandle levelFile;
@@ -108,6 +109,12 @@ public class GameScreen implements Screen {
     private int enemyCount;
     private int trapCount;
     private int itemCount;
+
+    // Minimap exploration (static map, reveal as you move)
+    private boolean[][] explored;
+    private int exploredW = -1;
+    private int exploredH = -1;
+    private static final int EXPLORE_RADIUS_TILES = 6;
 
     // Lightning trap deferred spawning
     private List<LightningTrap> pendingLightningTraps = new ArrayList<>();
@@ -180,7 +187,7 @@ public class GameScreen implements Screen {
     public void render(float delta) {
 
         // Input
-        if (gameStateController.isRunning() && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+        if (gameStateController.isRunning() && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyPause())) {
             togglePause();
         }
 
@@ -405,7 +412,8 @@ public class GameScreen implements Screen {
 
         game.getSpriteBatch().end();
 
-        fog.render(game.getSpriteBatch(), gameCamera.getCamera(), px, py);
+        fog.render(game.getSpriteBatch(), gameCamera.getCamera(), px, py,
+                player.getBullets(), 1.5f * TILE_SIZE);
 
 
         if (isPaused) {
@@ -418,7 +426,8 @@ public class GameScreen implements Screen {
             hud.draw();
         }
 
-        if (Gdx.input.isKeyPressed(Input.Keys.M)) {
+        updateMinimapExploration();
+        if (Gdx.input.isKeyPressed(game.getPreferences().getKeyMap())) {
             renderMinimap();
         }
     }
@@ -521,7 +530,7 @@ public class GameScreen implements Screen {
         Gdx.input.setInputProcessor(multiplexer);
 
         fog = new FogOfWarRenderer();
-        fog.setFogAlpha(0.95f);
+        fog.setFogAlpha(0.97f);
 
         Gdx.app.log("SPAWN", "counts: enemies=" + enemyCount
                 + " traps=" + trapCount
@@ -529,6 +538,7 @@ public class GameScreen implements Screen {
 
 
         initializeEnemiesAndObstacles(runSeed);
+        applyEndlessScaling();
 
 
         Gdx.app.log("SPAWN", "rooms=" + (rooms == null ? 0 : rooms.size())
@@ -671,18 +681,16 @@ public class GameScreen implements Screen {
         float worldW = uiViewport.getWorldWidth();
         float worldH = uiViewport.getWorldHeight();
 
+        minimapSize = Math.min(worldW, worldH) * 0.5f;
+
         float mapX = worldW - minimapSize - 20;
         float mapY = 20; // bottom-right instead of top-right
 
-
-        // Show a 30-tile range (15 left, 15 right)
-        float viewRange = 15 * TILE_SIZE;
-        float scale = minimapSize / (viewRange * 2);
-
-        float playerX = player.getX();
-        float playerY = player.getY();
-        float centerX = mapX + minimapSize / 2f;
-        float centerY = mapY + minimapSize / 2f;
+        float tileScale = minimapSize / Math.max(maze.getWidth(), maze.getHeight());
+        float mapW = maze.getWidth() * tileScale;
+        float mapH = maze.getHeight() * tileScale;
+        float mapOriginX = mapX + (minimapSize - mapW) * 0.5f;
+        float mapOriginY = mapY + (minimapSize - mapH) * 0.5f;
 
         Vector2 scissorBL = new Vector2(mapX, mapY);
         Vector2 scissorTR = new Vector2(mapX + minimapSize, mapY + minimapSize);
@@ -708,44 +716,34 @@ public class GameScreen implements Screen {
         shapeRenderer.setColor(0, 0, 0, 0.5f);
         shapeRenderer.rect(mapX, mapY, minimapSize, minimapSize);
 
-        // Walls
-        shapeRenderer.setColor(Color.LIGHT_GRAY);
+        // Explored tiles (rooms + halls only)
+        for (int row = 0; row < maze.getHeight(); row++) {
+            for (int col = 0; col < maze.getWidth(); col++) {
+                if (!explored[col][row]) continue;
+                if (!maze.getTile(col, row).isWalkable()) continue;
 
-        int radius = 20;
-        int startCol = (int)(playerX / TILE_SIZE) - radius;
-        int endCol   = (int)(playerX / TILE_SIZE) + radius;
-        int startRow = (int)(playerY / TILE_SIZE) - radius;
-        int endRow   = (int)(playerY / TILE_SIZE) + radius;
+                shapeRenderer.setColor(Color.GRAY);
 
-        for (int row = startRow; row <= endRow; row++) {
-            for (int col = startCol; col <= endCol; col++) {
-                if (col < 0 || row < 0 || col >= maze.getWidth() || row >= maze.getHeight()) continue;
-
-                if (maze.getTile(col, row).isWall()) {
-                    float relX = (col * TILE_SIZE - playerX) * scale;
-                    float relY = (row * TILE_SIZE - playerY) * scale;
-
-                    if (Math.abs(relX) < minimapSize / 2 && Math.abs(relY) < minimapSize / 2) {
-                        shapeRenderer.rect(centerX + relX, centerY + relY,
-                                TILE_SIZE * scale, TILE_SIZE * scale);
-                    }
-                }
+                float x = mapOriginX + col * tileScale;
+                float y = mapOriginY + row * tileScale;
+                shapeRenderer.rect(x, y, tileScale, tileScale);
             }
         }
 
-        // Enemies (red)
+        // Enemies (red) - only if tile explored
         if (enemies != null) {
             shapeRenderer.setColor(Color.RED);
             for (Enemy enemy : enemies) {
                 float ex = enemy.getPosition().x;
                 float ey = enemy.getPosition().y;
 
-                float relX = (ex - playerX) * scale;
-                float relY = (ey - playerY) * scale;
+                int tileX = (int) (ex / TILE_SIZE);
+                int tileY = (int) (ey / TILE_SIZE);
+                if (!inExplored(tileX, tileY)) continue;
 
-                if (Math.abs(relX) < minimapSize / 2 && Math.abs(relY) < minimapSize / 2) {
-                    shapeRenderer.circle(centerX + relX, centerY + relY, 4);
-                }
+                float cx = mapOriginX + (tileX + 0.5f) * tileScale;
+                float cy = mapOriginY + (tileY + 0.5f) * tileScale;
+                shapeRenderer.circle(cx, cy, Math.max(2f, tileScale * 0.35f));
             }
         }
 
@@ -757,29 +755,83 @@ public class GameScreen implements Screen {
             float bx = hb.x + hb.width / 2f;
             float by = hb.y + hb.height / 2f;
 
-            float relX = (bx - playerX) * scale;
-            float relY = (by - playerY) * scale;
-
-            if (Math.abs(relX) < minimapSize / 2 && Math.abs(relY) < minimapSize / 2) {
-                shapeRenderer.circle(centerX + relX, centerY + relY, 5);
+            int tileX = (int) (bx / TILE_SIZE);
+            int tileY = (int) (by / TILE_SIZE);
+            if (inExplored(tileX, tileY)) {
+                float cx = mapOriginX + (tileX + 0.5f) * tileScale;
+                float cy = mapOriginY + (tileY + 0.5f) * tileScale;
+                shapeRenderer.circle(cx, cy, Math.max(2f, tileScale * 0.45f));
             }
         }
 
         // Player (green)
         shapeRenderer.setColor(Color.GREEN);
-        shapeRenderer.circle(centerX, centerY, 5);
+        int pTileX = (int) (player.getX() / TILE_SIZE);
+        int pTileY = (int) (player.getY() / TILE_SIZE);
+        float pcx = mapOriginX + (pTileX + 0.5f) * tileScale;
+        float pcy = mapOriginY + (pTileY + 0.5f) * tileScale;
+        shapeRenderer.circle(pcx, pcy, Math.max(2f, tileScale * 0.45f));
+
+        // Entrance (always)
+        Point entry = maze.getEntryCell();
+        if (entry != null) {
+            shapeRenderer.setColor(Color.CYAN);
+            float ex = mapOriginX + (entry.x + 0.5f) * tileScale;
+            float ey = mapOriginY + (entry.y + 0.5f) * tileScale;
+            shapeRenderer.rect(ex - tileScale * 0.3f, ey - tileScale * 0.3f,
+                    tileScale * 0.6f, tileScale * 0.6f);
+        }
+
+        // Exit (only if player has key)
+        if (player.hasKey()) {
+            Point exit = maze.getExitCell();
+            if (exit != null) {
+                shapeRenderer.setColor(Color.ORANGE);
+                float ex = mapOriginX + (exit.x + 0.5f) * tileScale;
+                float ey = mapOriginY + (exit.y + 0.5f) * tileScale;
+                shapeRenderer.rect(ex - tileScale * 0.3f, ey - tileScale * 0.3f,
+                        tileScale * 0.6f, tileScale * 0.6f);
+            }
+        }
 
         shapeRenderer.end();
 
         Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
 
-        // Border pass
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        shapeRenderer.setColor(Color.WHITE);
-        shapeRenderer.rect(mapX, mapY, minimapSize, minimapSize);
-        shapeRenderer.end();
-
         Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
+    private void updateMinimapExploration() {
+        if (maze == null || player == null) return;
+        ensureExploredGrid();
+        markExploredAroundPlayer();
+    }
+
+    private void ensureExploredGrid() {
+        if (maze == null) return;
+        if (explored == null || exploredW != maze.getWidth() || exploredH != maze.getHeight()) {
+            exploredW = maze.getWidth();
+            exploredH = maze.getHeight();
+            explored = new boolean[exploredW][exploredH];
+        }
+    }
+
+    private void markExploredAroundPlayer() {
+        if (explored == null || maze == null || player == null) return;
+        int cx = (int) (player.getX() / TILE_SIZE);
+        int cy = (int) (player.getY() / TILE_SIZE);
+        for (int y = cy - EXPLORE_RADIUS_TILES; y <= cy + EXPLORE_RADIUS_TILES; y++) {
+            for (int x = cx - EXPLORE_RADIUS_TILES; x <= cx + EXPLORE_RADIUS_TILES; x++) {
+                if (x < 0 || y < 0 || x >= exploredW || y >= exploredH) continue;
+                explored[x][y] = true;
+            }
+        }
+    }
+
+    private boolean inExplored(int x, int y) {
+        if (explored == null) return false;
+        if (x < 0 || y < 0 || x >= exploredW || y >= exploredH) return false;
+        return explored[x][y];
     }
 
 
@@ -813,6 +865,20 @@ public class GameScreen implements Screen {
 
         GameState saved = game.getPendingSaveState();
         boolean loadingSave = (saved != null);
+
+        if (endlessMode) {
+            FileHandle endlessFile = getEndlessLevelFile(floor);
+            if (endlessFile != null && endlessFile.exists()) {
+                MazeLoader loader = new MazeLoader();
+                this.maze = loader.loadMazeFromProperties(endlessFile, TILE_SIZE);
+                this.rooms = RoomDetector.detectRooms(this.maze);
+                this.maze.setRooms(this.rooms);
+                applyRoomMask(this.maze, this.rooms);
+                assignRoomTypesFromTiles(this.maze, this.rooms);
+                activeLevelFile = endlessFile;
+                return;
+            }
+        }
 
 
         // 1) LOAD GAME -> REGEN FROM SAVED SEED
@@ -874,7 +940,7 @@ public class GameScreen implements Screen {
         );
 
         gameCamera.setZoom(0.25f);
-        cameraInput = new CameraInputController(gameCamera);
+        cameraInput = new CameraInputController(gameCamera, game.getPreferences());
 
         Texture tileset = new Texture("tileset1.png");
         mazeRenderer = new MazeRenderer(tileset);
@@ -1097,7 +1163,7 @@ public class GameScreen implements Screen {
 
         gameCamera = new GameCamera(viewport.getWorldWidth(), viewport.getWorldHeight(), maze.getWidth() * TILE_SIZE, maze.getHeight() * TILE_SIZE);
         gameCamera.setZoom(0.25f);
-        cameraInput = new CameraInputController(gameCamera);
+        cameraInput = new CameraInputController(gameCamera, game.getPreferences());
 
         Point entry = maze.getEntryCell();
         if (entry == null) entry = new Point(1, 1);
@@ -1106,6 +1172,7 @@ public class GameScreen implements Screen {
         player.clearKey();
 
         initializeEnemiesAndObstacles(seed);
+        applyEndlessScaling();
         boss = null;
         bossTarget = null;
         bossDropSpawned = false;
@@ -1191,6 +1258,78 @@ public class GameScreen implements Screen {
         return null;
     }
 
+    private void applyRoomMask(Maze maze, List<Room> rooms) {
+        if (maze == null) return;
+        maze.clearRoomMask();
+        if (rooms == null) return;
+        for (Room r : rooms) {
+            for (int y = r.y(); y < r.y() + r.h(); y++) {
+                for (int x = r.x(); x < r.x() + r.w(); x++) {
+                    maze.setRoomCell(x, y, true);
+                }
+            }
+        }
+    }
+
+    private void assignRoomTypesFromTiles(Maze maze, List<Room> rooms) {
+        if (maze == null || rooms == null) return;
+
+        Point spawn = maze.getEntryCell();
+        if (spawn != null) {
+            Room r = findRoomContaining(rooms, spawn);
+            if (r != null) r.setType(RoomType.SPAWN);
+        }
+
+        Point exit = maze.getExitCell();
+        if (exit != null) {
+            Room r = findRoomContaining(rooms, exit);
+            if (r != null) r.setType(RoomType.EXIT);
+        }
+
+        Point key = findFirstTileOfType(maze, Tiles.KEY);
+        if (key != null) {
+            Room r = findRoomContaining(rooms, key);
+            if (r != null) r.setType(RoomType.KEY);
+        }
+    }
+
+    private Room findRoomContaining(List<Room> rooms, Point p) {
+        for (Room r : rooms) {
+            if (p.x >= r.x() && p.x < r.x() + r.w()
+                    && p.y >= r.y() && p.y < r.y() + r.h()) {
+                return r;
+            }
+        }
+        return null;
+    }
+
+    private Point findFirstTileOfType(Maze maze, Tiles tile) {
+        for (int y = 0; y < maze.getHeight(); y++) {
+            for (int x = 0; x < maze.getWidth(); x++) {
+                if (maze.getTile(x, y) == tile) {
+                    return new Point(x, y);
+                }
+            }
+        }
+        return null;
+    }
+
+    private void applyEndlessScaling() {
+        if (combatSystem == null) return;
+        if (!endlessMode) {
+            combatSystem.setEnemyDamageMult(1f);
+            return;
+        }
+
+        int hpAdd = Math.max(0, (floor - 1) * 2);
+        if (enemies != null) {
+            for (Enemy e : enemies) {
+                if (e != null) e.addHp(hpAdd);
+            }
+        }
+        combatSystem.setEnemyDamageMult(1f);
+    }
+
 
     @Override public void pause() {}
     @Override public void resume() {}
@@ -1241,5 +1380,17 @@ public class GameScreen implements Screen {
         FileHandle dir = Gdx.files.local("maps");
         dir.mkdirs();
         return dir.child("level-" + level + ".properties");
+    }
+
+    private FileHandle getEndlessLevelFile(int floor) {
+        String name = "maps/endless-" + floor + ".properties";
+
+        FileHandle internal = Gdx.files.internal(name);
+        if (internal.exists()) return internal;
+
+        FileHandle local = Gdx.files.local(name);
+        if (local.exists()) return local;
+
+        return null;
     }
 }
