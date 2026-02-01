@@ -1,5 +1,7 @@
 package de.tum.cit.fop.maze.items;
 
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Sound;
 import de.tum.cit.fop.maze.player.Player;
 
 /**
@@ -8,6 +10,7 @@ import de.tum.cit.fop.maze.player.Player;
  * When picked up, the player receives a speed boost for a short duration.
  */
 public class SpeedItem extends Collectable {
+    private static Sound powerupSound;
     /**
      * Creates a new speed item at the given position.
      *
@@ -16,6 +19,9 @@ public class SpeedItem extends Collectable {
      */
     public SpeedItem(float x, float y) {
         super(x, y, "speed.png");
+        if (powerupSound == null) {
+            powerupSound = Gdx.audio.newSound(Gdx.files.internal("powerups.mp3"));
+        }
     }
 
     /**
@@ -26,5 +32,19 @@ public class SpeedItem extends Collectable {
     @Override
     public void applyEffect(Player player) {
         player.activateSpeedBoost(5.0f, 1.8f);
+        if (powerupSound != null) {
+            float vol = Gdx.app.getPreferences("maze_runner_prefs").getFloat("sound_vol", 0.5f);
+            powerupSound.play(vol);
+        }
+        collect();
+    }
+
+    @Override
+    public void dispose() {
+        super.dispose();
+        if (powerupSound != null) {
+            powerupSound.dispose();
+            powerupSound = null;
+        }
     }
 }
