@@ -20,7 +20,7 @@ import java.util.Iterator;
 import java.util.List;
 
 public class Player {
-    // Attributes
+    // Attributestree
     private float x;
     private float y;
 
