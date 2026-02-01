@@ -14,14 +14,20 @@ import com.badlogic.gdx.math.Vector2;
 public class FloorHazard extends Obstacle {
 
     // Attributes
+    /** Speed multiplier applied while active. */
     private static final float SPEED_UP_FACTOR = 1.6f;
+    /** Maximum duration of the boost in seconds. */
     private static final float MAX_BOOST_TIME = 2.5f;
 
+    /** Remaining boost time. */
     private float activeBoostTimer = 0f;
 
+    /** Shared texture for floor hazards. */
     private static final Texture HAZARD_TEX = new Texture("Traps/FloorHazard.png");
+    /** Sprite region used for rendering. */
     private final TextureRegion hazardSprite;
 
+    /** Whether the player was on the hazard last frame. */
     private boolean playerWasOn = false;
 
 
@@ -108,6 +114,8 @@ public class FloorHazard extends Obstacle {
     }
 
     /**
+     * Retrieves the speed boost multiplier.
+     *
      * @return movement speed multiplier applied while the boost is active
      */
     public float getSpeedBoost() {
@@ -115,6 +123,8 @@ public class FloorHazard extends Obstacle {
     }
 
     /**
+     * Retrieves the sprite used to render the hazard.
+     *
      * @return texture region used to render the floor hazard
      */
     public TextureRegion getSprite() {

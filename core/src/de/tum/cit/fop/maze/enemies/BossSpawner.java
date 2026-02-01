@@ -56,6 +56,12 @@ public class BossSpawner {
         return new Boss(maze, bossRoom, anims, spawnX, spawnY);
     }
 
+    /**
+     * Finds a boss room or falls back to the largest room.
+     *
+     * @param rooms List of rooms to search
+     * @return Selected room or null if none
+     */
     private static Room findBossRoomOrFallbackBiggest(List<Room> rooms) {
         // Always use the biggest room overall
         Room best = null;
@@ -73,6 +79,14 @@ public class BossSpawner {
         return best;
     }
 
+    /**
+     * Picks a random interior tile with padding from room borders.
+     *
+     * @param room Room to sample
+     * @param rng Random generator
+     * @param padTiles Padding from the room edges
+     * @return Selected interior tile
+     */
     private static Point randomInteriorWithPadding(Room room, Random rng, int padTiles) {
         int ix0 = room.x() + padTiles;
         int iy0 = room.y() + padTiles;

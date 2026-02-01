@@ -24,20 +24,33 @@ import java.util.*;
  */
 public class MazeGenerator {
 
+    /** Maximum attempts to generate a valid maze. */
     private static final int MAX_ATTEMPTS = 40;
 
+    /** Minimum leaf size for BSP splitting. */
     private static final int MIN_LEAF = 18;
+    /** Minimum room size in tiles. */
     private static final int MIN_ROOM = 8;
+    /** Margin between leaf bounds and room. */
     private static final int ROOM_MARGIN = 2;
+    /** Minimum shrink ratio for room sizing. */
     private static final float SHRINK_MIN = 0.50f;
+    /** Maximum shrink ratio for room sizing. */
     private static final float SHRINK_MAX = 0.58f;
+    /** Minimum overlap threshold for hall connections. */
     private static final float OVERLAP_THRESHOLD = 0.45f;
+    /** Grid snap size for room/hall coordinates. */
     private static final int GRID_SNAP = 1;
+    /** Hallway width in tiles. */
     private static final int HALL_WIDTH = 2;
 
+    /** Boss room margin from leaf bounds. */
     private static final int BOSS_ROOM_MARGIN = 1;
+    /** Minimum boss room shrink ratio. */
     private static final float BOSS_SHRINK_MIN = 0.82f;
+    /** Maximum boss room shrink ratio. */
     private static final float BOSS_SHRINK_MAX = 0.92f;
+    /** Minimum boss room size in tiles. */
     private static final int BOSS_MIN_SIZE = 16;
 
     // Level sizes for level=1..5 (index 0 unused)
@@ -154,12 +167,27 @@ public class MazeGenerator {
         throw new RuntimeException("Failed to generate BSP dungeon after " + MAX_ATTEMPTS + " attempts");
     }
 
+    /**
+     * BSP leaf node representing a partition area.
+     */
     private static class Leaf {
+        /** Leaf x-coordinate in tiles. */
         final int x, y, w, h;
+        /** Left child leaf. */
         Leaf left, right;
+        /** Room assigned to this leaf, if any. */
         Room room;
+        /** Neighboring leaves for hall candidate creation. */
         final List<Leaf> neighbors = new ArrayList<>();
 
+        /**
+         * Creates a BSP leaf with bounds in tiles.
+         *
+         * @param x Leaf x-coordinate
+         * @param y Leaf y-coordinate
+         * @param w Leaf width
+         * @param h Leaf height
+         */
         Leaf(int x, int y, int w, int h) {
             this.x = x;
             this.y = y;
@@ -167,6 +195,13 @@ public class MazeGenerator {
             this.h = h;
         }
 
+        /**
+         * Splits the leaf into two child leaves when possible.
+         *
+         * @param rng Random generator
+         * @param minLeaf Minimum leaf size
+         * @return True if split succeeded
+         */
         boolean split(Random rng, int minLeaf) {
             boolean canH = h >= minLeaf * 2;
             boolean canV = w >= minLeaf * 2;
@@ -199,6 +234,16 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Splits the BSP tree into leaves based on room targets.
+     *
+     * @param root Root leaf
+     * @param rng Random generator
+     * @param level Current level
+     * @param mapW Map width
+     * @param mapH Map height
+     * @return List of leaves
+     */
     private List<Leaf> splitLeaves(Leaf root, Random rng, int level, int mapW, int mapH) {
         int lv = clampLevel(level);
 
@@ -251,6 +296,11 @@ public class MazeGenerator {
     }
 
 
+    /**
+     * Populates neighbor lists for all leaves.
+     *
+     * @param leaves Leaf list
+     */
     private void discoverNeighbors(List<Leaf> leaves) {
         for (Leaf l : leaves) l.neighbors.clear();
 
@@ -266,6 +316,13 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Checks whether two leaves touch and overlap along the shared axis.
+     *
+     * @param a Leaf A
+     * @param b Leaf B
+     * @return True if touching with overlap
+     */
     private boolean touchingAndOverlapping(Leaf a, Leaf b) {
         boolean touchV = (a.x + a.w == b.x) || (b.x + b.w == a.x);
         if (touchV) {
@@ -281,6 +338,15 @@ public class MazeGenerator {
         return false;
     }
 
+    /**
+     * Computes overlap length between two intervals.
+     *
+     * @param a0 Interval A start
+     * @param a1 Interval A end
+     * @param b0 Interval B start
+     * @param b1 Interval B end
+     * @return Overlap length
+     */
     private int intervalOverlap(int a0, int a1, int b0, int b1) {
         int lo = Math.max(a0, b0);
         int hi = Math.min(a1, b1);
@@ -288,6 +354,13 @@ public class MazeGenerator {
     }
 
 
+    /**
+     * Creates a room by shrinking a leaf area.
+     *
+     * @param l Leaf to shrink
+     * @param rng Random generator
+     * @return Shrunk room or null if too small
+     */
     private Room makeShrunkRoom(Leaf l, Random rng) {
         int innerX = l.x + ROOM_MARGIN;
         int innerY = l.y + ROOM_MARGIN;
@@ -310,15 +383,36 @@ public class MazeGenerator {
         return new Room(rx, ry, rw, rh);
     }
 
+    /**
+     * Orientation of a hallway between rooms.
+     */
     private enum Orientation {LR, UD}
 
+    /**
+     * Candidate edge between two rooms for hallway creation.
+     */
     private static class CandidateEdge {
+        /** Room A. */
         final Room a, b;
+        /** Hall orientation. */
         final Orientation orient;
+        /** Overlap start coordinate. */
         final int overlapLo;
+        /** Overlap end coordinate. */
         final int overlapHi;
+        /** Squared distance between room centers. */
         final int d2;
 
+        /**
+         * Creates a candidate edge between two rooms.
+         *
+         * @param a Room A
+         * @param b Room B
+         * @param orient Hall orientation
+         * @param overlapLo Overlap start
+         * @param overlapHi Overlap end
+         * @param d2 Squared distance between centers
+         */
         CandidateEdge(Room a, Room b, Orientation orient, int overlapLo, int overlapHi, int d2) {
             this.a = a;
             this.b = b;
@@ -329,6 +423,12 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Builds candidate hallway edges from leaf neighbors.
+     *
+     * @param leaves Leaf list
+     * @return Candidate edge list
+     */
     private List<CandidateEdge> buildHallCandidates(List<Leaf> leaves) {
         List<CandidateEdge> out = new ArrayList<>();
         Set<Long> seen = new HashSet<>();
@@ -354,6 +454,15 @@ public class MazeGenerator {
         return out;
     }
 
+    /**
+     * Creates a candidate edge if overlap is sufficient.
+     *
+     * @param la Leaf A
+     * @param lb Leaf B
+     * @param a Room A
+     * @param b Room B
+     * @return Candidate edge or null
+     */
     private CandidateEdge makeCandidateIfOverlapEnough(Leaf la, Leaf lb, Room a, Room b) {
         boolean touchV = (la.x + la.w == lb.x) || (lb.x + lb.w == la.x);
         boolean touchH = (la.y + la.h == lb.y) || (lb.y + lb.h == la.y);
@@ -381,6 +490,13 @@ public class MazeGenerator {
         return null;
     }
 
+    /**
+     * Generates a stable pair key for two rooms.
+     *
+     * @param a Room A
+     * @param b Room B
+     * @return Pair key
+     */
     private long pairKey(Room a, Room b) {
         int ha = System.identityHashCode(a);
         int hb = System.identityHashCode(b);
@@ -389,6 +505,13 @@ public class MazeGenerator {
         return (((long) lo) << 32) ^ (hi & 0xffffffffL);
     }
 
+    /**
+     * Computes squared distance between room centers.
+     *
+     * @param a Room A
+     * @param b Room B
+     * @return Squared distance
+     */
     private int dist2(Room a, Room b) {
         int dx = a.centerX() - b.centerX();
         int dy = a.centerY() - b.centerY();
@@ -396,11 +519,25 @@ public class MazeGenerator {
     }
 
 
+    /**
+     * Plan for a hallway between two rooms.
+     */
     private static class HallPlan {
+        /** Hall orientation. */
         final Orientation orient;
+        /** Room A. */
         final Room a, b;
+        /** Coordinate of the hall line. */
         final int lineCoord;
 
+        /**
+         * Creates a hallway plan connecting two rooms.
+         *
+         * @param orient Hall orientation
+         * @param a Room A
+         * @param b Room B
+         * @param lineCoord Line coordinate for the hall
+         */
         HallPlan(Orientation orient, Room a, Room b, int lineCoord) {
             this.orient = orient;
             this.a = a;
@@ -409,6 +546,14 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Builds a minimum-spanning-tree of halls between rooms.
+     *
+     * @param rooms Room list
+     * @param candidates Candidate edges
+     * @param rng Random generator
+     * @return List of hall plans
+     */
     private List<HallPlan> buildMSTPlans(List<Room> rooms, List<CandidateEdge> candidates, Random rng) {
         Map<Room, List<CandidateEdge>> adj = new HashMap<>();
         for (Room r : rooms) adj.put(r, new ArrayList<>());
@@ -453,12 +598,26 @@ public class MazeGenerator {
         return plans;
     }
 
+    /**
+     * Computes padding for hall width.
+     *
+     * @param hallWidth Hall width in tiles
+     * @return Padding in tiles
+     */
     private int hallPad(int hallWidth) {
         int lo = -(hallWidth / 2);
         int hi = (hallWidth - 1) / 2;
         return Math.max(Math.abs(lo), Math.abs(hi));
     }
 
+    /**
+     * Picks a door line coordinate within the overlap span.
+     *
+     * @param e Candidate edge
+     * @param rng Random generator
+     * @param pad Padding from overlap edges
+     * @return Selected coordinate
+     */
     private int pickDoorLineCoord(CandidateEdge e, Random rng, int pad) {
         int lo = e.overlapLo + pad;
         int hi = e.overlapHi - pad;
@@ -467,6 +626,12 @@ public class MazeGenerator {
     }
 
 
+    /**
+     * Carves room interiors and updates room mask.
+     *
+     * @param maze Maze to carve
+     * @param rooms Room list
+     */
     private void carveRooms(Maze maze, List<Room> rooms) {
         maze.clearRoomMask();
 
@@ -481,6 +646,13 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Carves straight hallways with a fixed width.
+     *
+     * @param maze Maze to carve
+     * @param plans Hall plans
+     * @param hallWidth Hall width in tiles
+     */
     private void carveStraightHallsWide(Maze maze, List<HallPlan> plans, int hallWidth) {
         for (HallPlan p : plans) {
             Room a = p.a;
@@ -528,6 +700,14 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Carves a vertical hallway band at a coordinate.
+     *
+     * @param maze Maze to carve
+     * @param x X-coordinate
+     * @param y Y-coordinate
+     * @param hallWidth Hall width in tiles
+     */
     private void carveVerticalBandExact(Maze maze, int x, int y, int hallWidth) {
         int lo = -(hallWidth / 2);
         int hi = (hallWidth - 1) / 2;
@@ -544,6 +724,14 @@ public class MazeGenerator {
 
     }
 
+    /**
+     * Carves a horizontal hallway band at a coordinate.
+     *
+     * @param maze Maze to carve
+     * @param x X-coordinate
+     * @param y Y-coordinate
+     * @param hallWidth Hall width in tiles
+     */
     private void carveHorizontalBandExact(Maze maze, int x, int y, int hallWidth) {
         int lo = -(hallWidth / 2);
         int hi = (hallWidth - 1) / 2;
@@ -558,6 +746,15 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Carves a door mouth for left-right halls.
+     *
+     * @param maze Maze reference
+     * @param room Room to connect
+     * @param y Hall line y-coordinate
+     * @param hallWidth Hall width in tiles
+     * @param isLeftRoom Whether the room is on the left side
+     */
     private void carveDoorMouthLR(Maze maze, Room room, int y, int hallWidth, boolean isLeftRoom) {
         int lo = -(hallWidth / 2);
         int hi = (hallWidth - 1) / 2;
@@ -572,6 +769,15 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Carves a door mouth for up-down halls.
+     *
+     * @param maze Maze reference
+     * @param room Room to connect
+     * @param x Hall line x-coordinate
+     * @param hallWidth Hall width in tiles
+     * @param isTopRoom Whether the room is above the hall
+     */
     private void carveDoorMouthUD(Maze maze, Room room, int x, int hallWidth, boolean isTopRoom) {
         int lo = -(hallWidth / 2);
         int hi = (hallWidth - 1) / 2;
@@ -586,6 +792,15 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Places door tiles aligned for left-right halls.
+     *
+     * @param maze Maze reference
+     * @param room Room to connect
+     * @param y Hall line y-coordinate
+     * @param hallWidth Hall width in tiles
+     * @param isLeftRoom Whether the room is on the left side
+     */
     private void placeDoorBandLRAligned(Maze maze, Room room, int y, int hallWidth, boolean isLeftRoom) {
         int lo = -(hallWidth / 2);
         int hi = (hallWidth - 1) / 2;
@@ -594,6 +809,15 @@ public class MazeGenerator {
 
     }
 
+    /**
+     * Places door tiles aligned for up-down halls.
+     *
+     * @param maze Maze reference
+     * @param room Room to connect
+     * @param x Hall line x-coordinate
+     * @param hallWidth Hall width in tiles
+     * @param isTopRoom Whether the room is above the hall
+     */
     private void placeDoorBandUDAligned(Maze maze, Room room, int x, int hallWidth, boolean isTopRoom) {
         int lo = -(hallWidth / 2);
         int hi = (hallWidth - 1) / 2;
@@ -605,6 +829,13 @@ public class MazeGenerator {
 
 
 
+    /**
+     * Snaps room coordinates to a grid size.
+     *
+     * @param rooms Room list
+     * @param snap Snap size
+     * @param maze Maze reference
+     */
     private void snapRooms(List<Room> rooms, int snap, Maze maze) {
         for (int i = 0; i < rooms.size(); i++) {
             Room r = rooms.get(i);
@@ -623,6 +854,13 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Snaps hallway plans to a grid size.
+     *
+     * @param plans Hall plans
+     * @param snap Snap size
+     * @param maze Maze reference
+     */
     private void snapHallPlans(List<HallPlan> plans, int snap, Maze maze) {
         for (int i = 0; i < plans.size(); i++) {
             HallPlan p = plans.get(i);
@@ -633,11 +871,24 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Snaps a value down to a grid multiple.
+     *
+     * @param v Value
+     * @param snap Snap size
+     * @return Snapped value
+     */
     private int snapDown(int v, int snap) {
         return (v / snap) * snap;
     }
 
 
+    /**
+     * Removes thin corridor artifacts by filling walls.
+     *
+     * @param maze Maze reference
+     * @param rooms Room list
+     */
     private void cleanupThinArtifacts(Maze maze, List<Room> rooms) {
         boolean[][] inRoom = new boolean[maze.getWidth()][maze.getHeight()];
         for (Room r : rooms) {
@@ -663,6 +914,14 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Counts walkable neighbors in 4-directional adjacency.
+     *
+     * @param maze Maze reference
+     * @param x Tile x-coordinate
+     * @param y Tile y-coordinate
+     * @return Walkable neighbor count
+     */
     private int walkableNeighbors4(Maze maze, int x, int y) {
         int c = 0;
         if (maze.getTile(x + 1, y).isWalkable()) c++;
@@ -672,14 +931,38 @@ public class MazeGenerator {
         return c;
     }
 
+    /**
+     * Border side for entry/exit corridors.
+     */
     private enum BorderSide {LEFT, RIGHT, TOP, BOTTOM}
 
+    /**
+     * Plan for a border entry corridor.
+     */
     private static class BorderEntryPlan {
+        /** Border side. */
         final BorderSide side;
+        /** Coordinate along the border. */
         final int coord;
+        /**
+         * Creates a border entry plan.
+         *
+         * @param side Border side
+         * @param coord Coordinate along the border
+         */
         BorderEntryPlan(BorderSide side, int coord) { this.side = side; this.coord = coord; }
     }
 
+    /**
+     * Picks a border entry plan for the spawn room.
+     *
+     * @param spawnRoom Spawn room
+     * @param maze Maze reference
+     * @param rng Random generator
+     * @param hallWidth Hall width in tiles
+     * @param rooms Room list
+     * @return Entry plan or null
+     */
     private BorderEntryPlan pickBorderEntryPlan(Room spawnRoom, Maze maze, Random rng, int hallWidth, List<Room> rooms) {
         int pad = hallPad(hallWidth);
         int W = maze.getWidth();
@@ -744,6 +1027,15 @@ public class MazeGenerator {
         return null;
     }
 
+    /**
+     * Carves a straight corridor to the border and places the spawn tile.
+     *
+     * @param maze Maze reference
+     * @param spawnRoom Spawn room
+     * @param be Entry plan
+     * @param hallWidth Hall width in tiles
+     * @return Spawn point or null
+     */
     private Point carveStraightToBorderAndPlaceSpawn(Maze maze, Room spawnRoom, BorderEntryPlan be, int hallWidth) {
         int W = maze.getWidth();
         int H = maze.getHeight();
@@ -780,17 +1072,39 @@ public class MazeGenerator {
     }
 
 
+    /**
+     * Plan for a border exit corridor.
+     */
     private static class BorderExitPlan {
+        /** Border side. */
         final BorderSide side;
+        /** Coordinate along the border. */
         final int coord;
 
+        /**
+         * Creates a border exit plan.
+         *
+         * @param side Border side
+         * @param coord Coordinate along the border
+         */
         BorderExitPlan(BorderSide side, int coord) {
             this.side = side;
             this.coord = coord;
         }
     }
 
-    private PlaceResult assignSpecialRoomsAndPlaceTiles_BORDER_EXIT(Maze maze, List<Room> rooms, Random rng, int hallWidth, int level) {for (Room r : rooms) {
+    /**
+     * Assigns special rooms and places spawn/key/exit tiles.
+     *
+     * @param maze Maze reference
+     * @param rooms Room list
+     * @param rng Random generator
+     * @param hallWidth Hall width in tiles
+     * @param level Current level
+     * @return Placement result
+     */
+    private PlaceResult assignSpecialRoomsAndPlaceTiles_BORDER_EXIT(Maze maze, List<Room> rooms, Random rng, int hallWidth, int level) {
+        for (Room r : rooms) {
         if (r.getType() != RoomType.BOSS) {
             r.setType(RoomType.NORMAL);
         }
@@ -845,6 +1159,13 @@ public class MazeGenerator {
         return new PlaceResult(true, spawn, exitPoint);
     }
 
+    /**
+     * Finds the farthest room from a given room.
+     *
+     * @param rooms Room list
+     * @param from Reference room
+     * @return Farthest room
+     */
     private Room farthestRoom(List<Room> rooms, Room from) {
         Room best = from;
         int bestD = -1;
@@ -864,6 +1185,15 @@ public class MazeGenerator {
         return best;
     }
 
+    /**
+     * Picks a room for the key, far from spawn/exit.
+     *
+     * @param rooms Room list
+     * @param spawn Spawn room
+     * @param exit Exit room
+     * @param rng Random generator
+     * @return Key room or null
+     */
     private Room pickKeyRoom(List<Room> rooms, Room spawn, Room exit, Random rng) {
         List<Room> candidates = new ArrayList<>();
         for (Room r : rooms) {
@@ -883,6 +1213,11 @@ public class MazeGenerator {
         return candidates.get(rng.nextInt(top));
     }
 
+    /**
+     * Clears special tiles (spawn/exit/key) to floors.
+     *
+     * @param maze Maze reference
+     */
     private void clearSpecialTiles(Maze maze) {
         maze.setEntryCell(null);
         maze.setExitCell(null);
@@ -897,6 +1232,16 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Picks a border exit plan for the exit room.
+     *
+     * @param exitRoom Exit room
+     * @param maze Maze reference
+     * @param rng Random generator
+     * @param hallWidth Hall width in tiles
+     * @param rooms Room list
+     * @return Exit plan or null
+     */
     private BorderExitPlan pickBorderExitPlan(Room exitRoom, Maze maze, Random rng, int hallWidth, List<Room> rooms) {
         int pad = hallPad(hallWidth);
         int W = maze.getWidth();
@@ -959,6 +1304,14 @@ public class MazeGenerator {
         return null;
     }
 
+    /**
+     * Weighted random pick from border sides.
+     *
+     * @param rng Random generator
+     * @param sides Border sides
+     * @param weights Weights for sides
+     * @return Selected side
+     */
     private BorderSide weightedPick(Random rng, BorderSide[] sides, int[] weights) {
         int total = 0;
         for (int w : weights) total += Math.max(0, w);
@@ -971,11 +1324,34 @@ public class MazeGenerator {
         return sides[0];
     }
 
+    /**
+     * Checks whether two rectangles overlap.
+     *
+     * @param ax0 Rect A min x
+     * @param ay0 Rect A min y
+     * @param ax1 Rect A max x
+     * @param ay1 Rect A max y
+     * @param bx0 Rect B min x
+     * @param by0 Rect B min y
+     * @param bx1 Rect B max x
+     * @param by1 Rect B max y
+     * @return True if overlapping
+     */
     private boolean rectsOverlap(int ax0, int ay0, int ax1, int ay1,
                                  int bx0, int by0, int bx1, int by1) {
         return ax0 < bx1 && ax1 > bx0 && ay0 < by1 && ay1 > by0;
     }
 
+    /**
+     * Checks whether a border corridor intersects other rooms.
+     *
+     * @param be Exit plan
+     * @param exitRoom Exit room
+     * @param rooms Room list
+     * @param maze Maze reference
+     * @param hallWidth Hall width in tiles
+     * @return True if corridor intersects another room
+     */
     private boolean corridorIntersectsOtherRoom(BorderExitPlan be, Room exitRoom, List<Room> rooms, Maze maze, int hallWidth) {
         int W = maze.getWidth();
         int H = maze.getHeight();
@@ -1034,6 +1410,15 @@ public class MazeGenerator {
         return false;
     }
 
+    /**
+     * Carves a straight corridor to the border and places exit tiles.
+     *
+     * @param maze Maze reference
+     * @param exitRoom Exit room
+     * @param be Exit plan
+     * @param hallWidth Hall width in tiles
+     * @return Exit point
+     */
     private Point carveStraightToBorderAndPlaceExit(Maze maze, Room exitRoom, BorderExitPlan be, int hallWidth) {
         int W = maze.getWidth();
         int H = maze.getHeight();
@@ -1069,16 +1454,35 @@ public class MazeGenerator {
         return new Point(x, H - 1);
     }
 
+    /**
+     * Placement result for special room assignment.
+     */
     private static class PlaceResult {
+        /** Whether placement succeeded. */
         final boolean ok;
+        /** Spawn point. */
         final Point spawn;
+        /** Exit point. */
         final Point exit;
 
+        /**
+         * Creates a placement result.
+         *
+         * @param ok Whether placement succeeded
+         * @param spawn Spawn point
+         * @param exit Exit point
+         */
         PlaceResult(boolean ok, Point spawn, Point exit) {
             this.ok = ok; this.spawn = spawn; this.exit = exit;
         }
     }
 
+    /**
+     * Finds the biggest room by area.
+     *
+     * @param rooms Room list
+     * @return Biggest room
+     */
     private Room biggestRoom(List<Room> rooms) {
         Room best = null;
         int bestA = -1;
@@ -1090,6 +1494,13 @@ public class MazeGenerator {
     }
 
 
+    /**
+     * Applies level-based size scaling to the level spec.
+     *
+     * @param spec Base spec
+     * @param level Current level
+     * @return Updated level spec
+     */
     private MazeLoader.LevelSpec applyLevelSize(MazeLoader.LevelSpec spec, int level) {
         // keep your original sizes for 1..5
         if (level <= 5) {
@@ -1109,6 +1520,12 @@ public class MazeGenerator {
     }
 
 
+    /**
+     * Fills the maze with a single tile type.
+     *
+     * @param maze Maze reference
+     * @param tile Tile type to fill with
+     */
     private void fill(Maze maze, Tiles tile) {
         for (int y = 0; y < maze.getHeight(); y++) {
             for (int x = 0; x < maze.getWidth(); x++) {
@@ -1117,6 +1534,12 @@ public class MazeGenerator {
         }
     }
 
+    /**
+     * Picks a leaf suitable for a boss room.
+     *
+     * @param leaves Leaf list
+     * @return Selected leaf or null
+     */
     private Leaf pickBossLeaf(List<Leaf> leaves) {
         Leaf best = null;
         int bestArea = -1;
@@ -1135,11 +1558,26 @@ public class MazeGenerator {
         return best;
     }
 
+    /**
+     * Checks whether a tile is inside a room.
+     *
+     * @param r Room reference
+     * @param tx Tile x-coordinate
+     * @param ty Tile y-coordinate
+     * @return True if inside room
+     */
     private boolean isInsideRoomTile(Room r, int tx, int ty) {
         return tx >= r.x() && tx < r.x() + r.w()
                 && ty >= r.y() && ty < r.y() + r.h();
     }
 
+    /**
+     * Creates a larger boss room within a leaf.
+     *
+     * @param l Leaf reference
+     * @param rng Random generator
+     * @return Boss room or null
+     */
     private Room makeBossRoom(Leaf l, Random rng) {
         int innerX = l.x + BOSS_ROOM_MARGIN;
         int innerY = l.y + BOSS_ROOM_MARGIN;
@@ -1163,14 +1601,36 @@ public class MazeGenerator {
     }
 
 
+    /**
+     * Clamps an integer to a range.
+     *
+     * @param v Value
+     * @param lo Minimum
+     * @param hi Maximum
+     * @return Clamped value
+     */
     private int clamp(int v, int lo, int hi) {
         return Math.max(lo, Math.min(hi, v));
     }
 
+    /**
+     * Clamps a level to the 1..5 range.
+     *
+     * @param level Input level
+     * @return Clamped level
+     */
     private static int clampLevel(int level) {
         return Math.max(1, Math.min(5, level));
     }
 
+    /**
+     * Returns a random integer in [a, b].
+     *
+     * @param rng Random generator
+     * @param a Minimum value
+     * @param b Maximum value
+     * @return Random value
+     */
     private static int rndBetween(Random rng, int a, int b) {
         if (b < a) return a;
         return a + rng.nextInt(b - a + 1);
@@ -1200,10 +1660,23 @@ public class MazeGenerator {
         return new GeneratedMaze(maze, capture.rooms);
     }
 
+    /**
+     * Internal capture for generated room lists.
+     */
     private static final class GenerationCapture {
         List<Room> rooms;
     }
 
+    /**
+     * Internal generation variant that captures room list.
+     *
+     * @param spec Level spec
+     * @param tileSize Tile size
+     * @param seed Random seed
+     * @param level Current level
+     * @param capture Room capture
+     * @return Generated maze
+     */
     private Maze generateInternal(MazeLoader.LevelSpec spec, int tileSize, long seed, int level, GenerationCapture capture) {
         Objects.requireNonNull(spec, "LevelSpec must not be null");
         spec = applyLevelSize(spec, level);
@@ -1292,6 +1765,15 @@ public class MazeGenerator {
         throw new RuntimeException("Failed to generate BSP dungeon after " + MAX_ATTEMPTS + " attempts");
     }
 
+    /**
+     * Picks a boss room near the exit and far from the spawn.
+     *
+     * @param rooms Room list
+     * @param spawn Spawn room
+     * @param exit Exit room
+     * @param rng Random generator
+     * @return Boss room or null
+     */
     private Room pickBossRoomNearExitFarFromSpawn(List<Room> rooms, Room spawn, Room exit, Random rng) {
         // Prefer decent-sized rooms so boss has space
         final int minW = 14;

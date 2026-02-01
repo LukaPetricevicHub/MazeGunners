@@ -23,16 +23,25 @@ import java.util.List;
 
 public class FogOfWarRenderer {
 
+    /** Visible radius in world units. */
     private float radiusWorld = 3f * 32f;   // e.g. 3 tiles * TILE_SIZE
+    /** Soft edge radius in world units. */
     private float softEdgeWorld = 2f * 32f; // optional: also in world units
+    /** Frame buffer used to render the fog mask. */
     private FrameBuffer fbo;
+    /** 1x1 black texture used to fill the fog. */
     private Texture black1x1;
+    /** Radial mask texture used to punch visibility holes. */
     private Texture holeMask;
 
+    /** Screen width in pixels. */
     private int screenW, screenH;
+    /** Projection matrix for screen-space drawing. */
     private final Matrix4 screenProj = new Matrix4();
+    /** Fog opacity value. */
     private float fogAlpha = 0.75f;
 
+    /** Temporary vector for projections. */
     private final Vector3 tmp = new Vector3();
 
     /**
@@ -63,8 +72,23 @@ public class FogOfWarRenderer {
         // y-up ortho for screen drawing
         screenProj.setToOrtho2D(0, 0, screenW, screenH);
     }
+    /**
+     * Sets fog opacity.
+     *
+     * @param fogAlpha Fog alpha from 0 to 1
+     */
     public void setFogAlpha(float fogAlpha) { this.fogAlpha = clamp01(fogAlpha); }
+    /**
+     * Sets the visibility radius in world units.
+     *
+     * @param r Radius in world units
+     */
     public void setRadiusWorld(float r) { radiusWorld = Math.max(1f, r); }
+    /**
+     * Sets the soft edge radius in world units.
+     *
+     * @param s Soft edge size in world units
+     */
     public void setSoftEdgeWorld(float s) { softEdgeWorld = Math.max(0f, s); }
 
     /**
@@ -75,6 +99,16 @@ public class FogOfWarRenderer {
         render(batch, worldCam, playerWorldX, playerWorldY, null, 0f);
     }
 
+    /**
+     * Renders fog-of-war with optional bullet glow holes.
+     *
+     * @param batch Sprite batch used for drawing
+     * @param worldCam World camera
+     * @param playerWorldX Player x-coordinate in world units
+     * @param playerWorldY Player y-coordinate in world units
+     * @param bullets Active bullets to illuminate
+     * @param bulletRadiusWorld Bullet light radius in world units
+     */
     public void render(SpriteBatch batch,
                        OrthographicCamera worldCam,
                        float playerWorldX,
@@ -164,6 +198,9 @@ public class FogOfWarRenderer {
     }
 
 
+    /**
+     * Disposes all textures and buffers used by the fog renderer.
+     */
     public void dispose() {
         if (fbo != null) fbo.dispose();
         if (black1x1 != null) black1x1.dispose();
@@ -174,6 +211,14 @@ public class FogOfWarRenderer {
     }
 
     // Helpers
+    /**
+     * Creates a solid color texture.
+     *
+     * @param w Texture width
+     * @param h Texture height
+     * @param rgba8888 RGBA8888 color value
+     * @return Generated texture
+     */
     private static Texture createSolidTexture(int w, int h, int rgba8888) {
         Pixmap pm = new Pixmap(w, h, Format.RGBA8888);
         pm.setColor(
@@ -189,6 +234,13 @@ public class FogOfWarRenderer {
     }
 
 
+    /**
+     * Creates a radial alpha mask texture.
+     *
+     * @param w Texture width
+     * @param h Texture height
+     * @return Generated radial mask texture
+     */
     private static Texture createRadialMask(int w, int h) {
         Pixmap pm = new Pixmap(w, h, Format.RGBA8888);
 
@@ -215,6 +267,12 @@ public class FogOfWarRenderer {
         return t;
     }
 
+    /**
+     * Clamps a value to the 0..1 range.
+     *
+     * @param v Input value
+     * @return Clamped value
+     */
     private static float clamp01(float v) {
         return Math.max(0f, Math.min(1f, v));
     }

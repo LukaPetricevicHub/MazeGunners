@@ -16,6 +16,7 @@ public enum Tiles {
     KEY(4),
     DOOR(5);
 
+    /** Numeric tile id used in save files. */
     public final int id;
 
     Tiles(int id) {

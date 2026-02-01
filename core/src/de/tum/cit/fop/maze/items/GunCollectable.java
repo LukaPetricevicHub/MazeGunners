@@ -10,6 +10,7 @@ import de.tum.cit.fop.maze.player.Player;
  * When picked up, the player receives a gun and bonus score.
  */
 public class GunCollectable extends Collectable {
+    /** Shared pickup sound for gun items. */
     private static Sound pickupSound;
 
     /**
@@ -49,6 +50,9 @@ public class GunCollectable extends Collectable {
         }
     }
 
+    /**
+     * Disposes shared resources and clears the static sound reference.
+     */
     @Override
     public void dispose() {
         super.dispose();

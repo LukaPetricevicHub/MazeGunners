@@ -22,49 +22,81 @@ import de.tum.cit.fop.maze.player.Player;
 public class MutantWorker extends Enemy {
 
     // Constants
+    /** Walk animation frame duration. */
     private static final float WALK_FRAME_DURATION = 0.12f;
+    /** Attack animation frame duration. */
     private static final float ATTACK_FRAME_DURATION = 0.10f;
+    /** Death animation frame duration. */
     private static final float DEATH_FRAME_DURATION = 0.14f;
 
+    /** Attack radius in world units. */
     private static final float ATTACK_RADIUS = 24f;
+    /** Minimum safe radius from the player. */
     private static final float MIN_SAFE_RADIUS = 20f;
 
+    /** Cooldown between attacks. */
     private static final float ATTACK_COOLDOWN = 0.6f;
+    /** Normalized moment within the attack animation to apply hit. */
     private static final float HIT_MOMENT = 0.45f;
 
+    /** Remaining attack cooldown time. */
     private float attackCooldownTimer = 0f;
+    /** Attack animation timer. */
     private float attackTimer = 0f;
+    /** Movement animation timer. */
     private float animationTimer = 0f;
+    /** Death animation timer. */
     private float deathTimer = 0f;
 
+    /** Whether the enemy is currently attacking. */
     private boolean attacking = false;
+    /** Whether the hit has been applied this attack. */
     private boolean hitApplied = false;
+    /** Whether the attack sound has played this attack. */
     private boolean attackSoundPlayed = false;
+    /** Whether the death sound has played. */
     private boolean deathSoundPlayed = false;
 
+    /** Maximum HP for this enemy type. */
     private static final int MAX_HP = 10;
 
+    /** Cardinal directions for animation selection. */
     private enum Direction { DOWN, LEFT, RIGHT, UP }
+    /** Current facing direction. */
     private Direction currentDirection = Direction.DOWN;
 
+    /** Last position used to infer movement direction. */
     private final Vector2 lastPosition = new Vector2();
 
+    /** Walk animation facing down. */
     private static Animation<TextureRegion> walkDown;
+    /** Walk animation facing left. */
     private static Animation<TextureRegion> walkLeft;
+    /** Walk animation facing right. */
     private static Animation<TextureRegion> walkRight;
+    /** Walk animation facing up. */
     private static Animation<TextureRegion> walkUp;
 
+    /** Attack animation facing down. */
     private static Animation<TextureRegion> attackDown;
+    /** Attack animation facing left. */
     private static Animation<TextureRegion> attackLeft;
+    /** Attack animation facing right. */
     private static Animation<TextureRegion> attackRight;
+    /** Attack animation facing up. */
     private static Animation<TextureRegion> attackUp;
 
+    /** Death animation facing left. */
     private static Animation<TextureRegion> deathLeft;
+    /** Death animation facing right. */
     private static Animation<TextureRegion> deathRight;
 
+    /** Idle frame used when not aggroed. */
     private TextureRegion idleFrame;
 
+    /** Attack sound effect. */
     private static Sound attackSound;
+    /** Death sound effect. */
     private static Sound deathSound;
 
     /**
@@ -90,11 +122,21 @@ public class MutantWorker extends Enemy {
         return new ChaseBehavior();
     }
 
+    /**
+     * Creates the default idle behavior.
+     *
+     * @return Idle behavior instance
+     */
     @Override
     protected BehaviorState createDefaultBehavior() {
         return new IdleBehavior();
     }
 
+    /**
+     * Indicates whether this enemy uses aggro lock.
+     *
+     * @return True if aggro lock is supported
+     */
     @Override
     protected boolean supportsAggroLock() {
         return true;
@@ -146,6 +188,11 @@ public class MutantWorker extends Enemy {
     }
 
     // Handle locked attack state logic
+    /**
+     * Updates logic while attack is locked to the player.
+     *
+     * @param delta Time since last frame
+     */
     private void handleAttackLockedState(float delta) {
 
         if (!attacking) {
@@ -179,6 +226,11 @@ public class MutantWorker extends Enemy {
     }
 
     // Handle attack animation progression
+    /**
+     * Advances the attack animation and timing.
+     *
+     * @param delta Time since last frame
+     */
     private void handleAttackAnimation(float delta) {
 
         attackTimer += delta;
@@ -204,6 +256,12 @@ public class MutantWorker extends Enemy {
     }
 
     // Moves enemy away from player (not used, but kept)
+    /**
+     * Attempts to move away from the player.
+     *
+     * @param delta Time since last frame
+     * @param maze Maze for collision checks
+     */
     private void moveAwayFromPlayer(float delta, Maze maze) {
         Vector2 position = getPosition();
         Vector2 playerPosition = getPlayerPosition();
@@ -216,6 +274,12 @@ public class MutantWorker extends Enemy {
     }
 
     // Attempt sidestep when blocked
+    /**
+     * Attempts a side step around the player.
+     *
+     * @param delta Time since last frame
+     * @param maze Maze for collision checks
+     */
     private void trySideStep(float delta, Maze maze) {
         Vector2 position = getPosition();
         Vector2 playerPosition = getPlayerPosition();
@@ -233,6 +297,9 @@ public class MutantWorker extends Enemy {
     }
 
     // Update direction based on player
+    /**
+     * Updates facing direction toward the player.
+     */
     private void updateDirectionFromPlayer() {
         Vector2 position = getPosition();
         Vector2 playerPosition = getPlayerPosition();
@@ -248,6 +315,9 @@ public class MutantWorker extends Enemy {
     }
 
     // Updates direction from movement delta
+    /**
+     * Updates facing direction based on movement delta.
+     */
     private void updateDirectionFromMovement() {
         Vector2 position = getPosition();
         float dx = position.x - lastPosition.x;
@@ -297,6 +367,11 @@ public class MutantWorker extends Enemy {
     }
 
     // Returns walk animation by direction
+    /**
+     * Returns the walking animation for the current direction.
+     *
+     * @return Walk animation
+     */
     private Animation<TextureRegion> getWalkAnim() {
         if (currentDirection == Direction.UP) return walkUp;
         if (currentDirection == Direction.LEFT) return walkLeft;
@@ -305,6 +380,11 @@ public class MutantWorker extends Enemy {
     }
 
     // Return death animation by direction
+    /**
+     * Returns the death animation for the current direction.
+     *
+     * @return Death animation
+     */
     private Animation<TextureRegion> getDeathAnim() {
         if (currentDirection == Direction.LEFT) return deathLeft;
         return deathRight;
@@ -326,6 +406,9 @@ public class MutantWorker extends Enemy {
     }
 
     // Animations
+    /**
+     * Lazily loads animations and sounds for this enemy type.
+     */
     private static void ensureAnimationsLoaded() {
 
         if (walkDown != null) return;
@@ -348,6 +431,15 @@ public class MutantWorker extends Enemy {
     }
 
     // Load animation strip from texture
+    /**
+     * Loads an animation strip from a texture.
+     *
+     * @param path Texture path
+     * @param frames Number of frames
+     * @param duration Frame duration
+     * @param loop Whether animation loops
+     * @return Built animation
+     */
     private static Animation<TextureRegion> loadStrip(String path, int frames, float duration, boolean loop) {
 
         Texture texture = new Texture(path);
@@ -366,6 +458,11 @@ public class MutantWorker extends Enemy {
         return animation;
     }
 
+    /**
+     * Retrieves SFX volume from preferences.
+     *
+     * @return SFX volume
+     */
     private float getSfxVolume() {
         if (Gdx.app == null) return 1f;
         return Gdx.app.getPreferences("maze_runner_prefs").getFloat("sound_vol", 0.5f);
@@ -378,10 +475,20 @@ public class MutantWorker extends Enemy {
     }
 
 
+    /**
+     * Returns the duration of the attack lock.
+     *
+     * @return Attack lock duration
+     */
     protected float attackLockDuration() {
         return 0.45f;
     }
 
+    /**
+     * Returns the post-attack delay.
+     *
+     * @return Post-attack delay duration
+     */
     @Override
     protected float postAttackDelay() {
         return 0.2f;

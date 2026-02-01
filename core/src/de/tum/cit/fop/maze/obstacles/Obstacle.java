@@ -15,13 +15,21 @@ import com.badlogic.gdx.math.Vector2;
 public abstract class Obstacle {
 
     // Attributes
+    /** World position of the obstacle. */
     protected Vector2 worldPosition;
+    /** Collision bounds for the obstacle. */
     protected Rectangle collisionBounds;
+    /** Whether the obstacle is active. */
     protected boolean isActive;
+    /** Damage dealt to the player on activation. */
     protected int damageToPlayer;
+    /** Cooldown duration between activations. */
     protected float activationCooldown;
+    /** Remaining cooldown time. */
     protected float cooldownTimer;
+    /** Whether the player was inside on the previous frame. */
     protected boolean wasPlayerInside;
+    /** Whether this obstacle blocks movement. */
     protected boolean blocksMovement = false;
 
 
@@ -124,25 +132,41 @@ public abstract class Obstacle {
     }
 
 
-    // Return the obstacle collision box
+    /**
+     * Returns the obstacle collision box.
+     *
+     * @return Collision bounds
+     */
     public Rectangle getCollisionBox() {
         return collisionBounds;
     }
 
 
-    // Check if obstacle is active
+    /**
+     * Checks whether the obstacle is active.
+     *
+     * @return True if active
+     */
     public boolean isActive() {
         return isActive;
     }
 
 
-    // Return width of the obstacle
+    /**
+     * Returns the obstacle width.
+     *
+     * @return Width in world units
+     */
     public float getWidth() {
         return collisionBounds.width;
     }
 
 
-    // Return height of the obstacle
+    /**
+     * Returns the obstacle height.
+     *
+     * @return Height in world units
+     */
     public float getHeight() {
         return collisionBounds.height;
     }

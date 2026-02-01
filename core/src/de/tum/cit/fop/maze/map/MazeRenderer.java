@@ -18,6 +18,9 @@ import java.util.Map;
  */
 public class MazeRenderer {
 
+    /**
+     * Wall tile variants used for auto-tiling.
+     */
     private enum WallShape {
         SOLID,
         EDGE_TOP, EDGE_BOTTOM, EDGE_LEFT, EDGE_RIGHT,
@@ -25,30 +28,43 @@ public class MazeRenderer {
         INNER_TL, INNER_TR, INNER_BL, INNER_BR
     }
 
+    /** Tileset texture used for rendering. */
     private final Texture tileset;
 
     // size of ONE tile inside tileset image (e.g. 16x16)
+    /** Tile width in pixels within the tileset. */
     private final int tilePxW;
+    /** Tile height in pixels within the tileset. */
     private final int tilePxH;
 
     // computed grid size of the sheet
     @SuppressWarnings("unused")
+    /** Number of columns in the tileset. */
     private final int cols;
     @SuppressWarnings("unused")
+    /** Number of rows in the tileset. */
     private final int rows;
 
+    /** Mapping of wall shapes to tile regions. */
     private final Map<WallShape, TextureRegion> wall = new EnumMap<>(WallShape.class);
 
     // Floor variation pools
+    /** Room floor tile variations. */
     private TextureRegion[] roomFloors;
+    /** Room floor weights. */
     private int[] roomFloorWeights;
 
+    /** Hall floor tile variations. */
     private TextureRegion[] hallFloors;
+    /** Hall floor weights. */
     private int[] hallFloorWeights;
 
     // Specials (door intentionally ignored visually)
+    /** Spawn tile region. */
     private TextureRegion spawn;
+    /** Exit tile region. */
     private TextureRegion exit;
+    /** Key tile region. */
     private TextureRegion key;
 
     /**
@@ -127,8 +143,19 @@ public class MazeRenderer {
         }
     }
 
+    /**
+     * Disposes renderer resources.
+     */
     public void dispose() {}
 
+    /**
+     * Chooses a floor tile based on room or hall classification.
+     *
+     * @param maze Maze reference
+     * @param x Tile x-coordinate
+     * @param y Tile y-coordinate
+     * @return Selected floor tile
+     */
     private TextureRegion pickFloor(Maze maze, int x, int y) {
         boolean isRoom = maze.isRoomCell(x, y);
 
@@ -139,6 +166,16 @@ public class MazeRenderer {
         }
     }
 
+    /**
+     * Selects a tile from a weighted pool deterministically.
+     *
+     * @param pool Tile pool
+     * @param weights Weight array
+     * @param x Tile x-coordinate
+     * @param y Tile y-coordinate
+     * @param salt Salt for deterministic hashing
+     * @return Selected tile region
+     */
     private TextureRegion pickWeighted(TextureRegion[] pool, int[] weights, int x, int y, int salt) {
         int total = 0;
         for (int w : weights) total += Math.max(0, w);
@@ -172,6 +209,14 @@ public class MazeRenderer {
 
 
 
+    /**
+     * Chooses the wall tile shape based on neighbor walkability.
+     *
+     * @param maze Maze reference
+     * @param x Tile x-coordinate
+     * @param y Tile y-coordinate
+     * @return Wall tile region
+     */
     private TextureRegion pickWall(Maze maze, int x, int y) {
         boolean N = isWalkable(maze, x, y + 1);
         boolean S = isWalkable(maze, x, y - 1);
@@ -206,11 +251,22 @@ public class MazeRenderer {
         return wall.get(WallShape.SOLID);
     }
 
+    /**
+     * Checks whether a tile is walkable.
+     *
+     * @param maze Maze reference
+     * @param x Tile x-coordinate
+     * @param y Tile y-coordinate
+     * @return True if walkable
+     */
     private boolean isWalkable(Maze maze, int x, int y) {
         return maze.inBounds(x, y) && maze.getTile(x, y).isWalkable();
     }
 
 
+    /**
+     * Builds texture regions for floors, walls, and special tiles.
+     */
     private void buildRegions() {
         TilesetMapping m = new TilesetMapping();
 
@@ -259,6 +315,9 @@ public class MazeRenderer {
         wall.put(WallShape.INNER_BR, tile(m.WALL_INNER_BR_C, m.WALL_INNER_BR_R));
     }
 
+    /**
+     * Validates that floor pools and weights are configured.
+     */
     private void validatePools() {
         if (roomFloors == null || roomFloors.length == 0) throw new IllegalStateException("roomFloors not set");
         if (hallFloors == null || hallFloors.length == 0) throw new IllegalStateException("hallFloors not set");
@@ -268,6 +327,9 @@ public class MazeRenderer {
             throw new IllegalStateException("hallFloorWeights must match hallFloors length");
     }
 
+    /**
+     * Applies fallback tiles for missing corner regions.
+     */
     private void applyCornerFallbacks() {
         TextureRegion SOL = wall.get(WallShape.SOLID);
         TextureRegion TOP = wall.get(WallShape.EDGE_TOP);
@@ -284,6 +346,13 @@ public class MazeRenderer {
         wall.put(WallShape.INNER_BR, safe(wall.get(WallShape.INNER_BR), SOL));
     }
 
+    /**
+     * Returns the region if present, otherwise a fallback.
+     *
+     * @param r Region to use
+     * @param fallback Fallback region
+     * @return Non-null region
+     */
     private TextureRegion safe(TextureRegion r, TextureRegion fallback) {
         return (r != null) ? r : fallback;
     }

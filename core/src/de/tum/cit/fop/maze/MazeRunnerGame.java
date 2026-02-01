@@ -64,6 +64,10 @@ public class MazeRunnerGame extends Game {
     private Animation<TextureRegion> gunUpShoot;
     private Animation<TextureRegion> gunSideShoot;
     private Animation<TextureRegion> gunSideLeftShoot;
+    private Animation<TextureRegion> batDownAttack;
+    private Animation<TextureRegion> batUpAttack;
+    private Animation<TextureRegion> batSideAttack;
+    private Animation<TextureRegion> batSideLeftAttack;
 
     // Bullet Texture
     private TextureRegion bulletRegion;
@@ -226,6 +230,8 @@ public class MazeRunnerGame extends Game {
         state.playerX = player.getX();
         state.playerY = player.getY();
         state.shouldRestorePosition = true;
+        state.hasStoryItem = player.hasStoryItem();
+        state.storyItemName = player.getCurrentStoryItemName();
 
         if (runGamble != null) {
             state.runGambleSpeed = runGamble.speed;
@@ -265,6 +271,10 @@ public class MazeRunnerGame extends Game {
                 else if (i instanceof SpeedItem) is.type = "speed";
                 else if (i instanceof ShieldItem) is.type = "shield";
                 else if (i instanceof KeyItem) is.type = "key";
+                else if (i instanceof de.tum.cit.fop.maze.items.StoryItem si) {
+                    is.type = "story";
+                    is.name = si.getItemName();
+                }
                 else if (i instanceof AmmoItem) is.type = "ammo";
 
                 state.items.add(is);
@@ -345,6 +355,11 @@ public class MazeRunnerGame extends Game {
         gunUpShoot = loadGunAnimation("Gun/Gun_up_shoot-Sheet3.png", 3, 0.06f);
         gunSideShoot = loadGunAnimation("Gun/Gun_side_shoot-Sheet3.png", 3, 0.06f);
         gunSideLeftShoot = loadGunAnimation("Gun/Gun_side-left_shoot-Sheet3.png", 3, 0.06f);
+
+        batDownAttack = loadGunAnimation("Bat/Bat_down_attack-Sheet4.png", 4, 0.08f);
+        batUpAttack = loadGunAnimation("Bat/Bat_up_attack-Sheet4.png", 4, 0.08f);
+        batSideAttack = loadGunAnimation("Bat/Bat_side_attack-Sheet4.png", 4, 0.08f);
+        batSideLeftAttack = loadGunAnimation("Bat/Bat_side-left_attack-Sheet4.png", 4, 0.08f);
     }
 
     private Animation<TextureRegion> loadStripAnimation(String path, float frameDuration) {
@@ -431,6 +446,10 @@ public class MazeRunnerGame extends Game {
     public Animation<TextureRegion> getGunUpShoot() { return gunUpShoot; }
     public Animation<TextureRegion> getGunSideShoot() { return gunSideShoot; }
     public Animation<TextureRegion> getGunSideLeftShoot() { return gunSideLeftShoot; }
+    public Animation<TextureRegion> getBatDownAttack() { return batDownAttack; }
+    public Animation<TextureRegion> getBatUpAttack() { return batUpAttack; }
+    public Animation<TextureRegion> getBatSideAttack() { return batSideAttack; }
+    public Animation<TextureRegion> getBatSideLeftAttack() { return batSideLeftAttack; }
     public TextureRegion getBulletRegion() { return bulletRegion; }
 
     public Progression getProgression() { return progression; }

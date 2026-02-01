@@ -15,7 +15,9 @@ import java.util.Map;
  * persists leaderboard data using JSON serialization.
  */
 public class LeaderboardManager {
+    /** Mapping of leaderboard keys to score lists. */
     private Map<String, ArrayList<ScoreEntry>> boards;
+    /** Path to the leaderboard storage file. */
     private final String FILE_PATH = "scores.json";
 
     /**

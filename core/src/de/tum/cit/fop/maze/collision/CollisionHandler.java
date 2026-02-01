@@ -10,8 +10,11 @@ import de.tum.cit.fop.maze.map.Maze;
  */
 public class CollisionHandler {
     // Attributes
+    /** Hitbox used for collision checks. */
     private final Rectangle hitBox;
+    /** Padding inset used to shrink collision bounds. */
     private final float collisionPadding;
+    /** Minimum movement threshold to consider as movement. */
     private static final float MIN_MOVEMENT_THRESHOLD = 0.001f;
 
 
@@ -72,6 +75,13 @@ public class CollisionHandler {
 
 
     // Detect walls at current position
+    /**
+     * Checks whether the hitbox at a position collides with walls.
+     *
+     * @param checkPos Candidate position
+     * @param maze Maze reference
+     * @return True if colliding with a wall
+     */
     private boolean isHittingObstacle(Vector2 checkPos, Maze maze) {
         float leftEdge = checkPos.x + collisionPadding;
         float rightEdge = checkPos.x + hitBox.width - collisionPadding;

@@ -19,27 +19,40 @@ import java.util.List;
 public abstract class Enemy {
 
     // Attributes
+    /** Current world position of the enemy. */
     protected Vector2 worldPosition;
+    /** Movement speed in world units per second. */
     protected float movementSpeed;
+    /** Collision bounds used for physics and overlap checks. */
     protected Rectangle collisionBounds;
+    /** Current behavior state executed by the AI. */
     protected BehaviorState activeBehavior;
+    /** Player instance used for targeting and reactions. */
     protected Player targetPlayer;
+    /** Home position used by patrol/return behaviors. */
     protected final Vector2 homeWorldPosition;
+    /** Collision handler used for movement and wall checks. */
     protected final CollisionHandler collisionHandler;
 
     private static final float COLLISION_INSET = 8f;
     private static final float COLLISION_SIZE = 20f;
     private static final float COLLISION_OFFSET = (32f - COLLISION_SIZE) * 0.5f;
 
+    /** Radius within which the enemy begins to chase the player. */
     protected float chaseRadius = 200f;
     private float chaseMemoryTimer = 0f;
     private static final float CHASE_MEMORY_DURATION = 2.0f;
+    /** Whether the enemy has locked aggro and will keep chasing. */
     protected boolean aggroLocked = false;
 
     // Health
+    /** Current health points. */
     protected int health = 3;
+    /** Maximum health points. */
     protected int maxHealth = 3;
+    /** Flag indicating this enemy should be removed. */
     protected boolean markedForRemoval = false;
+    /** Flag indicating the enemy is in a death state. */
     protected boolean dying = false;
     private float hitFlashTimer = 0f;
     private static final float HIT_FLASH_DURATION = 0.12f;
@@ -60,7 +73,9 @@ public abstract class Enemy {
 
     // Interaction
     private final Rectangle interactionRect = new Rectangle();
+    /** Extra margin used for interaction box expansion. */
     protected static final float INTERACTION_MARGIN = 2f;
+    /** Height of the interaction body region. */
     protected static final float INTERACTION_BODY_HEIGHT = 32f;
 
     protected enum CombatLockState {
@@ -69,8 +84,11 @@ public abstract class Enemy {
         POST_ATTACK_DELAY
     }
 
+    /** Whether the enemy is currently touching the player. */
     protected boolean touchingPlayer = false;
+    /** Current combat lock state. */
     protected CombatLockState combatLockState = CombatLockState.NONE;
+    /** Timer used for combat lock durations. */
     protected float combatLockTimer = 0f;
 
     /**
@@ -93,6 +111,11 @@ public abstract class Enemy {
         this.collisionHandler = new CollisionHandler(collisionBounds, COLLISION_INSET);
     }
 
+    /**
+     * Initializes health values for the enemy.
+     *
+     * @param hp starting health value
+     */
     protected void initHp(int hp) {
         this.maxHealth = Math.max(1, hp);
         this.health = this.maxHealth;
@@ -184,7 +207,18 @@ public abstract class Enemy {
     }
 
 
+    /**
+     * Creates the chase behavior used when the player is in range.
+     *
+     * @return chase behavior instance
+     */
     protected abstract BehaviorState createChaseBehavior();
+
+    /**
+     * Creates the default behavior used when not chasing.
+     *
+     * @return default behavior instance
+     */
     protected abstract BehaviorState createDefaultBehavior();
 
     /**
@@ -205,12 +239,20 @@ public abstract class Enemy {
     /**
      * Triggers the enemy death sequence.
      */
+    /**
+     * Transitions the enemy into a dying state.
+     */
     protected void die() {
         if (dying) return;
         dying = true;
         finalizeDeath();
     }
 
+    /**
+     * Indicates whether the enemy is currently dying.
+     *
+     * @return true if dying, otherwise false
+     */
     public boolean isDying() {
         return dying;
     }
@@ -218,14 +260,27 @@ public abstract class Enemy {
     /**
      * Marks the enemy for removal from the game.
      */
+    /**
+     * Marks the enemy as ready for removal.
+     */
     public void finalizeDeath() {
         markedForRemoval = true;
     }
 
+    /**
+     * Indicates whether the enemy has been marked for removal.
+     *
+     * @return true if dead, otherwise false
+     */
     public boolean isDead() {
         return markedForRemoval;
     }
 
+    /**
+     * Indicates whether the enemy is in a hit-flash state.
+     *
+     * @return true if flashing, otherwise false
+     */
     public boolean isHitFlashing() {
         return hitFlashTimer > 0f;
     }
@@ -235,12 +290,22 @@ public abstract class Enemy {
      *
      * @param mult health multiplier
      */
+    /**
+     * Scales current and maximum health by a multiplier.
+     *
+     * @param mult health multiplier
+     */
     public void scaleHp(float mult) {
         if (mult <= 1f) return;
         maxHealth = Math.max(1, Math.round(maxHealth * mult));
         health = maxHealth;
     }
 
+    /**
+     * Adds health up to the maximum.
+     *
+     * @param delta amount of health to add
+     */
     public void addHp(int delta) {
         if (delta == 0) return;
         maxHealth = Math.max(1, maxHealth + delta);
@@ -251,6 +316,11 @@ public abstract class Enemy {
      * Freezes the enemy for a given duration.
      *
      * @param duration freeze time in seconds
+     */
+    /**
+     * Applies a freeze effect for a duration.
+     *
+     * @param duration duration in seconds
      */
     public void applyFreeze(float duration) {
         if (dying) return;
@@ -264,16 +334,32 @@ public abstract class Enemy {
      * @param duration poison duration in seconds
      * @param dps damage per second
      */
+    /**
+     * Applies a poison effect over time.
+     *
+     * @param duration duration in seconds
+     * @param dps damage per second
+     */
     public void applyPoison(float duration, float dps) {
         if (dying) return;
         poisonTimer = Math.max(poisonTimer, duration);
         poisonDps = Math.max(0f, dps);
     }
 
+    /**
+     * Indicates whether the enemy is currently frozen.
+     *
+     * @return true if frozen, otherwise false
+     */
     public boolean isFrozen() {
         return frozen;
     }
 
+    /**
+     * Updates timers and effects for status conditions.
+     *
+     * @param dt time step in seconds
+     */
     private void updateStatusEffects(float dt) {
         if (dying) return;
 
@@ -309,21 +395,71 @@ public abstract class Enemy {
     }
 
     // Getters
+    /**
+     * Retrieves the current position vector.
+     *
+     * @return world position
+     */
     public Vector2 getPosition() { return worldPosition; }
+
+    /**
+     * Retrieves the movement speed.
+     *
+     * @return movement speed in world units per second
+     */
     public float getSpeed() { return movementSpeed; }
+
+    /**
+     * Retrieves the collision bounds.
+     *
+     * @return collision rectangle
+     */
     public Rectangle getCollisionBox() { return collisionBounds; }
+
+    /**
+     * Retrieves the collision handler instance.
+     *
+     * @return collision handler
+     */
     public CollisionHandler getCollisionHandler() { return collisionHandler; }
+
+    /**
+     * Retrieves the home position used by behaviors.
+     *
+     * @return home position
+     */
     public Vector2 getHomePosition() { return homeWorldPosition; }
 
+    /**
+     * Retrieves the X coordinate.
+     *
+     * @return X position
+     */
     public float getX() { return worldPosition.x; }
+
+    /**
+     * Retrieves the Y coordinate.
+     *
+     * @return Y position
+     */
     public float getY() { return worldPosition.y; }
 
+    /**
+     * Retrieves the target player's position.
+     *
+     * @return player position vector
+     */
     public Vector2 getPlayerPosition() {
         if (targetPlayer != null)
             return new Vector2(targetPlayer.getX(), targetPlayer.getY());
         return new Vector2();
     }
 
+    /**
+     * Sets the active behavior state.
+     *
+     * @param behavior behavior to activate
+     */
     public void setCurrentBehavior(BehaviorState behavior) {
         if (behavior instanceof PatrolBehavior patrol && shouldResetPatrolOnReturn()) {
             patrol.resetToClosest(worldPosition);
@@ -332,6 +468,11 @@ public abstract class Enemy {
     }
 
     // Enemy - Enemy col
+    /**
+     * Builds and returns the interaction rectangle.
+     *
+     * @return interaction rectangle
+     */
     public Rectangle getInteractionRect() {
         interactionRect.set(worldPosition.x - INTERACTION_MARGIN, worldPosition.y - INTERACTION_MARGIN, getRenderWidth() + INTERACTION_MARGIN * 2, INTERACTION_BODY_HEIGHT + INTERACTION_MARGIN * 2);
         return interactionRect;
@@ -344,6 +485,14 @@ public abstract class Enemy {
      * @param player player reference
      * @param deltaTime time since last frame
      * @param maze maze for collision handling
+     */
+    /**
+     * Applies separation forces to avoid overlapping with other enemies.
+     *
+     * @param others list of nearby enemies
+     * @param player player used for collision checks
+     * @param deltaTime time step in seconds
+     * @param maze maze used for wall checks
      */
     public void applyEnemySeparation(List<Enemy> others, Player player, float deltaTime, Maze maze) {
         if (combatLockState == CombatLockState.ATTACKING) return;
@@ -380,6 +529,11 @@ public abstract class Enemy {
     }
 
     // Combat lock
+    /**
+     * Updates combat lock timing and state transitions.
+     *
+     * @param deltaTime time step in seconds
+     */
     protected void updateCombatLock(float deltaTime) {
         switch (combatLockState) {
 
@@ -409,6 +563,9 @@ public abstract class Enemy {
     /**
      * Notifies the enemy that it is touching the player.
      */
+    /**
+     * Notifies the enemy that it has contacted the player.
+     */
     public void onPlayerContact() {
         touchingPlayer = true;
 
@@ -418,20 +575,69 @@ public abstract class Enemy {
         }
     }
 
+    /**
+     * Retrieves the minimum attack commit time.
+     *
+     * @return commit time in seconds
+     */
     protected float minAttackCommitTime() { return 0.25f; }
+
+    /**
+     * Retrieves the post-attack delay duration.
+     *
+     * @return delay in seconds
+     */
     protected float postAttackDelay() { return 0.25f; }
 
+    /**
+     * Indicates whether aggro lock is active.
+     *
+     * @return true if aggro locked
+     */
     public boolean isAggroLocked() { return aggroLocked; }
+
+    /**
+     * Indicates whether the enemy is attack-locked.
+     *
+     * @return true if attack locked
+     */
     public boolean isAttackingLocked() { return combatLockState == CombatLockState.ATTACKING; }
 
+    /**
+     * Indicates whether the enemy supports aggro lock behavior.
+     *
+     * @return true if supported
+     */
     protected boolean supportsAggroLock() { return false; }
+
+    /**
+     * Indicates whether patrol should reset when returning home.
+     *
+     * @return true if patrol should reset
+     */
     protected boolean shouldResetPatrolOnReturn() { return true; }
+
+    /**
+     * Indicates whether the enemy can be hit by melee attacks.
+     *
+     * @return true if melee can hit
+     */
     public boolean canBeHitByMelee() { return true; }
 
+    /**
+     * Indicates whether this enemy ignores collision with other enemies.
+     *
+     * @return true if enemy collision is ignored
+     */
     public boolean ignoresEnemyCollision() { return false; }
 
     /**
      * Attempts to free the enemy when stuck.
+     *
+     * @param maze maze used for collision checks
+     */
+    /**
+     * Handles logic when the enemy is stuck.
      *
      * @param maze maze used for collision checks
      */
@@ -452,16 +658,58 @@ public abstract class Enemy {
      * @param maze maze for wall checks
      * @return true if movement is possible
      */
+    /**
+     * Checks whether the enemy can move to a world position.
+     *
+     * @param x target X coordinate
+     * @param y target Y coordinate
+     * @param maze maze used for wall checks
+     * @return true if the position is walkable
+     */
     protected boolean canMoveTo(float x, float y, Maze maze) {
         float inset = 2f;
         return !maze.isWallWorld(x + inset, y + inset) && !maze.isWallWorld(x + 32f - inset, y + inset) && !maze.isWallWorld(x + inset, y + 32f - inset) && !maze.isWallWorld(x + 32f - inset, y + 32f - inset);
     }
 
+    /**
+     * Retrieves the pathfinding footprint in tiles.
+     *
+     * @return footprint size
+     */
     public int getPathfindingFootprint() { return 2; }
+
+    /**
+     * Retrieves the attack radius for melee targeting.
+     *
+     * @return attack radius in world units
+     */
     public float getAttackRadius() { return 0f; }
+
+    /**
+     * Retrieves the desired separation radius from other enemies.
+     *
+     * @return separation radius in world units
+     */
     public float getSeparationRadius() { return 24f; }
+
+    /**
+     * Retrieves the maximum overlap allowed before separation is applied.
+     *
+     * @return maximum overlap in world units
+     */
     protected float maxAllowedOverlap() { return 6f; }
 
+    /**
+     * Retrieves the render width of the enemy sprite.
+     *
+     * @return render width
+     */
     public float getRenderWidth() { return 32f; }
+
+    /**
+     * Retrieves the render height of the enemy sprite.
+     *
+     * @return render height
+     */
     public float getRenderHeight() { return 32f; }
 }

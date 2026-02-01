@@ -57,6 +57,13 @@ public class InteractionLogic {
         return false;
     }
 
+    /**
+     * Finds the nearest exit cell to the player.
+     *
+     * @param player Player instance
+     * @param maze Maze reference
+     * @return Nearest exit cell, or null if none exist
+     */
     public Point findNearestExit(Player player, Maze maze) {
         Point best = null;
         float bestD = Float.MAX_VALUE;

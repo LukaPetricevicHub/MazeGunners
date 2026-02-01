@@ -133,18 +133,38 @@ public class Boss {
     }
 
 
+    /**
+     * Retrieves a copy of the boss hitbox.
+     *
+     * @return hitbox rectangle
+     */
     public Rectangle getHitbox() {
         return new Rectangle(hitbox);
     }
 
+    /**
+     * Retrieves a copy of the boss position.
+     *
+     * @return position vector
+     */
     public Vector2 getPosition() {
         return new Vector2(pos);
     }
 
+    /**
+     * Retrieves current boss health.
+     *
+     * @return current HP value
+     */
     public int getHp() {
         return hp;
     }
 
+    /**
+     * Retrieves maximum boss health.
+     *
+     * @return max HP value
+     */
     public int getMaxHp() {
         return MAX_HP;
     }
@@ -159,6 +179,11 @@ public class Boss {
         hp = Math.max(1, Math.round(hp * mult));
     }
 
+    /**
+     * Computes the boss health percentage.
+     *
+     * @return health ratio in [0, 1]
+     */
     public float getHpPct() {
         return (MAX_HP <= 0) ? 0f : (hp / (float) MAX_HP);
     }
@@ -249,12 +274,23 @@ public class Boss {
     }
 
 
+    /**
+     * Updates boss behavior in the idle state.
+     *
+     * @param player target player reference
+     */
     private void updateIdle(PlayerLike player) {
         // immediately start pursuing
         state = (getHpPct() <= RUN2_HP_PCT) ? BossState.RUN_2 : BossState.RUN;
         stateTime = 0f;
     }
 
+    /**
+     * Updates boss behavior while walking.
+     *
+     * @param dt time step in seconds
+     * @param player target player reference
+     */
     private void updateWalk(float dt, PlayerLike player) {
         float dist = tmp1.set(player.getPosition()).sub(pos).len();
 
@@ -273,6 +309,13 @@ public class Boss {
         }
     }
 
+    /**
+     * Updates boss behavior while running.
+     *
+     * @param dt time step in seconds
+     * @param player target player reference
+     * @param runSpeed speed in world units per second
+     */
     private void updateRun(float dt, PlayerLike player, float runSpeed) {
         float dist = tmp1.set(player.getPosition()).sub(pos).len();
 
@@ -296,6 +339,9 @@ public class Boss {
         }
     }
 
+    /**
+     * Transitions the boss into the attack state.
+     */
     private void startAttack() {
         state = BossState.ATTACK;
         stateTime = 0f;
@@ -303,6 +349,11 @@ public class Boss {
         attackDamageApplied = false;
     }
 
+    /**
+     * Updates the attack state and applies damage during the active window.
+     *
+     * @param player target player reference
+     */
     private void updateAttack(PlayerLike player) {
         // windup
         if (stateTime < ATTACK_WINDUP_T) return;
@@ -326,6 +377,11 @@ public class Boss {
         }
     }
 
+    /**
+     * Starts a combo dash aimed past the player.
+     *
+     * @param player target player reference
+     */
     private void startComboDashTowardPlayer(PlayerLike player) {
         state = BossState.COMBO;
         stateTime = 0f;
@@ -343,6 +399,12 @@ public class Boss {
         vel.set(tmp2.set(comboTarget).sub(pos).nor().scl(COMBO_SPEED_TPS * TILE));
     }
 
+    /**
+     * Updates the combo dash movement and hit detection.
+     *
+     * @param dt time step in seconds
+     * @param player target player reference
+     */
     private void updateCombo(float dt, PlayerLike player) {
         moveWithCollision(dt, vel);
 
@@ -362,6 +424,9 @@ public class Boss {
         }
     }
 
+    /**
+     * Updates the hit-stun state.
+     */
     private void updateHit() {
         if (stateTime >= HIT_STUN_T) {
             state = (getHpPct() <= RUN2_HP_PCT) ? BossState.RUN_2 : BossState.RUN;
@@ -369,6 +434,9 @@ public class Boss {
         }
     }
 
+    /**
+     * Ensures the run state matches the current health phase.
+     */
     private void ensureRunStateByHp() {
         boolean low = getHpPct() <= RUN2_HP_PCT;
         if (state == BossState.WALK || state == BossState.RUN || state == BossState.RUN_2) {
@@ -380,6 +448,11 @@ public class Boss {
         }
     }
 
+    /**
+     * Builds the attack hit rectangle based on facing.
+     *
+     * @return attack rectangle in world coordinates
+     */
     private Rectangle attackRect() {
         float w = 6f * TILE;
         float h = 4f * TILE;
@@ -393,6 +466,13 @@ public class Boss {
         };
     }
 
+    /**
+     * Moves the boss toward a target position with collision.
+     *
+     * @param dt time step in seconds
+     * @param target target world position
+     * @param speed movement speed in world units per second
+     */
     private void moveToward(float dt, Vector2 target, float speed) {
         Vector2 d = tmp1.set(target).sub(pos);
         if (d.len2() < 1f) {
@@ -404,6 +484,12 @@ public class Boss {
         moveWithCollision(dt, vel);
     }
 
+    /**
+     * Applies velocity with collision checks against walls.
+     *
+     * @param dt time step in seconds
+     * @param velocity velocity vector in world units per second
+     */
     private void moveWithCollision(float dt, Vector2 velocity) {
         float nx = pos.x + velocity.x * dt;
         float ny = pos.y + velocity.y * dt;
@@ -425,6 +511,11 @@ public class Boss {
         }
     }
 
+    /**
+     * Selects the animation corresponding to the current state.
+     *
+     * @return animation to render
+     */
     private Animation<TextureRegion> currentAnim() {
         return switch (state) {
             case IDLE -> anims.idle;
@@ -439,6 +530,11 @@ public class Boss {
     }
 
 
+    /**
+     * Updates boss facing based on a direction vector.
+     *
+     * @param toPlayer vector from boss to player
+     */
     private void updateFacing(Vector2 toPlayer) {
         if (Math.abs(toPlayer.x) > Math.abs(toPlayer.y)) {
             facing = (toPlayer.x >= 0) ? Facing.RIGHT : Facing.LEFT;
@@ -447,6 +543,11 @@ public class Boss {
         }
     }
 
+    /**
+     * Clamps a position inside the boss room bounds with padding.
+     *
+     * @param worldPos world position to clamp
+     */
     private void clampToBossRoom(Vector2 worldPos) {
         int padTiles = 5;
 
@@ -459,6 +560,12 @@ public class Boss {
         worldPos.y = Math.max(minY, Math.min(maxY, worldPos.y));
     }
 
+    /**
+     * Checks whether the player is currently inside the boss room.
+     *
+     * @param player player reference
+     * @return true if the player is within the boss room bounds
+     */
     private boolean isPlayerInBossRoom(PlayerLike player) {
         if (bossRoom == null || player == null) return true;
         Vector2 p = player.getPosition();

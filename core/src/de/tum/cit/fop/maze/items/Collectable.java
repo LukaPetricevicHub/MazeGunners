@@ -12,8 +12,11 @@ import de.tum.cit.fop.maze.player.Player;
  * to the player when collected.
  */
 public abstract class Collectable {
+    /** World-space bounds of the collectable. */
     protected Rectangle bounds;
+    /** Texture used to render the collectable. */
     protected Texture texture;
+    /** Whether the collectable is still active. */
     private boolean active = true;
 
     /**
@@ -37,6 +40,8 @@ public abstract class Collectable {
 
     /**
      * Renders the item if it is still active.
+     *
+     * @param batch sprite batch used for rendering
      */
     public void render(SpriteBatch batch) {
         if (active) {
@@ -44,10 +49,28 @@ public abstract class Collectable {
         }
     }
 
+    /**
+     * Retrieves the world-space bounds of the collectable.
+     *
+     * @return bounding rectangle
+     */
     public Rectangle getBounds() { return bounds; }
+
+    /**
+     * Indicates whether the collectable is still active.
+     *
+     * @return true if active, false if already collected
+     */
     public boolean isActive() { return active; }
+
+    /**
+     * Marks the collectable as collected and inactive.
+     */
     public void collect() { active = false; }
 
+    /**
+     * Releases texture resources used by the collectable.
+     */
     public void dispose() {
         if (texture != null) texture.dispose();
     }

@@ -13,27 +13,43 @@ import com.badlogic.gdx.math.Vector2;
  */
 public class SpikeTrap extends Obstacle {
 
+    /** Damage dealt by spikes. */
     private static final int SPIKE_DAMAGE = 1;
+    /** Cooldown time before the trap can reset. */
     private static final float RESET_COOLDOWN = 8f;
+    /** Collision size for the trap. */
     private static final float HITBOX_SIZE = 32f;
+    /** Duration of each frame. */
     private static final float FRAME_TIME = 0.025f;
 
+    /** Number of columns in the sprite sheet. */
     private static final int FRAME_COLS = 14;
+    /** Number of rows in the sprite sheet. */
     private static final int FRAME_ROWS = 1;
 
+    /** First frame index where damage should be applied. */
     private static final int DAMAGE_START_FRAME = 7;
+    /** Visual Y offset for rendering. */
     private static final float VISUAL_Y_OFFSET = 4f;
 
+    /** Whether the player is currently on the trap. */
     private boolean playerOnTrap = false;
+    /** Remaining cooldown time. */
     private float cooldownTimer = 0f;
+    /** Whether damage has been dealt this cycle. */
     private boolean damageDealtThisCycle = false;
 
+    /** Sprite sheet for the spike trap. */
     private static final Texture SPIKE_TEXTURE = new Texture("assets/Traps/SpikeTrap.png");
 
+    /** Animation frames for the trap. */
     private final TextureRegion[] frames;
 
+    /** Current animation frame index. */
     private int currentFrame = 0;
+    /** Accumulated time for frame stepping. */
     private float frameTimer = 0f;
+    /** Whether the trap is currently extending. */
     private boolean activating = false;
 
     /**
@@ -135,9 +151,9 @@ public class SpikeTrap extends Obstacle {
 
 
     /**
-     * Returns the current animation frame of the spike trap.
+     * Checks whether the player should take damage this frame.
      *
-     * @return current spike trap texture frame
+     * @return True if damage should be applied now
      */
     public boolean shouldDamagePlayerThisFrame() {
 
@@ -163,10 +179,20 @@ public class SpikeTrap extends Obstacle {
     }
 
 
+    /**
+     * Returns the render x-position for the trap sprite.
+     *
+     * @return Render x-position
+     */
     public float getRenderX() {
         return getCollisionBox().x;
     }
 
+    /**
+     * Returns the render y-position for the trap sprite.
+     *
+     * @return Render y-position
+     */
     public float getRenderY() {
         return getCollisionBox().y + VISUAL_Y_OFFSET;
     }

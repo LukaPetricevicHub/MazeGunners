@@ -9,6 +9,9 @@ package de.tum.cit.fop.maze;
  */
 public class GameStateController {
 
+    /**
+     * Possible gameplay states for the current run.
+     */
     public enum State {
         RUNNING,
         WON,
@@ -24,12 +27,11 @@ public class GameStateController {
     /**
      * Updates the current game state based on player conditions.
      *
-     * @param delta   Time passed since last frame
-     * @param onExit  Whether the player is standing on the exit tile
-     * @param hasKey  Whether the player has collected the key
-     * @param lives   Current number of player lives
+     * @param delta time passed since last frame
+     * @param onExit whether the player is standing on the exit tile
+     * @param hasKey whether the player has collected the key
+     * @param lives current number of player lives
      */
-
     public void update(float delta, boolean onExit, boolean hasKey, int lives) {
         if (state == State.RUNNING) {
             if(onExit && hasKey) {
@@ -56,11 +58,20 @@ public class GameStateController {
     }
 
 
-    // getter
+    /**
+     * Retrieves the current state.
+     *
+     * @return current game state
+     */
     public State getState() {
         return state;
     }
 
+    /**
+     * Indicates whether the game is currently running.
+     *
+     * @return true if running, otherwise false
+     */
     public boolean isRunning() {
         return state == State.RUNNING;
     }

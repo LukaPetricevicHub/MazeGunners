@@ -20,51 +20,95 @@ import de.tum.cit.fop.maze.progress.Progression;
 import de.tum.cit.fop.maze.progress.RunGambleState;
 import de.tum.cit.fop.maze.ui.UiButtons;
 
+/**
+ * Screen that hosts the in-game gambling mini-games and dialogue.
+ *
+ * Provides Slots and Blackjack modes with shared run bonuses and coin economy.
+ */
 public class GamblingScreen implements Screen {
 
+    /** Supported gambling modes. */
     private enum Mode { MENU, SLOTS, BLACKJACK }
 
 
+    /** Main game instance for navigation and shared systems. */
     private final MazeRunnerGame game;
+    /** Persistent progression data for coins and unlocks. */
     private final Progression prog;
+    /** Current run modifiers and bonuses. */
     private final RunGambleState run;
+    /** Active player instance, or null when opened from the menu. */
     private final Player player; // can be null if opened from Menu
 
+    /** Stage containing all UI widgets. */
     private final Stage stage;
 
     // UI
+    /** Root stack for layered background and UI. */
     private Stack root;
+    /** Main content container for active mode content. */
     private Table contentRoot;
+    /** Dialogue area for dealer text. */
     private Table dialogueTable;
+    /** Title label at the top of the screen. */
     private Label titleLabel;
+    /** Status line displaying coins and run stats. */
     private Label statusLabel;
+    /** Coins counter label. */
     private Label coinsLabel;
+    /** Dealer dialogue label. */
     private Label dealerLabel;
+    /** Button to advance dealer dialogue. */
     private TextButton dialogueNextBtn;
+    /** Dealer background image. */
     private Image dealerImage;
+    /** Dealer background texture. */
     private Texture dealerTexture;
+    /** Sound effect for card draws. */
     private Sound cardsSound;
+    /** Dialogue lines currently being displayed. */
     private String[] dialogueLines = null;
+    /** Current dialogue index. */
     private int dialogueIndex = 0;
+    /** Callback executed when dialogue finishes. */
     private Runnable dialogueOnDone = null;
+    /** Whether dialogue is currently active. */
     private boolean dialogueActive = false;
+    /** Whether to show content after dialogue ends. */
     private boolean dialogueShowContentOnEnd = true;
 
+    /** Active UI mode. */
     private Mode mode = Mode.MENU;
 
     // Slots constants
+    /** Coin cost to spin the slot machine once. */
     private static final int SLOT_SPIN_COST = 100;
+    /** Coin cost to buy a stat point when below minimum. */
     private static final int STAT_BUY_COST = 20;
+    /** Minimum stat required to play slots. */
     private static final int STAT_MIN_TO_PLAY = 5;
+    /** Maximum value allowed for run stats. */
     private static final int STAT_MAX = 99;
 
     // Blackjack
+    /** Blackjack game state for the current session. */
     private BlackjackGame blackjack;
 
+    /**
+     * Creates the gambling screen for menu access.
+     *
+     * @param game Reference to the main game instance
+     */
     public GamblingScreen(MazeRunnerGame game) {
         this(game, null);
     }
 
+    /**
+     * Creates the gambling screen for a live run.
+     *
+     * @param game Reference to the main game instance
+     * @param player Active player instance, or null when opened from menu
+     */
     public GamblingScreen(MazeRunnerGame game, Player player) {
         this.game = game;
         this.prog = game.getProgression();
@@ -78,6 +122,9 @@ public class GamblingScreen implements Screen {
     // UI BUILD
     // =========================================================
 
+    /**
+     * Builds the background and base UI layout.
+     */
     private void buildUI() {
         root = new Stack();
         root.setFillParent(true);
@@ -142,6 +189,9 @@ public class GamblingScreen implements Screen {
         refreshTopBar();
     }
 
+    /**
+     * Updates the top status bar with coins and run modifiers.
+     */
     private void refreshTopBar() {
         coinsLabel.setText("Coins: " + prog.getCoins());
 
@@ -167,6 +217,9 @@ public class GamblingScreen implements Screen {
     }
 
 
+    /**
+     * Clears all mode-specific content while keeping the header rows.
+     */
     private void clearBelowTop() {
         // Keep first 3 rows (title + coins + status). Remove everything else.
         // Easiest: rebuild full content below by clearing & re-adding top area.
@@ -183,6 +236,9 @@ public class GamblingScreen implements Screen {
     // MAIN MENU
     // =========================================================
 
+    /**
+     * Shows the main gambling mode selection menu.
+     */
     private void showMenu() {
         mode = Mode.MENU;
         clearBelowTop();
@@ -248,6 +304,11 @@ public class GamblingScreen implements Screen {
     }
 
 
+    /**
+     * Sets the status label to include a custom hint block.
+     *
+     * @param text Hint text to append
+     */
     private void setStatusHint(String text) {
         String info = "";
         info += "Coins: " + prog.getCoins() + "\n";
@@ -266,6 +327,11 @@ public class GamblingScreen implements Screen {
         statusLabel.setText(info + "\nCaution: gambling stats apply only to the current run.\n\n" + text);
     }
 
+    /**
+     * Updates the dealer dialogue line.
+     *
+     * @param text Dialogue text to display
+     */
     private void setDealerLine(String text) {
         dealerLabel.setText(text);
         if (!dialogueActive) {
@@ -274,6 +340,12 @@ public class GamblingScreen implements Screen {
         }
     }
 
+    /**
+     * Starts a scripted dialogue sequence.
+     *
+     * @param lines Dialogue lines to show
+     * @param onDone Callback executed when the dialogue completes
+     */
     private void startDialogue(String[] lines, Runnable onDone) {
         dialogueLines = lines;
         dialogueIndex = 0;
@@ -289,6 +361,9 @@ public class GamblingScreen implements Screen {
         dialogueNextBtn.setVisible(lines.length > 0);
     }
 
+    /**
+     * Advances the dialogue to the next line or finishes the sequence.
+     */
     private void advanceDialogue() {
         if (!dialogueActive || dialogueLines == null) return;
 
@@ -316,6 +391,9 @@ public class GamblingScreen implements Screen {
     // SLOTS
     // =========================================================
 
+    /**
+     * Builds and displays the slots UI.
+     */
     private void showSlots() {
         mode = Mode.SLOTS;
         contentRoot.setVisible(true);
@@ -375,6 +453,11 @@ public class GamblingScreen implements Screen {
         refreshTopBar();
     }
 
+    /**
+     * Updates slot button states based on stats and coins.
+     *
+     * @param spinBtn Spin button to enable or disable
+     */
     private void updateSlotsButtonStates(TextButton spinBtn) {
         int ps = run.speed;
         int st = run.strength;
@@ -385,6 +468,12 @@ public class GamblingScreen implements Screen {
         spinBtn.setDisabled(!(canPlay && hasCoinsForSpin));
     }
 
+    /**
+     * Attempts to buy a stat point when below the minimum.
+     *
+     * @param which Stat to buy ("speed" or "strength")
+     * @return Result message for the UI
+     */
     private String buyStat(String which) {
         int coins = prog.getCoins();
         if (coins < STAT_BUY_COST) return "Not enough coins.";
@@ -410,6 +499,11 @@ public class GamblingScreen implements Screen {
         return "Unknown stat.";
     }
 
+    /**
+     * Executes a slot spin and applies rewards or penalties.
+     *
+     * @return Result message for the UI
+     */
     private String doSlotSpin() {
         int ps = run.speed;
         int st = run.strength;
@@ -487,6 +581,9 @@ public class GamblingScreen implements Screen {
     // BLACKJACK
     // =========================================================
 
+    /**
+     * Builds and displays the blackjack UI.
+     */
     private void showBlackjack() {
         mode = Mode.BLACKJACK;
         contentRoot.setVisible(true);
@@ -622,6 +719,12 @@ public class GamblingScreen implements Screen {
         refreshTopBar();
     }
 
+    /**
+     * Parses the bet field input safely.
+     *
+     * @param text Bet input text
+     * @return Parsed bet amount or 0 on error
+     */
     private int parseBet(String text) {
         try {
             if (text == null || text.isEmpty()) return 0;
@@ -631,6 +734,12 @@ public class GamblingScreen implements Screen {
         }
     }
 
+    /**
+     * Starts a new blackjack hand with the given bet.
+     *
+     * @param bet Bet amount in coins
+     * @return Result message for the UI
+     */
     private String startBlackjackHand(int bet) {
         if (bet < 10) return "Bet must be at least 10 coins.";
         if (bet > prog.getCoins()) return "Not enough coins for that bet.";
@@ -644,6 +753,11 @@ public class GamblingScreen implements Screen {
         return maybeResolveBlackjackAfterPlayerAction();
     }
 
+    /**
+     * Resolves immediate blackjack outcomes after a player action.
+     *
+     * @return Result message for the UI
+     */
     private String maybeResolveBlackjackAfterPlayerAction() {
         if (!blackjack.inHand) return "No active hand.";
 
@@ -664,6 +778,11 @@ public class GamblingScreen implements Screen {
         return "Your move: Hit or Stand.";
     }
 
+    /**
+     * Resolves the blackjack hand and applies payouts or bonuses.
+     *
+     * @return Result message for the UI
+     */
     private String resolveBlackjackAndMaybeGrantHeart() {
         int pv = blackjack.playerValue();
         int dv = blackjack.dealerValue();
@@ -711,11 +830,22 @@ public class GamblingScreen implements Screen {
     // BLACKJACK GAME LOGIC (simple) (simple)
     // =========================================================
 
+    /**
+     * Lightweight blackjack rules and hand tracking for the screen.
+     */
     private static class BlackjackGame {
+        /** Whether the dealer's hidden card is revealed. */
         boolean revealDealer = false;
+        /** Current bet amount. */
         int bet = 0;
+        /** Whether a hand is currently in progress. */
         boolean inHand = false;
 
+        /**
+         * Draws a card for the dealer.
+         *
+         * @return Card value drawn
+         */
         int dealerDraw() {
             int c = drawCard();
             dealer[dealerCount++] = c;
@@ -724,12 +854,21 @@ public class GamblingScreen implements Screen {
 
 
         // each card is 1..11 (Ace=11), face cards treated as 10
+        /** Player hand card values. */
         int[] player = new int[12];
+        /** Number of cards in the player hand. */
         int playerCount = 0;
 
+        /** Dealer hand card values. */
         int[] dealer = new int[12];
+        /** Number of cards in the dealer hand. */
         int dealerCount = 0;
 
+        /**
+         * Starts a new hand and deals initial cards.
+         *
+         * @param bet Bet amount for this hand
+         */
         void startHand(int bet) {
             this.bet = bet;
             this.inHand = true;
@@ -751,10 +890,16 @@ public class GamblingScreen implements Screen {
             player[playerCount++] = drawCard();
         }
 
+        /**
+         * Marks the player as standing (resolution handled externally).
+         */
         void playerStand() {
             // no-op here, resolve handled by screen
         }
 
+        /**
+         * Plays out the dealer hand until reaching 17 or higher.
+         */
         void dealerPlay() {
             // Dealer hits until 17 or more
             while (dealerValue() < 17) {
@@ -766,14 +911,30 @@ public class GamblingScreen implements Screen {
             return handValue(player, playerCount);
         }
 
+        /**
+         * Calculates the dealer hand value.
+         *
+         * @return Dealer hand value
+         */
         int dealerValue() {
             return handValue(dealer, dealerCount);
         }
 
+        /**
+         * Renders the current hand state using reveal flag.
+         *
+         * @return Rendered state text
+         */
         String renderState() {
             return renderState(revealDealer);
         }
 
+        /**
+         * Renders the current hand state with optional dealer reveal.
+         *
+         * @param revealDealer Whether to show the dealer's full hand
+         * @return Rendered state text
+         */
         String renderState(boolean revealDealer) {
             StringBuilder sb = new StringBuilder();
             sb.append("Your hand: ").append(renderHand(player, playerCount))
@@ -791,6 +952,13 @@ public class GamblingScreen implements Screen {
         }
 
 
+        /**
+         * Calculates hand value with ace adjustment.
+         *
+         * @param cards Hand card values
+         * @param count Number of cards in hand
+         * @return Hand value
+         */
         private int handValue(int[] cards, int count) {
             int sum = 0;
             int aces = 0;
@@ -810,6 +978,13 @@ public class GamblingScreen implements Screen {
             return sum;
         }
 
+        /**
+         * Renders a hand as a readable string.
+         *
+         * @param cards Hand card values
+         * @param count Number of cards in hand
+         * @return Rendered hand string
+         */
         private String renderHand(int[] cards, int count) {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < count; i++) {
@@ -819,12 +994,23 @@ public class GamblingScreen implements Screen {
             return sb.toString();
         }
 
+        /**
+         * Converts a card value to a display name.
+         *
+         * @param v Card value
+         * @return Card name
+         */
         private String cardName(int v) {
             if (v == 11) return "A";
             if (v == 10) return "10";
             return String.valueOf(v);
         }
 
+        /**
+         * Draws a random card value.
+         *
+         * @return Drawn card value
+         */
         private int drawCard() {
             // 1..13 mapped to values: Ace=11, 2..10=2..10, J/Q/K=10
             int r = MathUtils.random(1, 13);
@@ -846,6 +1032,11 @@ public class GamblingScreen implements Screen {
         }
     }
 
+    /**
+     * Updates the screen and handles input for exiting to menu.
+     *
+     * @param delta Time since last frame
+     */
     @Override
     public void render(float delta) {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
@@ -859,6 +1050,14 @@ public class GamblingScreen implements Screen {
         stage.draw();
     }
 
+    /**
+     * Enables or disables blackjack action buttons.
+     *
+     * @param placeBet Place bet button
+     * @param hit Hit button
+     * @param stand Stand button
+     * @param enabled Whether buttons are enabled
+     */
     private void setBlackjackButtonsEnabled(TextButton placeBet, TextButton hit, TextButton stand, boolean enabled) {
         placeBet.setDisabled(!enabled);
         if (enabled) {
@@ -869,6 +1068,14 @@ public class GamblingScreen implements Screen {
             stand.setDisabled(true);
         }
     }
+    /**
+     * Animates the dealer drawing cards and resolves the hand.
+     *
+     * @param state Label used to display state updates
+     * @param placeBetBtn Place bet button
+     * @param hitBtn Hit button
+     * @param standBtn Stand button
+     */
     private void animateDealerPlay(Label state, TextButton placeBetBtn, TextButton hitBtn, TextButton standBtn) {
 
         if (blackjack.dealerValue() < 17) {
@@ -895,19 +1102,32 @@ public class GamblingScreen implements Screen {
     }
 
 
+    /**
+     * Updates the viewport and background scaling on resize.
+     *
+     * @param width New window width
+     * @param height New window height
+     */
     @Override public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
         if (dealerImage != null) dealerImage.setSize(width, height);
     }
+    /** Pauses the screen (no-op). */
     @Override public void pause() {}
+    /** Resumes the screen (no-op). */
     @Override public void resume() {}
+    /** Hides the screen (no-op). */
     @Override public void hide() {}
+    /** Disposes UI resources and sound assets. */
     @Override public void dispose() {
         stage.dispose();
         if (dealerTexture != null) dealerTexture.dispose();
         if (cardsSound != null) cardsSound.dispose();
     }
 
+    /**
+     * Plays the card sound effect at the configured volume.
+     */
     private void playCardsSound() {
         if (cardsSound == null) {
             cardsSound = Gdx.audio.newSound(Gdx.files.internal("cards.mp3"));

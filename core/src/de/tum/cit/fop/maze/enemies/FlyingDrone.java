@@ -23,61 +23,100 @@ import de.tum.cit.fop.maze.player.Player;
  */
 public class FlyingDrone extends Enemy {
 
+    /** Render width in world units. */
     public static final float RENDER_WIDTH  = 32f;
+    /** Render height in world units. */
     public static final float RENDER_HEIGHT = 32f;
 
+    /** Number of frames for flight animation. */
     private static final int FLY_FRAMES = 5;
+    /** Duration of each flight frame. */
     private static final float FLY_FRAME_DURATION = 0.12f;
 
+    /** Hover offsets for bobbing effect. */
     private static final float[] HOVER_Y_OFFSETS = {0f, 4f, 8f, 4f, 0f};
 
+    /** Attack radius in world units. */
     private static final float ATTACK_RADIUS = 120f;
+    /** Minimum safe radius from the player. */
     private static final float MIN_SAFE_RADIUS = 80f;
 
+    /** Whether the drone is actively attacking. */
     private boolean attacking = false;
+    /** Attack timer used for animation. */
     private float attackTimer = 0f;
 
+    /** Maximum HP for this enemy type. */
     private static final int MAX_HP = 5;
 
+    /** Active laser projectiles. */
     private final Array<DroneLaser> lasers = new Array<>();
+    /** Laser lock time for charging effects. */
     private float laserLockTime = 0f;
+    /** Maximum lock time. */
     private static final float MAX_LASER_LOCK = 3.0f;
 
+    /** Laser gun x-offset relative to sprite. */
     private static final float LASER_GUN_OFFSET_X = 0f;
+    /** Laser gun y-offset relative to sprite. */
     private static final float LASER_GUN_OFFSET_Y = 6f;
 
+    /** Laser fire cooldown. */
     private float laserCooldown = 0f;
+    /** Interval between laser shots. */
     private static final float LASER_INTERVAL = 0.02f;
 
+    /** Number of frames for death animation. */
     private static final int DEATH_FRAMES = 6;
+    /** Duration of each death frame. */
     private static final float DEATH_FRAME_DURATION = 0.16f;
+    /** Death animation sequence. */
     private static Animation<TextureRegion> deathAnim;
 
+    /** Death sound effect. */
     private static Sound deathSound;
+    /** Laser loop sound effect. */
     private static Sound laserSound;
+    /** Active laser sound instance id. */
     private long laserSoundId = -1;
 
+    /** Minimum laser sound volume. */
     private static final float LASER_VOLUME_MIN = 0.1f;
+    /** Maximum laser sound volume. */
     private static final float LASER_VOLUME_MAX = 0.3f;
 
+    /** Death animation timer. */
     private float deathTimer = 0f;
+    /** Whether death sound has played. */
     private boolean deathSoundPlayed = false;
 
+    /** Cardinal directions for animation selection. */
     private enum Direction { DOWN, LEFT, RIGHT, UP }
+    /** Current facing direction. */
     private Direction currentDirection = Direction.DOWN;
 
+    /** Patrol points for the drone. */
     private final Array<Vector2> patrolPoints;
 
+    /** Idle animation. */
     private static Animation<TextureRegion> idle;
+    /** Patrol scan animation. */
     private static Animation<TextureRegion> patrolScan;
+    /** Fly left animation. */
     private static Animation<TextureRegion> flyLeft;
+    /** Fly right animation. */
     private static Animation<TextureRegion> flyRight;
+    /** Scan animation. */
     private static Animation<TextureRegion> scan;
 
+    /** Animation timer for flight/scan animations. */
     private float animationTimer = 0f;
 
+    /** Previous position used to infer direction. */
     private final Vector2 lastPosition = new Vector2();
+    /** Whether to snap to tile center on chase start. */
     private boolean snapToCenterOnChase = false;
+    /** Whether to snap to tile center on return to patrol. */
     private boolean snapToCenterOnReturn = false;
 
     /**
@@ -187,6 +226,11 @@ public class FlyingDrone extends Enemy {
         return new PatrolBehavior(patrolPoints);
     }
 
+    /**
+     * Returns the nearest patrol point to the drone.
+     *
+     * @return Closest patrol point
+     */
     public Vector2 getClosestPatrolPoint() {
         Vector2 pos = getPosition();
         Vector2 closest = patrolPoints.first();
@@ -202,6 +246,11 @@ public class FlyingDrone extends Enemy {
         return closest;
     }
 
+    /**
+     * Creates a patrol behavior for this drone.
+     *
+     * @return Patrol behavior instance
+     */
     public BehaviorState createPatrolBehavior() {
         return new PatrolBehavior(patrolPoints);
     }
@@ -283,6 +332,9 @@ public class FlyingDrone extends Enemy {
     }
 
     // Spawn laser projectile
+    /**
+     * Fires a laser projectile toward the player.
+     */
     private void fireLaserAtPlayer() {
         if (targetPlayer == null) return;
 
@@ -295,6 +347,12 @@ public class FlyingDrone extends Enemy {
     }
 
     // Move away if too close
+    /**
+     * Moves away from the player when too close.
+     *
+     * @param deltaTime Time since last frame
+     * @param maze Maze for collision checks
+     */
     private void moveAwayFromPlayer(float deltaTime, Maze maze) {
         Vector2 pos = getPosition();
         Vector2 playerPos = getPlayerPosition();
@@ -307,6 +365,9 @@ public class FlyingDrone extends Enemy {
     }
 
     // Update facing from movement
+    /**
+     * Updates facing direction based on movement delta.
+     */
     private void updateDirectionFromMovement() {
         Vector2 pos = getPosition();
 
@@ -351,6 +412,11 @@ public class FlyingDrone extends Enemy {
     }
 
     // Hover bob offset
+    /**
+     * Returns the hover Y offset for bobbing effect.
+     *
+     * @return Hover offset in world units
+     */
     public float getHoverYOffset() {
         int frameIndex = patrolScan.getKeyFrameIndex(animationTimer);
         return HOVER_Y_OFFSETS[frameIndex % HOVER_Y_OFFSETS.length];
@@ -358,40 +424,80 @@ public class FlyingDrone extends Enemy {
 
     /**
      * Returns active laser projectiles.
+     *
+     * @return Laser list
      */
     public Array<DroneLaser> getLasers() {
         return lasers;
     }
 
+    /**
+     * Checks whether laser attack is active.
+     *
+     * @return True if attacking
+     */
     public boolean isLaserActive() {
         return attacking;
     }
 
+    /**
+     * Computes the laser start point.
+     *
+     * @return Laser start position
+     */
     public Vector2 getLaserStart() {
         return new Vector2(getX() + getRenderWidth() * 0.5f + LASER_GUN_OFFSET_X, getY() + LASER_GUN_OFFSET_Y);
     }
 
+    /**
+     * Computes the laser end point (player position).
+     *
+     * @return Laser end position
+     */
     public Vector2 getLaserEnd() {
         if (targetPlayer == null) return getLaserStart();
         return new Vector2(targetPlayer.getX() + 16f, targetPlayer.getY() + 32f);
     }
 
+    /**
+     * Increases laser lock time up to the max.
+     *
+     * @param dt Delta time
+     */
     public void increaseLaserLock(float dt) {
         laserLockTime = Math.min(laserLockTime + dt, MAX_LASER_LOCK);
     }
 
+    /**
+     * Resets the laser lock time.
+     */
     public void resetLaserLock() {
         laserLockTime = 0f;
     }
 
+    /**
+     * Returns the normalized laser charge.
+     *
+     * @return Charge value from 0 to 1
+     */
     public float getLaserCharge() {
         return laserLockTime / MAX_LASER_LOCK;
     }
 
+    /**
+     * Returns the current laser lock time.
+     *
+     * @return Laser lock time in seconds
+     */
     public float getLaserLockTime() {
         return laserLockTime;
     }
 
+    /**
+     * Checks whether the player is within attack range.
+     *
+     * @return True if in range
+     */
     private boolean isPlayerInAttackRange() {
         if (targetPlayer == null) return false;
         float dist2 = getPosition().dst2(getPlayerPosition());
@@ -407,6 +513,9 @@ public class FlyingDrone extends Enemy {
         laserSoundId = laserSound.loop(LASER_VOLUME_MIN * getSfxVolume());
     }
 
+    /**
+     * Updates laser sound volume based on charge.
+     */
     private void updateLaserSoundVolume() {
         if (laserSound == null) return;
         if (laserSoundId == -1) return;
@@ -419,6 +528,9 @@ public class FlyingDrone extends Enemy {
     }
 
     // Stop laser sound
+    /**
+     * Stops the looping laser sound.
+     */
     private void stopLaserSound() {
         if (laserSound == null) return;
         if (laserSoundId == -1) return;
@@ -427,6 +539,9 @@ public class FlyingDrone extends Enemy {
         laserSoundId = -1;
     }
 
+    /**
+     * Stops all looping drone sounds.
+     */
     public void stopAllSounds() {
         stopLaserSound();
     }
@@ -484,6 +599,11 @@ public class FlyingDrone extends Enemy {
         lasers.clear();
     }
 
+    /**
+     * Retrieves SFX volume from preferences.
+     *
+     * @return SFX volume
+     */
     private float getSfxVolume() {
         if (Gdx.app == null) return 1f;
         return Gdx.app.getPreferences("maze_runner_prefs").getFloat("sound_vol", 0.5f);

@@ -15,6 +15,7 @@ import java.util.List;
  */
 public class EntranceFinder {
 
+    /** Cardinal direction offsets for adjacency checks. */
     private static final int[][] DIRS = {
             { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }
     };
@@ -66,11 +67,27 @@ public class EntranceFinder {
         return entrances;
     }
 
+    /**
+     * Checks whether a tile is on the edge of the room.
+     *
+     * @param r Room reference
+     * @param x Tile x-coordinate
+     * @param y Tile y-coordinate
+     * @return True if on the room boundary
+     */
     private static boolean isRoomEdge(Room r, int x, int y) {
         return x == r.x() || x == r.x() + r.w() - 1
                 || y == r.y() || y == r.y() + r.h() - 1;
     }
 
+    /**
+     * Checks whether a coordinate lies within a room.
+     *
+     * @param r Room reference
+     * @param x Tile x-coordinate
+     * @param y Tile y-coordinate
+     * @return True if inside the room
+     */
     private static boolean roomContains(Room r, int x, int y) {
         return x >= r.x() && x < r.x() + r.w()
                 && y >= r.y() && y < r.y() + r.h();

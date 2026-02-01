@@ -14,6 +14,7 @@ import java.util.List;
  */
 public final class SteeringBehavior {
 
+    /** Distance threshold for waypoint arrival. */
     private static final float ARRIVAL_THRESHOLD = 4f;
 
     private SteeringBehavior() {}
@@ -97,6 +98,14 @@ public final class SteeringBehavior {
         return currentWaypointIndex;
     }
 
+    /**
+     * Clamps a target to a reachable edge aligned with the current position.
+     *
+     * @param from Current position
+     * @param target Target position
+     * @param tileSize Tile size in world units
+     * @return Adjusted target on a shared axis
+     */
     private static Vector2 clampToReachableEdge(Vector2 from, Vector2 target, float tileSize) {
         Vector2 moveDir = target.cpy().sub(from);
 
@@ -112,6 +121,12 @@ public final class SteeringBehavior {
      *
      * Instead of moving directly to the center of the next tile, it
      * guids through the shared edge.
+     *
+     * @param fromTile Current tile
+     * @param toTile Next tile
+     * @param currentPos Current world position
+     * @param tileSize Tile size in world units
+     * @return Transition target in world coordinates
      */
     private static Vector2 getTransitionTarget(Point fromTile, Point toTile, Vector2 currentPos, float tileSize) {
         float centerX = fromTile.x * tileSize + tileSize * 0.5f;

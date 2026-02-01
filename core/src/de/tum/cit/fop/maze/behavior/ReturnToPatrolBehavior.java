@@ -20,7 +20,9 @@ import java.util.List;
  */
 public class ReturnToPatrolBehavior implements BehaviorState {
 
+    /** Current path back to patrol. */
     private List<Point> path = List.of();
+    /** Current waypoint index in the path. */
     private int index = 0;
 
     /**
@@ -89,6 +91,13 @@ public class ReturnToPatrolBehavior implements BehaviorState {
     }
 
 
+    /**
+     * Converts world position to tile coordinates.
+     *
+     * @param pos World position
+     * @param maze Maze reference
+     * @return Tile coordinates
+     */
     private Point toTile(Vector2 pos, Maze maze) {
         return new Point(
                 (int) (pos.x / maze.getTileSize()),

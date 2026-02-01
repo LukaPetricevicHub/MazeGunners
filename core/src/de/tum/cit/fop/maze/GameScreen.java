@@ -21,11 +21,10 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.utils.Timer;
-import de.tum.cit.fop.maze.ui.UiButtons;
-
-
 import de.tum.cit.fop.maze.camera.GameCamera;
 import de.tum.cit.fop.maze.camera.CameraInputController;
 import de.tum.cit.fop.maze.enemies.*;
@@ -42,16 +41,15 @@ import de.tum.cit.fop.maze.world.*;
 import de.tum.cit.fop.maze.ui.PauseMenuWindow;
 import de.tum.cit.fop.maze.ui.GameOverWindow;
 import de.tum.cit.fop.maze.ui.DialogueWindow;
+import de.tum.cit.fop.maze.ui.VictoryWindow;
 import de.tum.cit.fop.maze.ui.UiButtons;
 
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import de.tum.cit.fop.maze.ui.UiButtons;
 
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import de.tum.cit.fop.maze.ui.UiButtons;
 
 /**
  * Main gameplay screen of the Maze Runner game.
@@ -80,6 +78,7 @@ public class GameScreen implements Screen {
     private boolean isPaused = false;
     private boolean storyShown = false;
     private boolean storyBlocking = false;
+    private float storyExitHintTimer = 0f;
     private Stage pauseStage;
     private Window pauseWindow;
     private Window settingsWindow;
@@ -295,13 +294,28 @@ public class GameScreen implements Screen {
 
 
             boolean onExit = worldLogic.isPlayerOnExit(player, maze);
+            if (storyExitHintTimer > 0f) {
+                storyExitHintTimer -= delta;
+            }
 
-            if (endlessMode && onExit && player.hasKey()) {
+            if (onExit && storyExitHintTimer <= 0f) {
+                if (!player.hasKey()) {
+                    hud.showNotification("I still need the key!");
+                    storyExitHintTimer = 2f;
+                } else if (!player.hasStoryItem()) {
+                    String need = player.getCurrentStoryItemName();
+                    if (need == null || need.isEmpty()) need = "story item";
+                    hud.showNotification("I still need the " + need + "!");
+                    storyExitHintTimer = 2f;
+                }
+            }
+
+            if (endlessMode && onExit && player.hasKey() && player.hasStoryItem()) {
                 advanceToNextFloor();
                 return;
             }
 
-            gameStateController.update(delta, onExit, player.hasKey(), player.getLives());
+            gameStateController.update(delta, onExit, player.hasKey() && player.hasStoryItem(), player.getLives());
 
             if (!isGameOverShown) {
                 if (gameStateController.getState() == GameStateController.State.WON) {
@@ -534,6 +548,9 @@ public class GameScreen implements Screen {
         // Exit target for arrow & hints
         updateHudExitTarget();
 
+        player.resetStoryItem();
+        player.setCurrentStoryItemName(StoryManager.getStoryItemName(endlessMode ? floor : level));
+
         int lv = clampLevel(endlessMode ? floor : level);
 
         enemyCount = ENEMIES_PER_LEVEL[lv];
@@ -630,6 +647,16 @@ public class GameScreen implements Screen {
             if (savedState.hasKey) {
                 player.giveKey();
             }
+            player.setCurrentStoryItemName(
+                    savedState.storyItemName != null && !savedState.storyItemName.isEmpty()
+                            ? savedState.storyItemName
+                            : StoryManager.getStoryItemName(endlessMode ? floor : level)
+            );
+            if (savedState.hasStoryItem) {
+                player.giveStoryItem(player.getCurrentStoryItemName());
+            } else {
+                player.resetStoryItem();
+            }
             if (savedState.godMode) {
                 player.setGodMode(true);
             }
@@ -644,6 +671,9 @@ public class GameScreen implements Screen {
                     System.out.println("Saved position invalid (wall). Using default spawn.");
                 }
             }
+        } else {
+            player.resetStoryItem();
+            player.setCurrentStoryItemName(StoryManager.getStoryItemName(endlessMode ? floor : level));
         }
 
         player.applyRunGamble(game.getRunGamble());
@@ -704,6 +734,12 @@ public class GameScreen implements Screen {
                 else if (is.type.equals("speed")) items.add(new SpeedItem(is.x, is.y));
                 else if (is.type.equals("shield")) items.add(new ShieldItem(is.x, is.y));
                 else if (is.type.equals("key") && !player.hasKey()) items.add(new KeyItem(is.x, is.y));
+                else if (is.type.equals("story") && !player.hasStoryItem()) {
+                    String name = (is.name == null || is.name.isEmpty())
+                            ? StoryManager.getStoryItemName(endlessMode ? floor : level)
+                            : is.name;
+                    items.add(new de.tum.cit.fop.maze.items.StoryItem(is.x, is.y, name));
+                }
                 else if (is.type.equals("ammo")) items.add(new AmmoItem(is.x, is.y));
             }
         } else {
@@ -711,6 +747,7 @@ public class GameScreen implements Screen {
         }
 
         ensureKeyItemPresent(seed);
+        ensureStoryItemPresent();
     }
 
     /**
@@ -888,6 +925,9 @@ public class GameScreen implements Screen {
         hud = new Hud(uiViewport, game.getSpriteBatch(), game.getSkin());
         if (game.getAchievementManager() != null) {
             game.getAchievementManager().setHud(hud);
+        }
+        if (player != null) {
+            player.setHudNotifier(hud::showNotification);
         }
     }
 
@@ -1139,10 +1179,31 @@ public class GameScreen implements Screen {
         if (settingsWindow != null) settingsWindow.setVisible(false);
 
 
-        GameOverWindow window = new GameOverWindow(game.getSkin(), game, level, won, activeLevelFile != null ? activeLevelFile : levelFile, player.getScore(), player, endlessMode, floor);
-        window.setPosition((uiViewport.getWorldWidth() - window.getWidth()) / 2f, (uiViewport.getWorldHeight() - window.getHeight()) / 2f);
-
-        pauseStage.addActor(window);
+        if (won && !endlessMode && level >= 5) {
+            VictoryWindow window = new VictoryWindow(game.getSkin(), game, level, player.getScore());
+            window.setPosition(
+                    (uiViewport.getWorldWidth() - window.getWidth()) / 2f,
+                    (uiViewport.getWorldHeight() - window.getHeight()) / 2f
+            );
+            pauseStage.addActor(window);
+        } else {
+            GameOverWindow window = new GameOverWindow(
+                    game.getSkin(),
+                    game,
+                    level,
+                    won,
+                    activeLevelFile != null ? activeLevelFile : levelFile,
+                    player.getScore(),
+                    player,
+                    endlessMode,
+                    floor
+            );
+            window.setPosition(
+                    (uiViewport.getWorldWidth() - window.getWidth()) / 2f,
+                    (uiViewport.getWorldHeight() - window.getHeight()) / 2f
+            );
+            pauseStage.addActor(window);
+        }
 
         isPaused = true;
         Gdx.input.setInputProcessor(pauseStage);
@@ -1160,10 +1221,40 @@ public class GameScreen implements Screen {
         settingsWindow.getTitleLabel().setAlignment(1);
         settingsWindow.setMovable(false);
 
-        settingsWindow.add(new Label("Music Volume", game.getSkin())).padTop(10).row();
+        Table content = new Table();
+        content.top();
+
+        content.add(new Label("Display", game.getSkin())).padTop(10).row();
+        Table resRow = new Table();
+        TextField widthField = new TextField("" + Gdx.graphics.getWidth(), game.getSkin());
+        TextField heightField = new TextField("" + Gdx.graphics.getHeight(), game.getSkin());
+        widthField.setMessageText("Width");
+        heightField.setMessageText("Height");
+        resRow.add(widthField).width(90).padRight(8);
+        resRow.add(heightField).width(90);
+        content.add(resRow).padBottom(10).row();
+
+        TextButton applyResBtn = UiButtons.button("Apply Resolution", game.getSkin());
+        applyResBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                playClickSound();
+                try {
+                    int w = Integer.parseInt(widthField.getText().trim());
+                    int h = Integer.parseInt(heightField.getText().trim());
+                    if (w > 0 && h > 0) {
+                        Gdx.graphics.setWindowedMode(w, h);
+                    }
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        });
+        content.add(applyResBtn).width(200).padBottom(20).row();
+
+        content.add(new Label("Music Volume", game.getSkin())).padTop(10).row();
         final Slider musicSlider = new Slider(0f, 1f, 0.05f, false, game.getSkin());
         musicSlider.setValue(game.getPreferences().getMusicVolume());
-        settingsWindow.add(musicSlider).width(200).row();
+        content.add(musicSlider).width(200).row();
 
         musicSlider.addListener(new ChangeListener() {
             @Override
@@ -1174,10 +1265,10 @@ public class GameScreen implements Screen {
             }
         });
 
-        settingsWindow.add(new Label("SFX Volume", game.getSkin())).padTop(10).row();
+        content.add(new Label("SFX Volume", game.getSkin())).padTop(10).row();
         final Slider sfxSlider = new Slider(0f, 1f, 0.05f, false, game.getSkin());
         sfxSlider.setValue(game.getPreferences().getSoundVolume());
-        settingsWindow.add(sfxSlider).width(200).padBottom(20).row();
+        content.add(sfxSlider).width(200).padBottom(20).row();
 
         sfxSlider.addListener(new ChangeListener() {
             @Override
@@ -1186,6 +1277,38 @@ public class GameScreen implements Screen {
                 game.getPreferences().setSoundVolume(sfxSlider.getValue());
             }
         });
+
+        content.add(new Label("Controls", game.getSkin())).padTop(15).row();
+        Table keybindTable = new Table();
+        keybindTable.defaults().width(200).pad(6);
+
+        keybindTable.add(createKeyBindButton("Up", game.getPreferences().getKeyUp(),
+                key -> game.getPreferences().setKeyUp(key)));
+        keybindTable.add(createKeyBindButton("Left", game.getPreferences().getKeyLeft(),
+                key -> game.getPreferences().setKeyLeft(key)));
+        keybindTable.add(createKeyBindButton("Down", game.getPreferences().getKeyDown(),
+                key -> game.getPreferences().setKeyDown(key)));
+        keybindTable.add(createKeyBindButton("Right", game.getPreferences().getKeyRight(),
+                key -> game.getPreferences().setKeyRight(key))).row();
+
+        keybindTable.add(createKeyBindButton("Pause", game.getPreferences().getKeyPause(),
+                key -> game.getPreferences().setKeyPause(key)));
+        keybindTable.add(createKeyBindButton("Map", game.getPreferences().getKeyMap(),
+                key -> game.getPreferences().setKeyMap(key)));
+        keybindTable.add(createKeyBindButton("Melee", game.getPreferences().getKeyMelee(),
+                key -> game.getPreferences().setKeyMelee(key)));
+        keybindTable.add(createKeyBindButton("Shoot", game.getPreferences().getKeyShoot(),
+                key -> game.getPreferences().setKeyShoot(key))).row();
+
+        keybindTable.add(createKeyBindButton("Dash", game.getPreferences().getKeyDash(),
+                key -> game.getPreferences().setKeyDash(key)));
+        keybindTable.add(createKeyBindButton("Repulse", game.getPreferences().getKeyRepulse(),
+                key -> game.getPreferences().setKeyRepulse(key))).row();
+
+        ScrollPane keybindScroll = new ScrollPane(keybindTable, game.getSkin());
+        keybindScroll.setFadeScrollBars(false);
+        keybindScroll.setScrollingDisabled(true, false);
+        content.add(keybindScroll).width(uiViewport.getWorldWidth() - 120f).height(240f).padBottom(10).row();
 
         TextButton backBtn = UiButtons.button("Back", game.getSkin());
         backBtn.addListener(new ChangeListener() {
@@ -1197,17 +1320,54 @@ public class GameScreen implements Screen {
             }
         });
 
-        settingsWindow.add(backBtn).width(200).pad(10).row();
+        content.add(backBtn).width(200).pad(10).row();
+
+        ScrollPane settingsScroll = new ScrollPane(content, game.getSkin());
+        settingsScroll.setFadeScrollBars(false);
+        settingsScroll.setScrollingDisabled(true, false);
+        settingsWindow.add(settingsScroll).grow().row();
         settingsWindow.pack();
         centerSettingsWindow();
     }
 
     private void centerSettingsWindow() {
-        if (settingsWindow == null || viewport == null) return;
+        if (settingsWindow == null || uiViewport == null) return;
+        float targetW = uiViewport.getWorldWidth() * 0.8f;
+        float targetH = uiViewport.getWorldHeight() * 0.8f;
+        settingsWindow.setSize(targetW, targetH);
         settingsWindow.setPosition(
-                (viewport.getWorldWidth() - settingsWindow.getWidth()) / 2f,
-                (viewport.getWorldHeight() - settingsWindow.getHeight()) / 2f
+                (uiViewport.getWorldWidth() - targetW) / 2f,
+                (uiViewport.getWorldHeight() - targetH) / 2f
         );
+    }
+
+    private void addKeyBindRow(Table table, String name, int key, java.util.function.Consumer<Integer> onSave) {
+        table.add(createKeyBindButton(name, key, onSave)).width(200).padBottom(8).row();
+    }
+
+    private TextButton createKeyBindButton(String actionName, int currentKey, java.util.function.Consumer<Integer> onSave) {
+        String keyName = Input.Keys.toString(currentKey);
+        final TextButton button = UiButtons.button(actionName + ": " + keyName, game.getSkin());
+        button.getLabel().setWrap(true);
+
+        button.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                button.setText(actionName + ": Press key...");
+                playClickSound();
+
+                pauseStage.addListener(new InputListener() {
+                    @Override
+                    public boolean keyDown(InputEvent event, int keycode) {
+                        onSave.accept(keycode);
+                        button.setText(actionName + ": " + Input.Keys.toString(keycode));
+                        pauseStage.removeListener(this);
+                        return true;
+                    }
+                });
+            }
+        });
+        return button;
     }
 
     @Override
@@ -1255,6 +1415,8 @@ public class GameScreen implements Screen {
         Point safeSpawn = findSafeSpawnPosition(entry, maze);
         player.setPosition(safeSpawn.x * TILE_SIZE, safeSpawn.y * TILE_SIZE);
         player.clearKey();
+        player.resetStoryItem();
+        player.setCurrentStoryItemName(StoryManager.getStoryItemName(floor));
 
         initializeEnemiesAndObstacles(seed);
         applyEndlessScaling();
@@ -1387,6 +1549,53 @@ public class GameScreen implements Screen {
                 items.add(new KeyItem(p.x * TILE_SIZE, p.y * TILE_SIZE));
             }
         }
+    }
+
+    private void ensureStoryItemPresent() {
+        if (player == null || player.hasStoryItem()) return;
+        if (items == null) items = new ArrayList<>();
+
+        for (Collectable c : items) {
+            if (c instanceof de.tum.cit.fop.maze.items.StoryItem) return;
+        }
+
+        String name = StoryManager.getStoryItemName(endlessMode ? floor : level);
+        if (name == null || name.isEmpty()) return;
+
+        int cx = maze.getWidth() / 2;
+        int cy = maze.getHeight() / 2;
+        Point p = findNearestWalkable(cx, cy);
+        if (p != null) {
+            items.add(new de.tum.cit.fop.maze.items.StoryItem(p.x * TILE_SIZE, p.y * TILE_SIZE, name));
+        }
+    }
+
+    private Point findNearestWalkable(int startX, int startY) {
+        if (maze == null) return null;
+        int w = maze.getWidth();
+        int h = maze.getHeight();
+        int maxR = Math.max(w, h);
+        for (int r = 0; r <= maxR; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                int x1 = startX + dx;
+                int y1 = startY - r;
+                int y2 = startY + r;
+                if (x1 >= 0 && x1 < w) {
+                    if (y1 >= 0 && y1 < h && maze.getTile(x1, y1).isWalkable()) return new Point(x1, y1);
+                    if (y2 >= 0 && y2 < h && maze.getTile(x1, y2).isWalkable()) return new Point(x1, y2);
+                }
+            }
+            for (int dy = -r + 1; dy <= r - 1; dy++) {
+                int y1 = startY + dy;
+                int x1 = startX - r;
+                int x2 = startX + r;
+                if (y1 >= 0 && y1 < h) {
+                    if (x1 >= 0 && x1 < w && maze.getTile(x1, y1).isWalkable()) return new Point(x1, y1);
+                    if (x2 >= 0 && x2 < w && maze.getTile(x2, y1).isWalkable()) return new Point(x2, y1);
+                }
+            }
+        }
+        return null;
     }
 
     private Room pickFallbackKeyRoom(Room spawnRoom, Room exitRoom) {

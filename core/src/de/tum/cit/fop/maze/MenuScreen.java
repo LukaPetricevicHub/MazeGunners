@@ -15,6 +15,9 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.ui.LeaderboardScreen;
 import de.tum.cit.fop.maze.ui.UiButtons;
 
+/**
+ * Main menu screen for starting, loading, and configuring the game.
+ */
 public class MenuScreen implements Screen {
 
     private final Stage stage;
@@ -23,6 +26,11 @@ public class MenuScreen implements Screen {
     private com.badlogic.gdx.audio.Sound clickSound;
     private final Viewport viewport;
 
+    /**
+     * Creates the main menu screen.
+     *
+     * @param game main game instance
+     */
     public MenuScreen(MazeRunnerGame game) {
         this.game = game;
 
@@ -122,6 +130,9 @@ public class MenuScreen implements Screen {
         table.add(grid);
     }
 
+    /**
+     * Plays the menu click sound if available.
+     */
     private void playClickSound() {
         if (clickSound != null) {
             long id = clickSound.play();
@@ -129,6 +140,11 @@ public class MenuScreen implements Screen {
         }
     }
 
+    /**
+     * Renders the menu and background.
+     *
+     * @param delta time step in seconds
+     */
     @Override
     public void render(float delta) {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -144,8 +160,18 @@ public class MenuScreen implements Screen {
         stage.draw();
     }
 
-    @Override public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
+    /**
+     * Updates the viewport when the window is resized.
+     *
+     * @param width new width in pixels
+     * @param height new height in pixels
+     */
+    @Override
+    public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
 
+    /**
+     * Disposes screen resources.
+     */
     @Override
     public void dispose() {
         stage.dispose();
@@ -153,6 +179,9 @@ public class MenuScreen implements Screen {
         if (clickSound != null) clickSound.dispose();
     }
 
+    /**
+     * Sets input processing and loads click sound if available.
+     */
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
@@ -164,8 +193,22 @@ public class MenuScreen implements Screen {
         }
     }
 
-    @Override public void pause() {}
-    @Override public void resume() {}
-    @Override public void hide() {}
+    /**
+     * Called when the application is paused.
+     */
+    @Override
+    public void pause() {}
+
+    /**
+     * Called when the application resumes.
+     */
+    @Override
+    public void resume() {}
+
+    /**
+     * Called when the screen is no longer the current screen.
+     */
+    @Override
+    public void hide() {}
 }
 

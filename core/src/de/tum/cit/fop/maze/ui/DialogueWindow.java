@@ -8,6 +8,11 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.utils.Align;
 
+/**
+ * Modal window that displays dialogue text with a typewriter effect.
+ *
+ * Clicking reveals the full text or closes the window when finished.
+ */
 public class DialogueWindow extends Window {
 
     private final String fullText;
@@ -20,6 +25,14 @@ public class DialogueWindow extends Window {
     private boolean finished = false;
     private boolean closed = false;
 
+    /**
+     * Creates a dialogue window with a speaker title and text content.
+     *
+     * @param skin UI skin used for styling
+     * @param speaker name shown in the title bar
+     * @param text dialogue text to display
+     * @param onFinish callback invoked when the window closes
+     */
     public DialogueWindow(Skin skin, String speaker, String text, Runnable onFinish) {
         super(speaker == null ? "" : speaker, skin);
         this.fullText = text == null ? "" : text;
@@ -47,6 +60,11 @@ public class DialogueWindow extends Window {
         });
     }
 
+    /**
+     * Advances the typewriter animation.
+     *
+     * @param delta time step in seconds
+     */
     @Override
     public void act(float delta) {
         super.act(delta);
@@ -63,6 +81,9 @@ public class DialogueWindow extends Window {
         }
     }
 
+    /**
+     * Centers the window on its current stage and sizes it relative to the viewport.
+     */
     public void centerOnStage() {
         Stage stage = getStage();
         if (stage == null) return;
@@ -83,6 +104,9 @@ public class DialogueWindow extends Window {
         setPosition((stageW - getWidth()) / 2f, (stageH - getHeight()) / 2f);
     }
 
+    /**
+     * Handles click behavior to reveal or close the dialogue.
+     */
     private void handleClick() {
         if (closed) return;
 

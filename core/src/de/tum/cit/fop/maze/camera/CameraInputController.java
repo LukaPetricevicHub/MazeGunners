@@ -11,9 +11,12 @@ import com.badlogic.gdx.InputAdapter;
  */
 public class CameraInputController extends InputAdapter {
 
+    /** Game camera controlled by this input handler. */
     private final GameCamera gameCamera;
+    /** Preferences providing key bindings. */
     private final de.tum.cit.fop.maze.util.GamePreferences preferences;
 
+    /** Zoom speed applied while holding zoom keys. */
     private static final float ZOOM_HOLD_SPEED = 2.5f;
 
     /**

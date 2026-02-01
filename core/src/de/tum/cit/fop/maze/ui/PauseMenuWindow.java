@@ -15,6 +15,7 @@ import de.tum.cit.fop.maze.ui.UiButtons;
  */
 public class PauseMenuWindow extends Window {
 
+    /** Callback executed when opening achievements. */
     private final Runnable onAchievements;
 
     /**
@@ -24,6 +25,7 @@ public class PauseMenuWindow extends Window {
      * @param onResume Action executed when resuming the game
      * @param onSettings Action executed when opening settings
      * @param onSkills Action executed when opening the skill tree
+     * @param onAchievements Action executed when opening achievements
      * @param onExit Action executed when exiting to the main menu
      */
     public PauseMenuWindow(Skin skin, Runnable onResume, Runnable onSettings, Runnable onSkills, Runnable onAchievements, Runnable onExit) {

@@ -20,9 +20,13 @@ import de.tum.cit.fop.maze.player.Player;
  */
 public class DevConsole extends Table {
 
+    /** Input field used to enter console commands. */
     private final TextField inputField;
+    /** Label used to display feedback messages. */
     private final Label logLabel;
+    /** Main game instance for navigation and shared systems. */
     private final MazeRunnerGame game;
+    /** Active player instance for player-affecting commands. */
     private Player player;
 
     /**
@@ -314,6 +318,9 @@ public class DevConsole extends Table {
         }
     }
 
+    /**
+     * Ensures a player instance is available for player-only commands.
+     */
     private void requirePlayer() {
         if (player == null) throw new IllegalStateException("Player not set in DevConsole.");
     }
@@ -322,6 +329,9 @@ public class DevConsole extends Table {
      * Looks for a level file in:
      *  1) internal/maps/level-X.properties (shipped maps)
      *  2) local/maps/level-X.properties    (generated/custom maps)
+     *
+     * @param lvl Level number to resolve
+     * @return File handle to the level file, or null if not found
      */
     private FileHandle resolveLevelFile(int lvl) {
         String name = "maps/level-" + lvl + ".properties";
@@ -335,6 +345,11 @@ public class DevConsole extends Table {
         return null;
     }
 
+    /**
+     * Writes a message to the console log and stdout.
+     *
+     * @param message Message to display
+     */
     private void log(String message) {
         logLabel.setText(message);
         System.out.println("[DEV] " + message);

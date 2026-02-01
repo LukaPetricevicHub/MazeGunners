@@ -12,12 +12,18 @@ import com.badlogic.gdx.math.Vector2;
 
 public class DroneLaser {
 
+    /** Current laser position. */
     private final Vector2 position;
+    /** Laser velocity in world units per second. */
     private final Vector2 velocity;
+    /** Whether the laser is still alive. */
     private boolean alive = true;
+    /** Remaining lifetime in seconds. */
     private float lifeTime = 1.5f;
 
+    /** Laser travel speed. */
     private static final float SPEED = 450f;
+    /** Laser collision size. */
     private static final float SIZE = 4f;
 
     /**
@@ -57,14 +63,27 @@ public class DroneLaser {
         return new Rectangle(position.x, position.y, SIZE, SIZE);
     }
 
+    /**
+     * Checks whether the laser is alive.
+     *
+     * @return True if alive
+     */
     public boolean isAlive() {
         return alive;
     }
 
+    /**
+     * Marks the laser as dead.
+     */
     public void kill() {
         alive = false;
     }
 
+    /**
+     * Retrieves the current laser position.
+     *
+     * @return Position vector
+     */
     public Vector2 getPosition() {
         return position;
     }

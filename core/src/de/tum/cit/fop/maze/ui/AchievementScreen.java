@@ -14,11 +14,19 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.util.Achievement;
 import de.tum.cit.fop.maze.ui.UiButtons;
 
+/**
+ * Screen that displays the player's achievements in a scrollable list.
+ */
 public class AchievementScreen implements Screen {
 
     private final MazeRunnerGame game;
     private final Stage stage;
 
+    /**
+     * Creates the achievements screen.
+     *
+     * @param game main game instance
+     */
     public AchievementScreen(MazeRunnerGame game) {
         this.game = game;
         this.stage = new Stage(new ScreenViewport(), game.getSpriteBatch());
@@ -83,6 +91,11 @@ public class AchievementScreen implements Screen {
         mainTable.add(backBtn).width(200);
     }
 
+    /**
+     * Renders the achievements screen.
+     *
+     * @param delta time step in seconds
+     */
     @Override
     public void render(float delta) {
         // Allow ESC to go back
@@ -98,10 +111,42 @@ public class AchievementScreen implements Screen {
         stage.draw();
     }
 
-    @Override public void show() { Gdx.input.setInputProcessor(stage); }
-    @Override public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
-    @Override public void dispose() { stage.dispose(); }
-    @Override public void pause() {}
-    @Override public void resume() {}
-    @Override public void hide() {}
+    /**
+     * Sets the input processor when the screen is shown.
+     */
+    @Override
+    public void show() { Gdx.input.setInputProcessor(stage); }
+
+    /**
+     * Updates the viewport when the window is resized.
+     *
+     * @param width new width in pixels
+     * @param height new height in pixels
+     */
+    @Override
+    public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
+
+    /**
+     * Disposes screen resources.
+     */
+    @Override
+    public void dispose() { stage.dispose(); }
+
+    /**
+     * Called when the application is paused.
+     */
+    @Override
+    public void pause() {}
+
+    /**
+     * Called when the application resumes.
+     */
+    @Override
+    public void resume() {}
+
+    /**
+     * Called when the screen is no longer the current screen.
+     */
+    @Override
+    public void hide() {}
 }

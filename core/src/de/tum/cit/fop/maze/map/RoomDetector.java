@@ -61,9 +61,24 @@ public final class RoomDetector {
         return out;
     }
 
+    /**
+     * Bounds for a flood-filled region.
+     */
     private static final class Bounds {
         int minX, minY, maxX, maxY;
+        /**
+         * Creates bounds initialized to a single point.
+         *
+         * @param x Tile x-coordinate
+         * @param y Tile y-coordinate
+         */
         Bounds(int x, int y) { minX = maxX = x; minY = maxY = y; }
+        /**
+         * Expands bounds to include a coordinate.
+         *
+         * @param x Tile x-coordinate
+         * @param y Tile y-coordinate
+         */
         void include(int x, int y) {
             if (x < minX) minX = x;
             if (y < minY) minY = y;
@@ -72,6 +87,15 @@ public final class RoomDetector {
         }
     }
 
+    /**
+     * Flood-fills a region and computes its bounding box.
+     *
+     * @param maze Maze reference
+     * @param sx Start x-coordinate
+     * @param sy Start y-coordinate
+     * @param visited Visited grid
+     * @return Bounds of the connected region
+     */
     private static Bounds floodBounds(Maze maze, int sx, int sy, boolean[][] visited) {
         int w = maze.getWidth();
         int h = maze.getHeight();
@@ -97,6 +121,17 @@ public final class RoomDetector {
         return b;
     }
 
+    /**
+     * Attempts to enqueue a tile for flood fill.
+     *
+     * @param maze Maze reference
+     * @param x Tile x-coordinate
+     * @param y Tile y-coordinate
+     * @param visited Visited grid
+     * @param w Maze width
+     * @param h Maze height
+     * @param q Queue of tiles
+     */
     private static void tryPush(Maze maze, int x, int y, boolean[][] visited, int w, int h, Deque<int[]> q) {
         if (x <= 0 || y <= 0 || x >= w - 1 || y >= h - 1) return;
         if (visited[x][y]) return;

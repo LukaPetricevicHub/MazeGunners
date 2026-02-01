@@ -16,19 +16,31 @@ import java.util.List;
  */
 public class Maze {
 
+    /** Maze width in tiles. */
     private final int width;
+    /** Maze height in tiles. */
     private final int height;
+    /** Tile size in world units. */
     private final int tileSize;
+    /** Tile grid for the maze. */
     private final Tiles[][] grid;
 
+    /** Entry spawn cell. */
     private Point entryCell;
+    /** Primary exit cell. */
     private Point exitCell;
+    /** All exit cells. */
     private final List<Point> exitCells = new ArrayList<>();
+    /** Rooms present in the maze. */
     private List<Room> rooms = List.of();
+    /** Room membership mask. */
     private final boolean[][] roomMask;
 
+    /** Enemy occupancy grid. */
     private boolean[][] enemyOccupancy;
+    /** Cached enemy occupancy width. */
     private int enemyOccW = -1;
+    /** Cached enemy occupancy height. */
     private int enemyOccH = -1;
 
 
@@ -58,7 +70,9 @@ public class Maze {
      * @return maze dimensions and tile size
      */
     public int getWidth() { return width; }
+    /** @return Maze height in tiles. */
     public int getHeight() { return height; }
+    /** @return Tile size in world units. */
     public int getTileSize() { return tileSize; }
 
     /**
@@ -130,12 +144,15 @@ public class Maze {
      *
      * Returned points are defensive copies and may be null if not set.
      */
+    /** @return Entry cell or null if unset. */
     public Point getEntryCell() {
         return entryCell == null ? null : new Point(entryCell);
     }
+    /** @return Exit cell or null if unset. */
     public Point getExitCell() {
         return exitCell == null ? null : new Point(exitCell);
     }
+    /** @return List of all exit cells. */
     public List<Point> getExitCells() {
         return List.copyOf(exitCells);
     }
@@ -186,10 +203,11 @@ public class Maze {
      * @param x tile X coordinate
      * @param y tile Y coordinate
      * @param hasKey whether the player currently has the key
+     * @param hasStoryItem whether the player has the story item
      * @return true if the exit blocks passage
      */
-    public boolean isBlockedExit(int x, int y, boolean hasKey) {
-        return getTile(x, y) == Tiles.EXIT && !hasKey;
+    public boolean isBlockedExit(int x, int y, boolean hasKey, boolean hasStoryItem) {
+        return getTile(x, y) == Tiles.EXIT && !(hasKey && hasStoryItem);
     }
 
     /**
@@ -197,10 +215,20 @@ public class Maze {
      *
      * Values are copied defensively.
      */
+    /**
+     * Sets the entry cell.
+     *
+     * @param p Entry tile coordinate
+     */
     public void setEntryCell(Point p) {
         entryCell = (p == null) ? null : new Point(p);
     }
 
+    /**
+     * Sets the primary exit cell.
+     *
+     * @param p Exit tile coordinate
+     */
     public void setExitCell(Point p) {
         exitCell = (p == null) ? null : new Point(p);
         if (p == null) {
@@ -208,10 +236,20 @@ public class Maze {
         }
     }
 
+    /**
+     * Sets the room list for this maze.
+     *
+     * @param rooms Room list
+     */
     public void setRooms(List<Room> rooms) {
         this.rooms = rooms != null ? rooms : List.of();
     }
 
+    /**
+     * Retrieves the list of rooms.
+     *
+     * @return Room list
+     */
     public List<Room> getRooms() {
         return List.copyOf(rooms);
     }

@@ -8,10 +8,14 @@ import de.tum.cit.fop.maze.player.Player;
  * A collectable item that gives the player a key.
  */
 public class KeyItem extends Collectable {
+    /** Shared pickup sound for key items. */
     private static Sound pickupSound;
 
     /**
      * Creates a key item at the given position.
+     *
+     * @param x World x-coordinate
+     * @param y World y-coordinate
      */
     public KeyItem(float x, float y) {
         super(x, y, "key.png");
@@ -22,6 +26,8 @@ public class KeyItem extends Collectable {
 
     /**
      * Gives the key to the player.
+     *
+     * @param player Player who collected the key
      */
     @Override
     public void applyEffect(Player player) {
@@ -33,6 +39,9 @@ public class KeyItem extends Collectable {
         collect();
     }
 
+    /**
+     * Disposes shared resources and clears the static sound reference.
+     */
     @Override
     public void dispose() {
         super.dispose();

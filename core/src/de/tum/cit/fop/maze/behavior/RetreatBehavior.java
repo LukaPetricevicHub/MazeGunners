@@ -89,12 +89,26 @@ public class RetreatBehavior implements BehaviorState {
 
 
     // Convert world coordinates to tile
+    /**
+     * Converts world coordinates to tile coordinates.
+     *
+     * @param worldPos World position
+     * @param maze Maze reference
+     * @return Tile coordinates
+     */
     private static Point convertToTileCoords(Vector2 worldPos, Maze maze) {
         return new Point(GridUtils.worldToTile(worldPos.x, maze.getTileSize()), GridUtils.worldToTile(worldPos.y, maze.getTileSize()));
     }
 
 
     // Get center position of tile
+    /**
+     * Computes the center of a tile in world coordinates.
+     *
+     * @param tileCoords Tile coordinates
+     * @param maze Maze reference
+     * @return Center position in world units
+     */
     private static Vector2 getTileCenter(Point tileCoords, Maze maze) {
         float size = maze.getTileSize();
 

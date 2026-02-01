@@ -14,20 +14,24 @@ import de.tum.cit.fop.maze.map.Tiles;
  */
 public final class RoomPatrolBuilder {
 
-    private static final int MAX_PATROL_STEPS = 2; // ← THIS fixes everything
+    /** Maximum steps to extend patrol points from the anchor. */
+    private static final int MAX_PATROL_STEPS = 2;
 
     private RoomPatrolBuilder() {}
 
     /**
      * Creates a two-point patrol inside a room based on an entrance direction.
      *
+     * @param maze Maze reference
+     * @param room Room containing the patrol
+     * @param e Entrance descriptor
      * @return two patrol points or {@code null} if no valid patrol is possible
      */
     public static Array<Vector2> buildPatrol(Maze maze, Room room, RoomEntrance e) {
         float ts = maze.getTileSize();
         Array<Vector2> pts = new Array<>();
 
-        int ax = e.x() - e.dirX(); // move in the room
+        int ax = e.x() - e.dirX();
         int ay = e.y() - e.dirY();
 
 
@@ -69,6 +73,14 @@ public final class RoomPatrolBuilder {
         return pts;
     }
 
+    /**
+     * Checks whether a tile coordinate is inside a room.
+     *
+     * @param r Room reference
+     * @param x Tile x-coordinate
+     * @param y Tile y-coordinate
+     * @return True if inside the room
+     */
     private static boolean roomContains(Room r, int x, int y) {
         return x >= r.x() && x < r.x() + r.w()
                 && y >= r.y() && y < r.y() + r.h();
@@ -76,6 +88,15 @@ public final class RoomPatrolBuilder {
 
     /**
      * Walks from a start tile in one direction to find the furthest valid patrol point.
+     *
+     * @param maze Maze reference
+     * @param room Room reference
+     * @param ax Anchor tile x-coordinate
+     * @param ay Anchor tile y-coordinate
+     * @param dx Step direction x
+     * @param dy Step direction y
+     * @param ts Tile size in world units
+     * @return Furthest patrol point, or null if none
      */
     private static Vector2 findFurthest(Maze maze, Room room, int ax, int ay, int dx, int dy, float ts) {
         int x = ax;

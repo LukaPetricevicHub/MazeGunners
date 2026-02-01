@@ -14,13 +14,20 @@ import de.tum.cit.fop.maze.player.Player;
  */
 public class HeartItem extends Collectable {
 
+    /** Width of each animation frame in pixels. */
     private static final int FRAME_WIDTH = 16;
+    /** Height of each animation frame in pixels. */
     private static final int FRAME_HEIGHT = 16;
+    /** Starting x offset for the animation row in the sprite sheet. */
     private static final int START_X = 0;
+    /** Y offset for the animation row in the sprite sheet. */
     private static final int ROW_Y = 48;
+    /** Number of frames in the heart animation. */
     private static final int FRAME_COUNT = 4;
 
+    /** Animation for the heart pickup. */
     private Animation<TextureRegion> animation;
+    /** Accumulated time used to advance the animation. */
     private float stateTime = 0f;
 
     /**
@@ -34,6 +41,9 @@ public class HeartItem extends Collectable {
         createAnimation();
     }
 
+    /**
+     * Builds the looping animation frames from the sprite sheet.
+     */
     private void createAnimation() {
         TextureRegion[] frames = new TextureRegion[FRAME_COUNT];
 
@@ -47,6 +57,8 @@ public class HeartItem extends Collectable {
 
     /**
      * Renders the animated heart if it is still active.
+     *
+     * @param batch Sprite batch used for drawing
      */
     @Override
     public void render(SpriteBatch batch) {
@@ -62,6 +74,8 @@ public class HeartItem extends Collectable {
      * Applies the heart effect to the player.
      *
      * Increases the player's life by one and removes the item.
+     *
+     * @param player Player who collected the item
      */
     @Override
     public void applyEffect(Player player) {

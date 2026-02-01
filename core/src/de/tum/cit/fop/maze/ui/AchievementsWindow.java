@@ -11,15 +11,23 @@ import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import de.tum.cit.fop.maze.util.Achievement;
-import de.tum.cit.fop.maze.ui.UiButtons;
-
 import java.util.Collection;
 import de.tum.cit.fop.maze.ui.UiButtons;
 
+/**
+ * Modal window that displays a scrollable list of achievements.
+ */
 public class AchievementsWindow extends Window {
 
     private final Runnable onClose;
 
+    /**
+     * Creates an achievements window.
+     *
+     * @param skin UI skin to apply
+     * @param achievements achievement collection to display
+     * @param onClose callback invoked when the window closes
+     */
     public AchievementsWindow(Skin skin, Collection<Achievement> achievements, Runnable onClose) {
         super("Achievements", skin);
         this.onClose = onClose;

@@ -14,28 +14,47 @@ import com.badlogic.gdx.utils.Disposable;
  */
 public class BossAnimations implements Disposable {
 
+    /** Frame width in pixels. */
     private static final int FRAME_W = 128;
+    /** Frame height in pixels. */
     private static final int FRAME_H = 64;
 
     // Rows 0-7
+    /** Row index for idle animation. */
     private static final int ROW_IDLE   = 0;
+    /** Row index for walk animation. */
     private static final int ROW_WALK   = 1;
+    /** Row index for first run animation. */
     private static final int ROW_RUN_1  = 2;
+    /** Row index for second run animation. */
     private static final int ROW_RUN_2  = 3;
+    /** Row index for attack animation. */
     private static final int ROW_ATTACK = 4; // "normal"
+    /** Row index for combo animation. */
     private static final int ROW_COMBO  = 5;
+    /** Row index for hit animation. */
     private static final int ROW_HIT    = 6;
+    /** Row index for death animation. */
     private static final int ROW_DEATH  = 7;
 
+    /** Sprite sheet texture. */
     private final Texture texture;
 
+    /** Idle animation. */
     public final Animation<TextureRegion> idle;
+    /** Walk animation. */
     public final Animation<TextureRegion> walk;
+    /** Run animation. */
     public final Animation<TextureRegion> run;
+    /** Alternate run animation. */
     public final Animation<TextureRegion> run2;
+    /** Attack animation. */
     public final Animation<TextureRegion> attack;
+    /** Combo attack animation. */
     public final Animation<TextureRegion> combo;
+    /** Hit reaction animation. */
     public final Animation<TextureRegion> hit;
+    /** Death animation. */
     public final Animation<TextureRegion> death;
 
     /**
@@ -78,6 +97,15 @@ public class BossAnimations implements Disposable {
         death = anim(grid, ROW_DEATH,  0.12f, false);
     }
 
+    /**
+     * Builds an animation for a specific row in the sprite sheet.
+     *
+     * @param grid Split texture grid
+     * @param row Row index to use
+     * @param frameTime Frame duration
+     * @param loop Whether the animation loops
+     * @return Built animation
+     */
     private Animation<TextureRegion> anim(TextureRegion[][] grid, int row, float frameTime, boolean loop) {
         if (row < 0 || row >= grid.length) {
             throw new RuntimeException(

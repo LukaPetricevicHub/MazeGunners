@@ -22,9 +22,13 @@ import de.tum.cit.fop.maze.ui.UiButtons;
  * as well as endless mode.
  */
 public class LeaderboardScreen implements Screen {
+    /** Main game instance used for navigation and assets. */
     private final MazeRunnerGame game;
+    /** Stage hosting the leaderboard UI. */
     private final Stage stage;
+    /** Table used to render the score list. */
     private final Table listTable;
+    /** Currently selected leaderboard key. */
     private String activeBoard = null;
 
     /**
@@ -96,11 +100,22 @@ public class LeaderboardScreen implements Screen {
      * Disposes all UI resources used by the screen.
      */
     @Override public void dispose() { stage.dispose(); }
+    /** Sets up input processing when the screen becomes active. */
     @Override public void show() {}
+    /** Clears any temporary state when the screen is hidden. */
     @Override public void hide() {}
+    /** Pauses UI updates when the app is backgrounded. */
     @Override public void pause() {}
+    /** Resumes UI updates after a pause. */
     @Override public void resume() {}
 
+    /**
+     * Creates a button that selects a leaderboard to display.
+     *
+     * @param label Button label
+     * @param boardKey Leaderboard key to load
+     * @return Configured leaderboard button
+     */
     private TextButton makeBoardButton(String label, String boardKey) {
         TextButton btn = UiButtons.button(label, game.getSkin());
         btn.addListener(new ChangeListener() {
@@ -113,6 +128,9 @@ public class LeaderboardScreen implements Screen {
         return btn;
     }
 
+    /**
+     * Rebuilds the score list for the active leaderboard.
+     */
     private void rebuildList() {
         listTable.clearChildren();
         if (activeBoard == null) {
@@ -142,6 +160,9 @@ public class LeaderboardScreen implements Screen {
         }
     }
 
+    /**
+     * Displays a prompt when no leaderboard is selected.
+     */
     private void showSelectHint() {
         listTable.clearChildren();
         listTable.add(new Label("Select a leaderboard above.", game.getSkin())).pad(10);

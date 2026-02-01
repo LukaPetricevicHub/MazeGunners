@@ -41,6 +41,9 @@ public class ModeSelectScreen implements Screen {
         buildUI();
     }
 
+    /**
+     * Builds the UI for game mode selection.
+     */
     private void buildUI() {
         stage.clear();
 
@@ -101,10 +104,37 @@ public class ModeSelectScreen implements Screen {
         stage.draw();
     }
 
-    @Override public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
-    @Override public void pause() {}
-    @Override public void resume() {}
-    @Override public void hide() {}
-    @Override public void dispose() { stage.dispose(); }
+    /**
+     * Updates the viewport when the window is resized.
+     *
+     * @param width new width in pixels
+     * @param height new height in pixels
+     */
+    @Override
+    public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
+
+    /**
+     * Called when the application is paused.
+     */
+    @Override
+    public void pause() {}
+
+    /**
+     * Called when the application resumes.
+     */
+    @Override
+    public void resume() {}
+
+    /**
+     * Called when the screen is no longer the current screen.
+     */
+    @Override
+    public void hide() {}
+
+    /**
+     * Disposes screen resources.
+     */
+    @Override
+    public void dispose() { stage.dispose(); }
 }
 

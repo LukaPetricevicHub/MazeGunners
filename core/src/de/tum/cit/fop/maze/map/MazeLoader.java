@@ -19,11 +19,21 @@ public class MazeLoader {
      * Simple data holder for maze size and tile overrides.
      */
     public static final class LevelSpec {
+        /** Level width in tiles. */
         public final int width;
+        /** Level height in tiles. */
         public final int height;
+        /** Tile overrides mapped by tile coordinate. */
         public final Map<Point, Tiles> overrides;
 
 
+        /**
+         * Creates a new level specification.
+         *
+         * @param width Level width in tiles
+         * @param height Level height in tiles
+         * @param overrides Tile overrides
+         */
         public LevelSpec(int width, int height, Map<Point, Tiles> overrides) {
             this.width = width;
             this.height = height;

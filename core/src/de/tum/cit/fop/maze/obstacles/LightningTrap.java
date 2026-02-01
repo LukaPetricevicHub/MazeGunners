@@ -17,34 +17,53 @@ import com.badlogic.gdx.math.Rectangle;
 public class LightningTrap extends Obstacle {
 
     // Gameplay
+    /** Damage dealt by the trap. */
     private static final int TRAP_DAMAGE = 1;
+    /** Cooldown between activations. */
     private static final float RETRIGGER_COOLDOWN = 3f;
+    /** Movement speed penalty while debuffed. */
     private static final float SPEED_PENALTY = 0.1f;
+    /** Vision penalty while debuffed. */
     private static final float VISION_PENALTY = 0.5f;
+    /** Maximum debuff duration. */
     private static final float DEBUFF_MAX_DURATION = 3f;
 
+    /** Whether the player is currently on the trap. */
     private boolean playerOnTrap = false;
+    /** Remaining cooldown time before re-trigger. */
     private float cooldownTimer = 0f;
+    /** Whether the trap triggered this frame. */
     private boolean triggeredThisFrame = false;
 
 
     // Animation
+    /** Animation frame duration. */
     private static final float FRAME_DURATION = 0.08f;
+    /** Number of columns in the sprite sheet. */
     private static final int FRAME_COLS = 12;
+    /** Number of rows in the sprite sheet. */
     private static final int FRAME_ROWS = 1;
 
 
+    /** Texture for idle state. */
     private static final Texture IDLE_TEX = new Texture("Traps/LightningTrapIdle.png");
+    /** Texture for triggered state. */
     private static final Texture TRIGGER_TEX = new Texture("Traps/LightningTrapTriggered.png");
 
+    /** Idle animation sequence. */
     private static final Animation<TextureRegion> IDLE_ANIM;
+    /** Triggered animation sequence. */
     private static final Animation<TextureRegion> TRIGGER_ANIM;
 
+    /** Whether the trap is vertical. */
     private final boolean vertical;
 
+    /** Whether the trap has been disabled. */
     public boolean disabled = false;
 
+    /** World position for the first disable anchor. */
     private Vector2 wallAnchorA;
+    /** World position for the second disable anchor. */
     private Vector2 wallAnchorB;
 
 
@@ -55,6 +74,15 @@ public class LightningTrap extends Obstacle {
     }
 
 
+    /**
+     * Builds an animation from a texture strip.
+     *
+     * @param tex Source texture
+     * @param startFrame Starting frame index
+     * @param endFrame Ending frame index
+     * @param loop Whether the animation should loop
+     * @return Built animation
+     */
     private static Animation<TextureRegion> buildAnimation(Texture tex,int startFrame,int endFrame,boolean loop) {
 
         TextureRegion[][] split = TextureRegion.split(tex,tex.getWidth() / FRAME_COLS,tex.getHeight() / FRAME_ROWS);
@@ -80,7 +108,9 @@ public class LightningTrap extends Obstacle {
 
 
     // State
+    /** Animation state time. */
     private float stateTime = 0f;
+    /** Remaining debuff time. */
     private float activeDebuffTimer = 0f;
 
 
@@ -122,6 +152,8 @@ public class LightningTrap extends Obstacle {
 
 
     /**
+     * Retrieves the slow multiplier applied by the trap.
+     *
      * @return movement speed multiplier applied while the debuff is active
      */
     public float getSlowMultiplier() {
@@ -129,6 +161,8 @@ public class LightningTrap extends Obstacle {
     }
 
     /**
+     * Retrieves the vision multiplier applied by the trap.
+     *
      * @return vision reduction multiplier applied while the debuff is active
      */
     public float getVisionMultiplier() {
@@ -165,6 +199,8 @@ public class LightningTrap extends Obstacle {
     }
 
     /**
+     * Retrieves the rotation used for rendering.
+     *
      * @return rotation angle in degrees used for rendering the trap
      */
     public float getRotationDegrees() {
@@ -242,6 +278,9 @@ public class LightningTrap extends Obstacle {
     }
 
 
+    /**
+     * Triggers the trap, applying debuff and starting cooldown.
+     */
     private void trigger() {
         cooldownTimer = RETRIGGER_COOLDOWN;
         activeDebuffTimer = DEBUFF_MAX_DURATION;

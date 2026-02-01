@@ -25,6 +25,6 @@ public class SpeedItem extends Collectable {
      */
     @Override
     public void applyEffect(Player player) {
-        player.activateSpeedBoost(5.0f, 1.8f);
+        player.activateSpeedBoost(6.0f, 2.2f);
     }
 }

@@ -13,12 +13,20 @@ import java.util.*;
 
 public final class GridPathfinder {
 
+    /** Cardinal directions for grid expansion. */
     private static final int[][] cardDirections = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
+    /**
+     * Internal node used by the A* search.
+     */
     private static class Node {
+        /** Tile coordinates for this node. */
         final Point coordinates;
+        /** Cost from start to this node. */
         int costFromStart;
+        /** Estimated total cost (f-score). */
         int estimatedTotalCost;
+        /** Parent node in the path. */
         Node parentNode;
 
         Node(Point coordinates, int costFromStart, int estimatedTotalCost, Node parent) {
@@ -102,10 +110,23 @@ public final class GridPathfinder {
         return List.of();
     }
 
+    /**
+     * Calculates Manhattan distance between two tiles.
+     *
+     * @param a First tile
+     * @param b Second tile
+     * @return Manhattan distance
+     */
     private static int calculateManhattanDistance(Point a, Point b) {
         return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
     }
 
+    /**
+     * Reconstructs a path from a goal node by walking parents.
+     *
+     * @param goalNode Goal node in the A* tree
+     * @return Path from start to goal
+     */
     private static List<Point> reconstructPath(Node goalNode) {
         LinkedList<Point> path = new LinkedList<>();
         Node traversalNode = goalNode;
@@ -219,10 +240,16 @@ public final class GridPathfinder {
                 }
             }
         }
-
         return bestCandidate;
     }
-
+    /**
+     * Finds a path with a default footprint size of 2.
+     *
+     * @param maze the maze
+     * @param start start tile
+     * @param goal goal tile
+     * @return list of tiles from start to goal, or empty if no path exists
+     */
     public static List<Point> findPath(Maze maze, Point start, Point goal) {
         return findPath(maze, start, goal, 2);
     }

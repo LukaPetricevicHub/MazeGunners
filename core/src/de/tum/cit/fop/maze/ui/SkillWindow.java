@@ -17,11 +17,16 @@ import de.tum.cit.fop.maze.ui.UiButtons;
  * hover descriptions and dependency checks.
  */
 public class SkillWindow extends Window {
+    /** Player whose skills and upgrades are displayed. */
     private final Player player;
+    /** Skin used to style UI widgets. */
     private final Skin skin;
+    /** Callback executed when the window closes. */
     private final Runnable onClose;
+    /** Label showing available skill points. */
     private Label pointsLabel;
 
+    /** Label showing hover descriptions for skills. */
     private Label descriptionLabel;
 
     /**
@@ -158,6 +163,16 @@ public class SkillWindow extends Window {
         }
     }
 
+    /**
+     * Builds a skill button with dependency checks and hover text.
+     *
+     * @param name Skill name
+     * @param desc Short description of the skill
+     * @param isUnlocked Whether the skill is already unlocked
+     * @param isParentUnlocked Whether the prerequisite skill is unlocked
+     * @param unlockAction Action to execute when the skill is purchased
+     * @return Configured skill button
+     */
     private TextButton createSkillButton(String name, String desc, boolean isUnlocked, boolean isParentUnlocked, Runnable unlockAction) {
         // BUTTON TEXT: Only Name + Status
         String text = name;
@@ -212,6 +227,16 @@ public class SkillWindow extends Window {
         return btn;
     }
 
+    /**
+     * Builds a stat upgrade button with level tracking and hover text.
+     *
+     * @param name Upgrade name
+     * @param desc Short description of the upgrade
+     * @param currentLevel Current level of the stat
+     * @param maxLevel Maximum level allowed
+     * @param upgradeAction Action to execute when the upgrade is purchased
+     * @return Configured stat button
+     */
     private TextButton createStatButton(String name, String desc, int currentLevel, int maxLevel, Runnable upgradeAction) {
         // BUTTON TEXT: Only Name + Level
         String text = name + " " + currentLevel + "/" + maxLevel;

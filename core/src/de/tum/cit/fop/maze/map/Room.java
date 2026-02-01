@@ -10,7 +10,9 @@ import java.util.Random;
  * (e.g. normal, spawn, exit, boss).
  */
 public class Room {
+    /** Room x-coordinate (top-left) in tiles. */
     private final int x, y, w, h;
+    /** Room type classification. */
     private RoomType type = RoomType.NORMAL;
 
     /**
@@ -28,9 +30,13 @@ public class Room {
         this.h = h;
     }
 
+    /** @return Room x-coordinate in tiles. */
     public int x() { return x; }
+    /** @return Room y-coordinate in tiles. */
     public int y() { return y; }
+    /** @return Room width in tiles. */
     public int w() { return w; }
+    /** @return Room height in tiles. */
     public int h() { return h; }
 
     /**
@@ -47,9 +53,16 @@ public class Room {
      */
     public void setType(RoomType type) { this.type = type; }
 
+    /** @return Center x-coordinate in tiles. */
     public int centerX() { return x + w / 2; }
+    /** @return Center y-coordinate in tiles. */
     public int centerY() { return y + h / 2; }
 
+    /**
+     * Returns the center tile of the room.
+     *
+     * @return Center tile point
+     */
     public Point center() {
         return new Point(centerX(), centerY());
     }

@@ -35,6 +35,13 @@ public class AchievementManager {
         register("god_mode", "Cheater", "Use a cheat code.");
     }
 
+    /**
+     * Registers a single achievement definition.
+     *
+     * @param id unique achievement identifier
+     * @param title display title
+     * @param desc description text
+     */
     private void register(String id, String title, String desc) {
         Achievement a = new Achievement(id, title, desc);
         // Load saved status immediately
@@ -44,6 +51,11 @@ public class AchievementManager {
         achievements.put(id, a);
     }
 
+    /**
+     * Sets the HUD used for achievement pop-up notifications.
+     *
+     * @param hud HUD instance to notify, or null to disable pop-ups
+     */
     public void setHud(Hud hud) {
         this.hud = hud;
     }
@@ -54,7 +66,8 @@ public class AchievementManager {
      * The achievement is persisted and a notification is shown
      * if it was not previously unlocked.
      *
-     * @param id Achievement identifier
+     * @param id achievement identifier
+     * @return true if newly unlocked, false if already unlocked or unknown
      */
     public boolean unlockAchievement(String id) {
         Achievement a = achievements.get(id);
@@ -72,17 +85,29 @@ public class AchievementManager {
         return false;
     }
 
+    /**
+     * Resets all achievements to the locked state.
+     */
     public void resetAll() {
         for (Achievement a : achievements.values()) {
             a.setUnlocked(false);
         }
     }
 
-    // Backwards-compatible wrapper
+    /**
+     * Backwards-compatible unlock wrapper.
+     *
+     * @param id achievement identifier
+     */
     public void unlock(String id) {
         unlockAchievement(id);
     }
 
+    /**
+     * Retrieves the IDs of all unlocked achievements.
+     *
+     * @return list of unlocked achievement IDs
+     */
     public java.util.ArrayList<String> getUnlockedIds() {
         java.util.ArrayList<String> ids = new java.util.ArrayList<>();
         for (Achievement a : achievements.values()) {
@@ -91,6 +116,11 @@ public class AchievementManager {
         return ids;
     }
 
+    /**
+     * Applies a list of unlocked achievement IDs.
+     *
+     * @param ids collection of achievement IDs to mark as unlocked
+     */
     public void applyUnlockedIds(java.util.Collection<String> ids) {
         resetAll();
         if (ids == null) return;
@@ -102,6 +132,8 @@ public class AchievementManager {
 
     /**
      * Returns all noted achievements.
+     *
+     * @return map of achievement IDs to achievement objects
      */
     public Map<String, Achievement> getAchievements() {
         return achievements;

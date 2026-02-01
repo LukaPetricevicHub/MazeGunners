@@ -21,78 +21,133 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.ui.DevConsole;
 
+/**
+ * Heads-up display that renders player stats, objectives, and notifications.
+ */
 public class Hud {
 
     // --- CONFIG ---
+    /** Size of a tile in world units. */
     private static final float TILE_SIZE = 32f;
+    /** Duration for top-right notifications. */
     private static final float NOTIF_DURATION = 3.0f;
 
     // --- CORE ---
+    /** Stage hosting the HUD UI. */
     private final Stage stage;
+    /** Skin used for HUD widgets. */
     private final Skin skin;
 
     // --- TEXTURES ---
+    /** 1x1 pixel texture for tintable UI backgrounds. */
     private final Texture pixelTexture;
+    /** Key icon texture. */
     private final Texture keyIconTexture;
+    /** Arrow texture used for exit guidance. */
     private final Texture arrowTexture;
+    /** Bullet icon texture. */
     private final Texture bulletIconTexture;
+    /** Background texture for HP bar. */
     private final Texture hpBgTexture;
+    /** Fill texture for HP bar. */
     private final Texture hpFillTexture;
+    /** Background texture for boss HP bar. */
     private final Texture bossBgTexture;
+    /** Fill texture for boss HP bar. */
     private final Texture bossFillTexture;
 
     // --- UI ELEMENTS ---
+    /** Label showing current floor. */
     private final Label floorLabel;
+    /** Label showing the hint text. */
     private final Label hintLabel;
+    /** Label showing current objective. */
     private final Label objectiveLabel;
+    /** Key icon shown when player has a key. */
     private final Image keyIcon;
+    /** Label for endless mode floor info. */
     private final Label endlessLabel;
 
     // ✅ NEW: coins
+    /** Label showing coin count. */
     private final Label coinsLabel;
+    /** Label showing damage values. */
     private final Label damageLabel;
+    /** Label showing current stats. */
     private final Label statsLabel;
+    /** Label showing current ammo counts. */
     private final Label ammoLabel;
+    /** Label showing multiplier values. */
     private final Label multLabel;
+    /** Bullet icon image. */
     private final Image bulletIcon;
 
+    /** Label showing player level. */
     private final Label levelLabel;
+    /** XP progress bar. */
     private final ProgressBar xpBar;
+    /** XP text label. */
     private final Label xpTextLabel;
+    /** HP progress bar. */
     private final ProgressBar hpBar;
+    /** HP text label. */
     private final Label hpTextLabel;
 
+    /** Notification label anchored near top-right. */
     private final Label notificationLabel;
+    /** Center screen notification label. */
     private final Label centerNotificationLabel;
 
     // Arrow pinned top-right
+    /** Arrow image pointing to exit. */
     private final Image arrow;
+    /** Exit target x-coordinate in world units. */
     private float exitX, exitY;
+    /** Whether a valid exit target is available. */
     private boolean hasExitTarget = false;
 
     // Boss HUD (overlay group so it never drifts)
+    /** Group containing the boss HUD elements. */
     private Group bossGroup;
+    /** Table containing boss HUD content. */
     private Table bossTable;
+    /** Boss name label. */
     private final Label bossLabel;
+    /** Boss HP progress bar. */
     private final ProgressBar bossHpBar;
 
     // Boss sha
+    /** Last observed boss HP ratio for shake detection. */
     private float lastBossRatio = -1f;
+    /** Whether boss HUD shake is enabled on damage. */
     private boolean bossShakeEnabled = true;
 
     // Minimap container pinned bottom-right (optional)
+    /** Container for the minimap actor. */
     private final Table minimapContainer;
 
     // Timer for notifications
+    /** Timer for top-right notifications. */
     private float messageTimer = 0f;
+    /** Max hint distance in tiles. */
     private float hintMaxTiles = 50f;
+    /** Exit room bounds in world coordinates. */
     private Rectangle exitRoomWorldRect = null;
 
     // Console
+    /** Developer console overlay. */
     private final DevConsole devConsole;
+    /** Current achievement popup window. */
     private Window achievementPopup;
 
     // ✅ FIXED: constructor back to 3 params (no Label passed in)
+    /**
+     * Creates a HUD for the given viewport and batch.
+     *
+     * @param viewport Viewport for the HUD stage
+     * @param batch Sprite batch used by the stage
+     * @param skin UI skin used for widgets
+     */
     public Hud(Viewport viewport, SpriteBatch batch, Skin skin) {
         this.stage = new Stage(viewport, batch);
         this.skin = skin;
@@ -304,6 +359,9 @@ public class Hud {
         stage.addActor(devConsole);
     }
 
+    /**
+     * Positions the boss HUD at the top center of the viewport.
+     */
     private void layoutBossHud() {
         bossTable.pack();
 
@@ -318,6 +376,8 @@ public class Hud {
 
     /**
      * Call this every frame.
+     *
+     * @param player Player instance used to update HUD values
      */
     public void update(Player player) {
         int hp = player.getHp();
@@ -382,6 +442,8 @@ public class Hud {
 
     /**
      * Hot/Cold hint based on distance to exit.
+     *
+     * @param player Player instance used for position
      */
     public void updateHeatHint(Player player) {
         if (!player.hasKey() || !hasExitTarget) {
@@ -423,6 +485,11 @@ public class Hud {
         hintLabel.setColor(r, g, b, 1f);
     }
 
+    /**
+     * Advances the HUD stage and timers.
+     *
+     * @param dt Delta time in seconds
+     */
     public void act(float dt) {
         stage.act(dt);
 
@@ -434,21 +501,42 @@ public class Hud {
         }
     }
 
+    /**
+     * Draws the HUD stage.
+     */
     public void draw() {
         stage.draw();
     }
 
+    /**
+     * Updates the HUD viewport and repositions elements.
+     *
+     * @param width New window width
+     * @param height New window height
+     * @param centerCamera Whether to center the camera
+     */
     public void resize(int width, int height, boolean centerCamera) {
         stage.getViewport().update(width, height, centerCamera);
         layoutBossHud();
     }
 
+    /**
+     * Shows a temporary notification near the top-right.
+     *
+     * @param text Notification text
+     */
     public void showNotification(String text) {
         notificationLabel.setText(text);
         notificationLabel.setVisible(true);
         messageTimer = NOTIF_DURATION;
     }
 
+    /**
+     * Shows a centered notification that fades out after a duration.
+     *
+     * @param text Message to display
+     * @param seconds Duration to display
+     */
     public void showCenterNotification(String text, float seconds) {
         float duration = Math.max(0.5f, seconds);
         float fade = Math.min(0.6f, duration * 0.35f);
@@ -465,6 +553,12 @@ public class Hud {
         ));
     }
 
+    /**
+     * Shows a small achievement popup that slides in and out.
+     *
+     * @param title Achievement title
+     * @param description Achievement description
+     */
     public void showAchievementPopup(String title, String description) {
         if (achievementPopup != null) {
             achievementPopup.remove();
@@ -502,10 +596,20 @@ public class Hud {
         stage.addActor(achievementPopup);
     }
 
+    /**
+     * Updates the floor label text.
+     *
+     * @param text Text to display
+     */
     public void setFloorText(String text) {
         floorLabel.setText(text);
     }
 
+    /**
+     * Updates the endless mode info label.
+     *
+     * @param text Text to display, or empty to hide
+     */
     public void setEndlessInfo(String text) {
         if (text == null || text.isEmpty()) {
             endlessLabel.setVisible(false);
@@ -515,26 +619,51 @@ public class Hud {
         endlessLabel.setVisible(true);
     }
 
+    /**
+     * Sets the exit target location for hinting and arrow guidance.
+     *
+     * @param x Exit x-coordinate
+     * @param y Exit y-coordinate
+     */
     public void setExitTarget(float x, float y) {
         this.exitX = x;
         this.exitY = y;
         this.hasExitTarget = true;
     }
 
+    /**
+     * Sets the maximum hint distance in tiles.
+     *
+     * @param tiles Max distance in tiles
+     */
     public void setHintMaxTiles(float tiles) {
         hintMaxTiles = Math.max(20f, tiles);
     }
 
+    /**
+     * Sets the world bounds for the exit room.
+     *
+     * @param rect Exit room rectangle in world coordinates
+     */
     public void setExitRoomWorldRect(Rectangle rect) {
         this.exitRoomWorldRect = rect;
     }
 
+    /**
+     * Clears the current exit target and hides the arrow.
+     */
     public void clearExitTarget() {
         this.hasExitTarget = false;
         arrow.setVisible(false);
     }
 
     // Boss control (call from GameScreen)
+    /**
+     * Updates the boss HP bar and triggers shake on damage.
+     *
+     * @param current Current boss HP
+     * @param max Maximum boss HP
+     */
     public void setBossHp(float current, float max) {
         if (max <= 0f) return;
 
@@ -547,6 +676,11 @@ public class Hud {
         lastBossRatio = ratio;
     }
 
+    /**
+     * Shows or hides the boss HUD.
+     *
+     * @param visible True to show the boss HUD
+     */
     public void setBossVisible(boolean visible) {
         bossTable.setVisible(visible);
         if (!visible) {
@@ -558,6 +692,9 @@ public class Hud {
         layoutBossHud();
     }
 
+    /**
+     * Triggers a short shake animation on the boss HUD.
+     */
     private void triggerBossShake() {
         if (bossGroup == null) return;
 
@@ -582,19 +719,39 @@ public class Hud {
         ));
     }
 
+    /**
+     * Sets the minimap actor and size.
+     *
+     * @param minimapActor Actor to display
+     * @param width Desired width
+     * @param height Desired height
+     */
     public void setMinimapActor(Actor minimapActor, float width, float height) {
         minimapContainer.clearChildren();
         minimapContainer.add(minimapActor).size(width, height);
     }
 
+    /**
+     * Returns the HUD stage for input processing.
+     *
+     * @return HUD stage
+     */
     public Stage getStage() {
         return stage;
     }
 
+    /**
+     * Returns the developer console instance.
+     *
+     * @return Developer console
+     */
     public DevConsole getDevConsole() {
         return devConsole;
     }
 
+    /**
+     * Disposes HUD resources and textures.
+     */
     public void dispose() {
         stage.dispose();
         pixelTexture.dispose();
@@ -607,6 +764,12 @@ public class Hud {
         bossFillTexture.dispose();
     }
 
+    /**
+     * Creates a 1x1 solid color texture.
+     *
+     * @param color Color to use
+     * @return Created texture
+     */
     private Texture createSolidTexture(Color color) {
         Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pm.setColor(color);

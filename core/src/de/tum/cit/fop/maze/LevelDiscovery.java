@@ -24,6 +24,8 @@ public final class LevelDiscovery {
     /**
      * One entry per filename.
      * If a file exists in BOTH internal and local, LOCAL wins.
+     *
+     * @return sorted list of level file handles
      */
     public static Array<FileHandle> listAllLevels() {
         Map<String, FileHandle> byName = new LinkedHashMap<>();

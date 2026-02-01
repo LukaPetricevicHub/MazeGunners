@@ -26,18 +26,32 @@ import java.util.List;
  */
 public class CombatSystem {
 
+    /** Distance at which enemies begin updating if not aggro-locked. */
     private static final float ENEMY_WAKE_UP_DIST = 24 * 16f;
 
+    /** Texture used to draw drone laser beams. */
     private Texture droneLaserTexture;
+    /** List of active enemies for projectile rendering. */
     private List<Enemy> enemies;
+    /** Multiplier applied to enemy touch damage. */
     private float enemyDamageMult = 1f;
 
     // floor hazard loop sound removed
+    /** Tracks whether the player was attacking last frame. */
     private boolean wasPlayerAttacking = false;
+    /** Set of enemies already hit during the current melee swing. */
     private final java.util.HashSet<Enemy> meleeHitThisSwing = new java.util.HashSet<>();
 
+    /**
+     * Creates a new combat system.
+     */
     public CombatSystem() {}
 
+    /**
+     * Updates the global enemy damage multiplier.
+     *
+     * @param mult Damage multiplier to apply
+     */
     public void setEnemyDamageMult(float mult) {
         enemyDamageMult = Math.max(0.1f, mult);
     }
@@ -297,12 +311,13 @@ public class CombatSystem {
         float playerX = player.getX() + 16f;
         float playerY = player.getY() + 32f;
         float tileSize = maze.getTileSize();
+        boolean godMode = player.isGodMode();
 
         for (Obstacle obs : obstacles) {
 
             if (obs instanceof FloorHazard hazard) {
 
-                if (hazard.justEntered(playerFeetHitbox)) {
+                if (!godMode && hazard.justEntered(playerFeetHitbox)) {
                     player.activateFloorHazard(2.5f, hazard.getSpeedBoost());
                 }
                 // no floor hazard loop sound
@@ -316,7 +331,7 @@ public class CombatSystem {
                 spike.update(deltaTime);
 
                 if (spike.shouldDamagePlayerThisFrame()) {
-                    if (!player.canIgnoreTrapDamage()) {
+                    if (!godMode && !player.canIgnoreTrapDamage()) {
                         player.takeDamage(1);
                     }
                 }
@@ -338,13 +353,13 @@ public class CombatSystem {
 
                     boolean ignoreTrap = player.canIgnoreTrapDamage();
 
-                    if (!ignoreTrap && !player.hasGhost()) {
+                    if (!godMode && !ignoreTrap && !player.hasGhost()) {
                         player.takeDamage(lightning.getDamageToPlayer());
                         player.applyLightningDebuff(3f);
                     }
                 }
 
-                if (player.isLightningDebuffed()) {
+                if (!godMode && player.isLightningDebuffed()) {
                     speedModifier = lightning.getSlowMultiplier();
                     visibilityFactor = lightning.getVisionMultiplier();
                 }
@@ -362,7 +377,7 @@ public class CombatSystem {
                     continue;
                 }
 
-                if (!isTrap || !player.hasGhost()) {
+                if (!godMode && (!isTrap || !player.hasGhost())) {
                     obs.onActivate();
                     player.takeDamage(obs.getDamageToPlayer());
                 }
@@ -416,12 +431,22 @@ public class CombatSystem {
         // floor hazard loop sound removed
     }
 
+    /**
+     * Checks if a rectangle overlaps a wall cell in the maze.
+     *
+     * @param rect Bounding rectangle to test
+     * @param maze Maze reference
+     * @return True if the rectangle is inside a wall cell
+     */
     private boolean isWall(Rectangle rect, Maze maze) {
         int cx = (int) (rect.x / maze.getTileSize());
         int cy = (int) (rect.y / maze.getTileSize());
         return maze.isWallCell(cx, cy);
     }
 
+    /**
+     * Lazily loads the drone laser texture.
+     */
     private void ensureDroneLaserTextureLoaded() {
         if (droneLaserTexture == null) {
             droneLaserTexture = new Texture("Enemies/FlyingDrone/Laser.png");

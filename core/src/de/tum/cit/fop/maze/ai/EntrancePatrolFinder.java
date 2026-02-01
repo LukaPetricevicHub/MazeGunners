@@ -155,6 +155,11 @@ public final class EntrancePatrolFinder {
 
     /**
      * Checks whether a tile is a valid room interior tile.
+     *
+     * @param maze Maze reference
+     * @param x Tile x-coordinate
+     * @param y Tile y-coordinate
+     * @return True if the tile is a room interior floor
      */
     private static boolean isRoomTile(Maze maze, int x, int y) {
         return maze.inBounds(x, y) && maze.getTile(x, y) == Tiles.FLOOR;
@@ -162,6 +167,12 @@ public final class EntrancePatrolFinder {
 
     /**
      * Adds a world-space patrol point if the tile is a valid floor tile.
+     *
+     * @param maze Maze reference
+     * @param points Output list of points
+     * @param x Tile x-coordinate
+     * @param y Tile y-coordinate
+     * @param ts Tile size in world units
      */
     private static void addPointIfValid(Maze maze, Array<Vector2> points, int x, int y, float ts) {
         if (!maze.inBounds(x, y)) return;

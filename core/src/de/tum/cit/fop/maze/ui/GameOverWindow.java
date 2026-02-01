@@ -121,6 +121,12 @@ public class GameOverWindow extends Window {
         this.pack();
     }
 
+    /**
+     * Finds the next level file in the level list after the current one.
+     *
+     * @param current Current level file
+     * @return Next level file, or null if none exists
+     */
     private FileHandle findNextLevelFile(FileHandle current) {
         var all = LevelDiscovery.listAllLevels();
         if (all.size == 0) return null;
@@ -135,6 +141,12 @@ public class GameOverWindow extends Window {
         return all.get(0);
     }
 
+    /**
+     * Attempts to extract the level number from a filename.
+     *
+     * @param filename File name to parse
+     * @return Parsed difficulty, or 1 if no number is found
+     */
     private int guessDifficulty(String filename) {
         String digits = filename.replaceAll("\\D+", "");
         if (digits.isEmpty()) return 1;

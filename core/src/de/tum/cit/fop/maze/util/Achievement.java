@@ -26,10 +26,38 @@ public class Achievement {
         this.unlocked = false;
     }
 
-    // Getters & Setters
+    /**
+     * Retrieves the unique identifier of the achievement.
+     *
+     * @return unique achievement ID
+     */
     public String getId() { return id; }
+
+    /**
+     * Retrieves the display title of the achievement.
+     *
+     * @return achievement title
+     */
     public String getTitle() { return title; }
+
+    /**
+     * Retrieves the description text of the achievement.
+     *
+     * @return achievement description
+     */
     public String getDescription() { return description; }
+
+    /**
+     * Indicates whether the achievement has been unlocked.
+     *
+     * @return true if unlocked, otherwise false
+     */
     public boolean isUnlocked() { return unlocked; }
+
+    /**
+     * Sets the unlocked state of the achievement.
+     *
+     * @param unlocked true to mark as unlocked, false to mark as locked
+     */
     public void setUnlocked(boolean unlocked) { this.unlocked = unlocked; }
 }

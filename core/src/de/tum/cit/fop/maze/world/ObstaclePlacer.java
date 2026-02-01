@@ -22,7 +22,9 @@ import java.util.*;
  */
 public class ObstaclePlacer {
 
+    /** Tile buffer around the spawn room where traps cannot be placed. */
     private static final int SPAWN_ROOM_BUFFER_TILES = 3;
+    /** Minimum squared distance between traps of the same type. */
     private static final int MIN_SAME_TRAP_DISTANCE_TILES = 12;
 
     /**
@@ -82,6 +84,9 @@ public class ObstaclePlacer {
 
     /**
      * Collects all valid floor tiles inside the maze.
+     *
+     * @param maze Maze to scan
+     * @return List of floor tile points
      */
     private List<Point> getFloorPoints(Maze maze) {
 
@@ -102,6 +107,10 @@ public class ObstaclePlacer {
     /**
      * Spawns a random obstacle at a tile if placement conditions allow it.
      *
+     * @param cell Tile position to place at
+     * @param maze Maze reference
+     * @param rng Random generator
+     * @param allowLightningTraps Whether lightning traps are allowed
      * @return A new obstacle or null if placement is invalid
      */
     private Obstacle spawnRandomTrap(Point cell, Maze maze, Random rng, boolean allowLightningTraps) {
@@ -144,6 +153,10 @@ public class ObstaclePlacer {
 
     /**
      * Verifies that the obstacle occupies a fully walkable area.
+     *
+     * @param obstacle Obstacle to validate
+     * @param maze Maze reference
+     * @return True if all surrounding tiles are walkable
      */
     private boolean isValidArea(Obstacle obstacle, Maze maze) {
 
@@ -165,6 +178,13 @@ public class ObstaclePlacer {
     }
 
 
+    /**
+     * Checks that a candidate placement is far enough from same-type traps.
+     *
+     * @param candidate Candidate tile
+     * @param placed Existing placements
+     * @return True if far enough
+     */
     private boolean isFarEnoughFromSameType(Point candidate, List<Point> placed) {
 
         for(Point p : placed) {
@@ -180,6 +200,14 @@ public class ObstaclePlacer {
     }
 
 
+    /**
+     * Determines whether a cell is too close to the spawn room.
+     *
+     * @param cell Tile position to check
+     * @param spawnRoom Spawn room reference, or null if not defined
+     * @param maze Maze reference
+     * @return True if the cell is within the spawn buffer
+     */
     private boolean isNearSpawnRoom(Point cell, Room spawnRoom, Maze maze) {
 
         if(spawnRoom == null) {
@@ -247,6 +275,13 @@ public class ObstaclePlacer {
     }
 
 
+    /**
+     * Retrieves or creates the placement list for a given trap type.
+     *
+     * @param map Placement map
+     * @param type Obstacle class type
+     * @return List of placements for the given type
+     */
     private List<Point> getPlacedListForType(Map<Class<? extends Obstacle>, List<Point>> map, Class<? extends Obstacle> type) {
         return map.computeIfAbsent(type, k -> new ArrayList<>());
     }

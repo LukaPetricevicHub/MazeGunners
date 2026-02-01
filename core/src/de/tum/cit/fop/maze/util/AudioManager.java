@@ -14,6 +14,9 @@ public class AudioManager {
     private final GamePreferences prefs;
     private String currentTrack;
 
+    /**
+     * Creates a new audio manager with default preferences.
+     */
     public AudioManager() {
         this.prefs = new GamePreferences();
     }
@@ -61,6 +64,9 @@ public class AudioManager {
         }
     }
 
+    /**
+     * Stops the currently playing background music, if any.
+     */
     public void stopMusic() {
         if (backgroundMusic != null) {
             backgroundMusic.stop();
@@ -76,6 +82,9 @@ public class AudioManager {
         }
     }
 
+    /**
+     * Resumes background music if enabled in preferences.
+     */
     public void resumeMusic() {
         if (backgroundMusic != null && prefs.isMusicEnabled()) {
             backgroundMusic.play();
@@ -84,6 +93,8 @@ public class AudioManager {
 
     /**
      * Updates the volume of the currently playing music.
+     *
+     * @param volume new volume in the range [0, 1]
      */
     public void updateMusicVolume(float volume) {
         if (backgroundMusic != null) {
@@ -91,6 +102,9 @@ public class AudioManager {
         }
     }
 
+    /**
+     * Disposes of music resources held by the manager.
+     */
     public void dispose() {
         if (backgroundMusic != null) {
             backgroundMusic.dispose();

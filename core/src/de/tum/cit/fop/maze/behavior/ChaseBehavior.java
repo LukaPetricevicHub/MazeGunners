@@ -154,6 +154,13 @@ public class ChaseBehavior implements BehaviorState {
         return new Point(tileX, tileY);
     }
 
+    /**
+     * Computes the world-space center of a tile.
+     *
+     * @param tileCoords Tile coordinates
+     * @param maze Maze reference
+     * @return Center position in world units
+     */
     private static Vector2 getTileCenter(Point tileCoords, Maze maze) {
         float size = maze.getTileSize();
         return new Vector2(
@@ -162,6 +169,13 @@ public class ChaseBehavior implements BehaviorState {
         );
     }
 
+    /**
+     * Checks whether a direct chase without pathfinding is possible.
+     *
+     * @param enemy Enemy attempting to chase
+     * @param maze Maze reference
+     * @return True if a direct path is possible
+     */
     private boolean canDirectChase(Enemy enemy, Maze maze) {
         Vector2 pos = enemy.getPosition();
         Vector2 playerPos = enemy.getPlayerPosition();

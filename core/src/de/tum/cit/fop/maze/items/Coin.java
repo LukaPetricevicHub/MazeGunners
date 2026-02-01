@@ -19,13 +19,19 @@ import java.util.Map;
  */
 public class Coin extends Collectable {
 
+    /** Value of this coin instance. */
     private final int amount;
+    /** Accumulated time used to advance the animation. */
     private float stateTime = 0f;
 
+    /** Cached animation bundles per coin value. */
     private static final Map<Integer, AnimBundle> CACHE = new HashMap<>();
+    /** Shared pickup sound for coins. */
     private static Sound pickupSound;
 
+    /** Render width for coin sprites. */
     private static final float DRAW_W = 32f;
+    /** Render height for coin sprites. */
     private static final float DRAW_H = 32f;
 
     /**
@@ -49,6 +55,8 @@ public class Coin extends Collectable {
 
     /**
      * Adds the coin value to the player and marks the coin as collected.
+     *
+     * @param player Player who collected the coin
      */
     @Override
     public void applyEffect(Player player) {
@@ -65,6 +73,8 @@ public class Coin extends Collectable {
 
     /**
      * Renders the animated coin.
+     *
+     * @param batch Sprite batch used for drawing
      */
     @Override
     public void render(SpriteBatch batch) {
@@ -79,16 +89,32 @@ public class Coin extends Collectable {
     }
 
 
+    /**
+     * Cached sprite sheet and animation for a coin value.
+     */
     private static class AnimBundle {
+        /** Sprite sheet texture for this coin value. */
         Texture sheet;
+        /** Animation built from the sheet. */
         Animation<TextureRegion> animation;
 
+        /**
+         * Creates a cached animation bundle.
+         *
+         * @param s Sprite sheet texture
+         * @param a Animation instance
+         */
         AnimBundle(Texture s, Animation<TextureRegion> a) {
             sheet = s;
             animation = a;
         }
     }
 
+    /**
+     * Loads and caches the animation for a coin value if needed.
+     *
+     * @param amount Coin value to load
+     */
     private static void ensureLoaded(int amount) {
         if (CACHE.containsKey(amount)) return;
 

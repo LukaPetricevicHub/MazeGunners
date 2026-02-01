@@ -22,7 +22,9 @@ import java.util.*;
  */
 public class EnemySpawner {
 
+    /** Approximate enemy width used for spawn safety checks. */
     private static final float AVG_ENEMY_W = 32f;
+    /** Approximate enemy height used for spawn safety checks. */
     private static final float AVG_ENEMY_H = 32f;
 
     /**
@@ -65,6 +67,15 @@ public class EnemySpawner {
     }
 
     // Patrolling enemies
+    /**
+     * Spawns patrol enemies in rooms using entrance-based patrols.
+     *
+     * @param maze Maze reference
+     * @param rooms Rooms to consider
+     * @param targetPlayer Player target
+     * @param rng Random generator
+     * @param out Output list to append to
+     */
     private void spawnRoomPatrolEnemies(Maze maze, List<Room> rooms, Player targetPlayer, Random rng, List<Enemy> out) {
         int roomsWithPatrol = 0;
         for (Room room : rooms) {
@@ -111,6 +122,17 @@ public class EnemySpawner {
     }
 
     // Random enemies
+    /**
+     * Spawns random enemies across valid tiles.
+     *
+     * @param maze Maze reference
+     * @param rooms Rooms to consider
+     * @param excludedRoom Room to avoid
+     * @param targetPlayer Player target
+     * @param maxEnemies Maximum number of enemies
+     * @param rng Random generator
+     * @param out Output list to append to
+     */
     private void spawnRandomEnemies(Maze maze, List<Room> rooms, Room excludedRoom, Player targetPlayer, int maxEnemies, Random rng, List<Enemy> out) {
         List<Point> candidates;
 
@@ -152,6 +174,15 @@ public class EnemySpawner {
         System.out.println("[EnemySpawner] Random enemies spawned=" + spawned + " (requested " + maxEnemies + ")");
     }
 
+    /**
+     * Creates a random enemy type for a given tile.
+     *
+     * @param maze Maze reference
+     * @param rng Random generator
+     * @param cell Tile location
+     * @param targetPlayer Player target
+     * @return Created enemy or null if not possible
+     */
     private Enemy createRandomEnemyType(Maze maze, Random rng, Point cell, Player targetPlayer) {
         float roll = rng.nextFloat();
 
@@ -170,6 +201,14 @@ public class EnemySpawner {
         return new FlyingDrone(spawn, 100f, patrol, targetPlayer);
     }
 
+    /**
+     * Builds a simple two-point patrol path.
+     *
+     * @param maze Maze reference
+     * @param rng Random generator
+     * @param cell Origin tile
+     * @return Patrol path
+     */
     private Array<Vector2> buildSimplePatrol(Maze maze, Random rng, Point cell) {
         Array<Vector2> patrol = new Array<>(2);
 
@@ -198,6 +237,13 @@ public class EnemySpawner {
     }
 
     // Helpers
+    /**
+     * Collects floor cells, excluding the given room if specified.
+     *
+     * @param maze Maze reference
+     * @param excludedRoom Room to exclude
+     * @return List of floor tiles
+     */
     private List<Point> collectFloorCells(Maze maze, Room excludedRoom) {
         List<Point> cells = new ArrayList<>();
         for (int y = 1; y < maze.getHeight() - 1; y++) {
@@ -216,6 +262,14 @@ public class EnemySpawner {
         return cells;
     }
 
+    /**
+     * Checks whether an enemy can safely spawn at a location.
+     *
+     * @param x World x-coordinate
+     * @param y World y-coordinate
+     * @param maze Maze reference
+     * @return True if spawn is safe
+     */
     private boolean isSafeToSpawn(float x, float y, Maze maze) {
         float pad = 2f;
 
@@ -227,6 +281,13 @@ public class EnemySpawner {
         return !maze.isWallWorld(l, b) && !maze.isWallWorld(r, b) && !maze.isWallWorld(l, t) && !maze.isWallWorld(r, t);
     }
 
+    /**
+     * Collects interior floor tiles from rooms.
+     *
+     * @param maze Maze reference
+     * @param rooms Rooms to scan
+     * @return List of interior floor tiles
+     */
     private List<Point> collectSafeRoomInteriorTiles(Maze maze, List<Room> rooms) {
         List<Point> result = new ArrayList<>();
 

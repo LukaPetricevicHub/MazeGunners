@@ -44,10 +44,22 @@ public class ScoreEntry implements Comparable<ScoreEntry> {
     /**
      * Returns the stored values of this score entry.
      *
-     * @return Player name, score, or extra value depending on the getter
+     * @return player name
      */
     public String getPlayerName() { return playerName; }
+
+    /**
+     * Retrieves the score value.
+     *
+     * @return score value
+     */
     public int getScore() { return score; }
+
+    /**
+     * Retrieves the extra value (e.g., floor reached).
+     *
+     * @return extra value
+     */
     public int getExtra() { return extra; }
 
     /**

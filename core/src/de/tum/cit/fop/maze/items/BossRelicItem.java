@@ -25,6 +25,8 @@ public class BossRelicItem extends Collectable {
 
     /**
      * Applies the boss reward effects to the player.
+     *
+     * @param player Player who collected the relic
      */
     @Override
     public void applyEffect(Player player) {

@@ -169,10 +169,27 @@ public class SettingsScreen implements Screen {
      * @param onSave  Callback to store the new key
      * @param width   Width of the UI element
      */
+    /**
+     * Adds a key binding row to the settings table.
+     *
+     * @param table parent table to add to
+     * @param name action label
+     * @param key current key code
+     * @param onSave callback to store the new key code
+     * @param width width constraint for the UI element
+     */
     private void addKeyBindRow(Table table, String name, int key, java.util.function.Consumer<Integer> onSave, Value width) {
         table.add(createKeyBindButton(name, key, onSave)).width(width).height(50).padBottom(10).row();
     }
 
+    /**
+     * Creates a button that captures a new key binding when pressed.
+     *
+     * @param actionName action label
+     * @param currentKey currently assigned key code
+     * @param onSave callback to store the new key code
+     * @return configured key binding button
+     */
     private TextButton createKeyBindButton(String actionName, int currentKey, java.util.function.Consumer<Integer> onSave) {
         String keyName = Input.Keys.toString(currentKey);
         final TextButton button = UiButtons.button(actionName + ": " + keyName, game.getSkin());
@@ -203,6 +220,11 @@ public class SettingsScreen implements Screen {
      *
      * @param button Button whose label reflects the current mode
      */
+    /**
+     * Toggles between fullscreen and windowed mode.
+     *
+     * @param button button whose label reflects the current mode
+     */
     private void toggleFullscreen(TextButton button) {
         if (Gdx.graphics.isFullscreen()) {
             Gdx.graphics.setWindowedMode(1280, 720);
@@ -214,6 +236,9 @@ public class SettingsScreen implements Screen {
         }
     }
 
+    /**
+     * Plays the click sound effect if available.
+     */
     private void playClickSound() {
         if (clickSound != null) {
             long id = clickSound.play();
@@ -221,6 +246,11 @@ public class SettingsScreen implements Screen {
         }
     }
 
+    /**
+     * Renders the settings screen.
+     *
+     * @param delta time step in seconds
+     */
     @Override
     public void render(float delta) {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
@@ -236,11 +266,20 @@ public class SettingsScreen implements Screen {
         stage.draw();
     }
 
+    /**
+     * Updates the viewport when the window is resized.
+     *
+     * @param width new width in pixels
+     * @param height new height in pixels
+     */
     @Override
     public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
     }
 
+    /**
+     * Sets the input processor and loads click sounds.
+     */
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
@@ -252,14 +291,31 @@ public class SettingsScreen implements Screen {
         }
     }
 
+    /**
+     * Disposes screen resources.
+     */
     @Override
     public void dispose() {
         stage.dispose();
         if (clickSound != null) clickSound.dispose();
     }
 
-    @Override public void pause() {}
-    @Override public void resume() {}
-    @Override public void hide() {}
+    /**
+     * Called when the application is paused.
+     */
+    @Override
+    public void pause() {}
+
+    /**
+     * Called when the application resumes.
+     */
+    @Override
+    public void resume() {}
+
+    /**
+     * Called when the screen is no longer the current screen.
+     */
+    @Override
+    public void hide() {}
 }
 

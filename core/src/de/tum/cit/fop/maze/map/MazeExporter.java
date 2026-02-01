@@ -8,6 +8,9 @@ import java.io.Writer;
 import java.util.Map;
 import java.util.TreeMap;
 
+/**
+ * Exports maze data to a properties-style file.
+ */
 public class MazeExporter {
 
     /**
@@ -17,6 +20,9 @@ public class MazeExporter {
      * Width=80
      * Height=80
      * 0,0=1
+     *
+     * @param maze Maze to export
+     * @param file File handle to write to
      */
     public static void saveToProperties(Maze maze, FileHandle file) {
 

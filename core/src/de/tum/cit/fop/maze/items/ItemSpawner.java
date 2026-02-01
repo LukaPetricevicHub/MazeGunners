@@ -15,9 +15,12 @@ import java.util.Random;
  */
 public class ItemSpawner {
 
+    /** Random generator used for item placement and coin values. */
     private final Random random = new Random();
 
+    /** Possible coin values for weighted selection. */
     private static final int[] COIN_VALUES  = { 5, 20, 50};
+    /** Weights aligned with {@link #COIN_VALUES}. */
     private static final int[] COIN_WEIGHTS = { 80, 16, 4}; // sums to 100
 
     /**
@@ -71,6 +74,10 @@ public class ItemSpawner {
 
     /**
      * Spawns a single item of the given type on a random free tile.
+     *
+     * @param maze Maze to place items in
+     * @param items List to append the item to
+     * @param type Item type id to spawn
      */
     private void spawnSingleItem(Maze maze, List<Collectable> items, int type) {
         int x, y;
@@ -108,6 +115,8 @@ public class ItemSpawner {
 
     /**
      * Returns a coin value based on predefined weights.
+     *
+     * @return Selected coin value
      */
     private int rollCoinValue() {
         int total = 0;
@@ -125,6 +134,12 @@ public class ItemSpawner {
 
     /**
      * Checks whether a tile already contains an item.
+     *
+     * @param items Current item list
+     * @param maze Maze used for tile size
+     * @param tx Tile x-coordinate
+     * @param ty Tile y-coordinate
+     * @return True if the tile is already occupied
      */
     private boolean tileUsed(List<Collectable> items, Maze maze, int tx, int ty) {
         float ts = maze.getTileSize();
@@ -137,6 +152,14 @@ public class ItemSpawner {
         return false;
     }
 
+    /**
+     * Determines whether a tile matches any maze exit cell.
+     *
+     * @param maze Maze used for exit cells
+     * @param tx Tile x-coordinate
+     * @param ty Tile y-coordinate
+     * @return True if the tile is an exit cell
+     */
     private boolean isExitCell(Maze maze, int tx, int ty) {
         for (var p : maze.getExitCells()) {
             if (p.x == tx && p.y == ty) return true;

@@ -99,6 +99,13 @@ public class EvadeBehavior implements BehaviorState {
 
 
     // Convert world coordinates to tile
+    /**
+     * Converts world coordinates to tile coordinates.
+     *
+     * @param worldPos World position
+     * @param maze Maze reference
+     * @return Tile coordinates
+     */
     private static Point worldToTileCoords(Vector2 worldPos, Maze maze) {
         return new Point(
                 GridUtils.worldToTile(worldPos.x, maze.getTileSize()),
@@ -108,6 +115,13 @@ public class EvadeBehavior implements BehaviorState {
 
 
     // Get center position of tile
+    /**
+     * Computes the world-space center of a tile.
+     *
+     * @param p Tile coordinates
+     * @param maze Maze reference
+     * @return Center position in world units
+     */
     private static Vector2 getTileCenter(Point p, Maze maze) {
         float size = maze.getTileSize();
 
@@ -116,6 +130,14 @@ public class EvadeBehavior implements BehaviorState {
 
 
     // Find suitable tile to escape
+    /**
+     * Finds a safe tile away from the player.
+     *
+     * @param enemyLoc Enemy tile position
+     * @param playerLoc Player tile position
+     * @param maze Maze reference
+     * @return Safe tile to flee to, or null if none found
+     */
     private Point findSafeSpot(Point enemyLoc, Point playerLoc, Maze maze) {
         List<Point> potentialTiles = new ArrayList<>();
         Random randomGen = new Random();

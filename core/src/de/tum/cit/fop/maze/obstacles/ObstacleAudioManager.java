@@ -14,9 +14,12 @@ import com.badlogic.gdx.utils.Timer;
  */
 public final class ObstacleAudioManager {
 
+    /** Spike trap sound effect. */
     private static Sound spikeTrapSound;
+    /** Lightning trap sound effect. */
     private static Sound lightningTrapSound;
 
+    /** Whether audio has been initialized. */
     private static boolean initialized = false;
 
     /**
@@ -66,12 +69,6 @@ public final class ObstacleAudioManager {
     }
 
     /**
-     * Starts looping the floor hazard sound effect.
-     *
-     * @param volume playback volume (0.0 to 1.0)
-     * @return sound instance ID, or -1 if playback failed
-     */
-    /**
      * Disposes all loaded obstacle sound effects.
      *
      * Should be called when the game shuts down to free audio resources.
@@ -81,6 +78,11 @@ public final class ObstacleAudioManager {
         if (lightningTrapSound != null) lightningTrapSound.dispose();
     }
 
+    /**
+     * Retrieves the configured sound effects volume.
+     *
+     * @return Sound effects volume
+     */
     private static float getSfxVolume() {
         if (Gdx.app == null) return 1f;
         if (Gdx.app.getApplicationListener() instanceof de.tum.cit.fop.maze.MazeRunnerGame game) {

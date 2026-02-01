@@ -9,21 +9,31 @@ import com.badlogic.gdx.math.MathUtils;
  */
 public class GameCamera {
 
+    /** Smoothing factor for camera follow movement. */
     private static final float FOLLOW_SMOOTHNESS = 8f;
 
+    /** Minimum allowed zoom multiplier. */
     private static final float MIN_ZOOM = 0.5f;
+    /** Maximum allowed zoom multiplier. */
     private static final float MAX_ZOOM = 2.5f;
 
+    /** Smoothing factor for camera zoom. */
     private static final float ZOOM_SMOOTHNESS = 12f;
 
+    /** Underlying LibGDX camera. */
     private final OrthographicCamera camera;
 
+    /** World width in world units. */
     private final float worldWidth;
+    /** World height in world units. */
     private final float worldHeight;
 
+    /** Base zoom value. */
     private float baseZoom = 1f;
 
+    /** Current zoom multiplier. */
     private float zoomMultiplier = 1f;
+    /** Target zoom multiplier to interpolate toward. */
     private float targetZoomMultiplier = 1f;
 
     /**
@@ -95,14 +105,29 @@ public class GameCamera {
         targetZoomMultiplier = MathUtils.clamp(targetZoomMultiplier - amount, MIN_ZOOM, MAX_ZOOM);
     }
 
+    /**
+     * Continuously zooms the camera out.
+     *
+     * @param amount zoom multiplier change
+     */
     public void zoomOutContinuous(float amount) {
         targetZoomMultiplier = MathUtils.clamp(targetZoomMultiplier + amount, MIN_ZOOM, MAX_ZOOM);
     }
 
+    /**
+     * Zooms the camera in by a step.
+     *
+     * @param step Step size
+     */
     public void zoomInStep(float step) {
         zoomInContinuous(step);
     }
 
+    /**
+     * Zooms the camera out by a step.
+     *
+     * @param step Step size
+     */
     public void zoomOutStep(float step) {
         zoomOutContinuous(step);
     }
@@ -143,10 +168,20 @@ public class GameCamera {
         else camera.position.y = MathUtils.clamp(camera.position.y, halfH, worldHeight - halfH);
     }
 
+    /**
+     * Returns the underlying LibGDX camera.
+     *
+     * @return Orthographic camera instance
+     */
     public OrthographicCamera getCamera() {
         return camera;
     }
 
+    /**
+     * Sets a visibility zoom multiplier (stub for compatibility).
+     *
+     * @param visibilityFactor Zoom multiplier factor
+     */
     public void setZoomMultiplier(float visibilityFactor) {
     }
 }

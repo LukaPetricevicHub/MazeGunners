@@ -4,10 +4,19 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 
+/**
+ * Text button that auto-scales its label to fit available space.
+ */
 public class AutoScaleTextButton extends TextButton {
     private final float baseScaleX;
     private final float baseScaleY;
 
+    /**
+     * Creates an auto-scaling text button.
+     *
+     * @param text button label text
+     * @param skin UI skin to apply
+     */
     public AutoScaleTextButton(String text, Skin skin) {
         super(text, skin);
         Label label = getLabel();
@@ -16,6 +25,9 @@ public class AutoScaleTextButton extends TextButton {
         baseScaleY = label.getFontScaleY();
     }
 
+    /**
+     * Lays out the button and scales the label to fit.
+     */
     @Override
     public void layout() {
         Label label = getLabel();
