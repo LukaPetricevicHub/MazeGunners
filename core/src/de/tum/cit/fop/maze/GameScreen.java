@@ -91,7 +91,6 @@ public class GameScreen implements Screen {
     private static final float PLAYER_WIDTH = 32f;
     private static final float PLAYER_HEIGHT = 32f;
 
-    private Texture keyTexture;
     private final int level;
     private int trackedLevel = 1;
 
@@ -261,18 +260,6 @@ public class GameScreen implements Screen {
                 game.goToMenu();
             }
 
-            if (gameStateController.isRunning()) {
-                if (worldLogic.handleKeyPickup(player, maze)) {
-                    if (pickupSound != null) {
-                        long id = pickupSound.play();
-                        pickupSound.setVolume(id, game.getPreferences().getSoundVolume());
-                    }
-                    if (hud != null) {
-                        hud.showNotification("I found the key.");
-                    }
-                }
-            }
-
             // Item pickup
             if (items != null) {
                 Rectangle playerBounds =
@@ -283,7 +270,15 @@ public class GameScreen implements Screen {
                     Collectable item = iter.next();
 
                     if (item.isActive() && playerBounds.overlaps(item.getBounds())) {
+                        boolean hadKey = player.hasKey();
                         item.applyEffect(player);
+
+                        if (!hadKey && item instanceof KeyItem) {
+                            game.getAchievementManager().unlock("collector");
+                            if (hud != null) {
+                                hud.showNotification("I found the key.");
+                            }
+                        }
 
                         if (pickupSound != null) {
                             long id = pickupSound.play();
@@ -610,6 +605,9 @@ public class GameScreen implements Screen {
             if (savedState.hasGun) {
                 player.equipGun();
             }
+            if (savedState.hasKey) {
+                player.giveKey();
+            }
             if (savedState.godMode) {
                 player.setGodMode(true);
             }
@@ -678,10 +676,13 @@ public class GameScreen implements Screen {
                 else if (is.type.equals("heart")) items.add(new HeartItem(is.x, is.y));
                 else if (is.type.equals("speed")) items.add(new SpeedItem(is.x, is.y));
                 else if (is.type.equals("shield")) items.add(new ShieldItem(is.x, is.y));
+                else if (is.type.equals("key") && !player.hasKey()) items.add(new KeyItem(is.x, is.y));
             }
         } else {
             items = new ItemSpawner().spawnItems(maze, itemCount); // use per-level
         }
+
+        ensureKeyItemPresent(seed);
     }
 
 
@@ -1289,6 +1290,77 @@ public class GameScreen implements Screen {
         return null;
     }
 
+    private Room findKeyRoom() {
+        if (rooms == null) return null;
+        for (Room r : rooms) {
+            if (r.getType() == RoomType.KEY) return r;
+        }
+        return null;
+    }
+
+    private void ensureKeyItemPresent(long seed) {
+        if (player == null || player.hasKey()) return;
+        if (items == null) items = new ArrayList<>();
+
+        for (Collectable c : items) {
+            if (c instanceof KeyItem) return;
+        }
+
+        Point keyTile = findFirstTileOfType(maze, Tiles.KEY);
+        if (keyTile != null) {
+            maze.setTile(keyTile.x, keyTile.y, Tiles.FLOOR);
+            Room r = findRoomContaining(rooms, keyTile);
+            if (r != null) r.setType(RoomType.KEY);
+            items.add(new KeyItem(keyTile.x * TILE_SIZE, keyTile.y * TILE_SIZE));
+            return;
+        }
+
+        Room keyRoom = findKeyRoom();
+        if (keyRoom == null) {
+            Room spawnRoom = findSpawnRoom();
+            Room exitRoom = findExitRoom();
+            keyRoom = pickFallbackKeyRoom(spawnRoom, exitRoom);
+            if (keyRoom != null) keyRoom.setType(RoomType.KEY);
+        }
+
+        if (keyRoom != null) {
+            java.util.Random rng = new java.util.Random(seed ^ 0x9E3779B97F4A7C15L);
+            Point p = keyRoom.randomInterior(rng);
+            if (p != null && maze.getTile(p.x, p.y).isWalkable()) {
+                items.add(new KeyItem(p.x * TILE_SIZE, p.y * TILE_SIZE));
+            }
+        }
+    }
+
+    private Room pickFallbackKeyRoom(Room spawnRoom, Room exitRoom) {
+        if (rooms == null || rooms.isEmpty()) return null;
+        Room best = null;
+        int bestScore = -1;
+
+        int sx = spawnRoom != null ? spawnRoom.centerX() : -1;
+        int sy = spawnRoom != null ? spawnRoom.centerY() : -1;
+        int ex = exitRoom != null ? exitRoom.centerX() : -1;
+        int ey = exitRoom != null ? exitRoom.centerY() : -1;
+
+        for (Room r : rooms) {
+            if (r == spawnRoom || r == exitRoom) continue;
+            int ds = (sx < 0) ? Integer.MAX_VALUE : dist2(r.centerX(), r.centerY(), sx, sy);
+            int de = (ex < 0) ? Integer.MAX_VALUE : dist2(r.centerX(), r.centerY(), ex, ey);
+            int score = Math.min(ds, de);
+            if (score > bestScore) {
+                bestScore = score;
+                best = r;
+            }
+        }
+        return best;
+    }
+
+    private int dist2(int ax, int ay, int bx, int by) {
+        int dx = ax - bx;
+        int dy = ay - by;
+        return dx * dx + dy * dy;
+    }
+
     private void applyRoomMask(Maze maze, List<Room> rooms) {
         if (maze == null) return;
         maze.clearRoomMask();
@@ -1386,7 +1458,6 @@ public class GameScreen implements Screen {
             }
         }
         if (hud != null) hud.dispose();
-        if (keyTexture != null) keyTexture.dispose();
         if (pauseStage != null) pauseStage.dispose();
         if (pickupSound != null) pickupSound.dispose();
         if (hitSound != null) hitSound.dispose();

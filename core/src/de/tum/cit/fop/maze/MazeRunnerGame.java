@@ -184,6 +184,7 @@ public class MazeRunnerGame extends Game {
         state.skillSpeedLevel = player.getSkillSpeedLevel();
         state.skillHealthLevel = player.getSkillHealthLevel();
         state.hasGun = player.hasGun();
+        state.hasKey = player.hasKey();
         state.godMode = player.isGodMode();
         state.noClip = player.isNoClip();
         state.playerX = player.getX();
@@ -217,6 +218,7 @@ public class MazeRunnerGame extends Game {
                 else if (i instanceof HeartItem) is.type = "heart";
                 else if (i instanceof SpeedItem) is.type = "speed";
                 else if (i instanceof ShieldItem) is.type = "shield";
+                else if (i instanceof KeyItem) is.type = "key";
 
                 state.items.add(is);
             }
