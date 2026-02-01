@@ -119,6 +119,9 @@ public class GameScreen implements Screen {
     private Sound pickupSound;
     private Sound hitSound;
     private Sound clickSound;
+    private Sound openLevelSound;
+    private Sound loseSound;
+    private Sound victorySound;
     private List<Collectable> items;
 
     private FogOfWarRenderer fog;
@@ -214,16 +217,6 @@ public class GameScreen implements Screen {
         // Input
         if (gameStateController.isRunning() && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyPause())) {
             togglePause();
-        }
-
-        if (Gdx.input.isKeyJustPressed(Input.Keys.K)) {
-            int needed = player.getXpNeededForNextLevel() - player.getExperience();
-            player.addExperience(Math.max(needed, 0));
-            hud.showNotification("CHEAT: FORCED LEVEL UP!");
-            if (pickupSound != null) {
-                long id = pickupSound.play();
-                pickupSound.setVolume(id, game.getPreferences().getSoundVolume());
-            }
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.GRAVE)) {
@@ -514,6 +507,7 @@ public class GameScreen implements Screen {
         initializePlayer();
         createPauseMenu();
         createHud();
+        playOpenLevelSfx();
 
         ensureExploredGrid();
         markExploredAroundPlayer();
@@ -1005,6 +999,15 @@ public class GameScreen implements Screen {
         if (Gdx.files.internal("audio/click.mp3").exists()) {
             clickSound = Gdx.audio.newSound(Gdx.files.internal("audio/click.mp3"));
         }
+        if (Gdx.files.internal("openlevel.mp3").exists()) {
+            openLevelSound = Gdx.audio.newSound(Gdx.files.internal("openlevel.mp3"));
+        }
+        if (Gdx.files.internal("lose.mp3").exists()) {
+            loseSound = Gdx.audio.newSound(Gdx.files.internal("lose.mp3"));
+        }
+        if (Gdx.files.internal("victory.mp3").exists()) {
+            victorySound = Gdx.audio.newSound(Gdx.files.internal("victory.mp3"));
+        }
 
     }
 
@@ -1015,13 +1018,11 @@ public class GameScreen implements Screen {
         isPaused = !isPaused;
 
         if (isPaused) {
-            game.getAudioManager().pauseMusic();
             multiplexer.clear();
             multiplexer.addProcessor(cameraInput);
             multiplexer.addProcessor(pauseStage);
             Gdx.input.setInputProcessor(multiplexer);
         } else {
-            game.getAudioManager().resumeMusic();
             multiplexer.clear();
             multiplexer.addProcessor(cameraInput);
             multiplexer.addProcessor(hud.getStage());
@@ -1128,11 +1129,14 @@ public class GameScreen implements Screen {
 
     private void showGameOverMenu(boolean won) {
         if (won) {
+            playVictorySfx();
             int nextLevel = level + 1;
             game.getPreferences().setMaxLevel(nextLevel);
             if (!endlessMode && level >= 5) {
                 game.markStoryCompleted();
             }
+        } else {
+            playLoseSfx();
         }
 
         if (pauseWindow != null) pauseWindow.setVisible(false);
@@ -1152,6 +1156,27 @@ public class GameScreen implements Screen {
         if (clickSound != null) {
             long id = clickSound.play();
             clickSound.setVolume(id, game.getPreferences().getSoundVolume());
+        }
+    }
+
+    private void playOpenLevelSfx() {
+        if (openLevelSound != null) {
+            long id = openLevelSound.play();
+            openLevelSound.setVolume(id, game.getPreferences().getSoundVolume());
+        }
+    }
+
+    private void playLoseSfx() {
+        if (loseSound != null) {
+            long id = loseSound.play();
+            loseSound.setVolume(id, game.getPreferences().getSoundVolume());
+        }
+    }
+
+    private void playVictorySfx() {
+        if (victorySound != null) {
+            long id = victorySound.play();
+            victorySound.setVolume(id, game.getPreferences().getSoundVolume());
         }
     }
 
@@ -1524,6 +1549,9 @@ public class GameScreen implements Screen {
                 item.dispose();
             }
         }
+        if (openLevelSound != null) openLevelSound.dispose();
+        if (loseSound != null) loseSound.dispose();
+        if (victorySound != null) victorySound.dispose();
         if (fog != null) fog.dispose();
         if (mazeRenderer != null) mazeRenderer.dispose();
         if (bossAnims != null) bossAnims.dispose();

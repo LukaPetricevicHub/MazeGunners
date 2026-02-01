@@ -36,7 +36,7 @@ public class DevConsole extends Table {
         this.game = game;
 
         this.setFillParent(true);
-        this.top();
+        this.bottom();
         this.setVisible(false);
 
         Table container = new Table(skin);

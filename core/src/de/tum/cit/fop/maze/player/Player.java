@@ -1055,7 +1055,6 @@ public class Player {
             reloadSound.play(gameRef.getPreferences().getSoundVolume());
         }
     }
-
     public boolean isDamageFlashing() { return damageFlash; }
 
     public boolean isGodMode() { return godMode; }
@@ -1073,7 +1072,6 @@ public class Player {
         if (reloadSound != null) reloadSound.dispose();
         if (slipSound != null) slipSound.dispose();
     }
-
 
     public void unlockDash() { skillDash = true; }
     public void unlockGhost() { skillGhost = true; }
