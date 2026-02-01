@@ -340,7 +340,7 @@ public class CombatSystem {
 
                     if (!ignoreTrap && !player.hasGhost()) {
                         player.takeDamage(lightning.getDamageToPlayer());
-                        player.applyLightningDebuff(3f);
+                        player.applyLightningDebuff(1.5f);
                     }
                 }
 

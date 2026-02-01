@@ -13,8 +13,8 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.map.Maze;
-import de.tum.cit.fop.maze.progress.Progression;
-import de.tum.cit.fop.maze.progress.RunGambleState;
+import de.tum.cit.fop.maze.gambling.Progression;
+import de.tum.cit.fop.maze.gambling.RunGambleState;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -93,6 +93,7 @@ public class Player {
     private Sound shootSound;
     private Sound reloadSound;
     private Sound slipSound;
+    private Sound ouchSound;
 
 
     // Powerups
@@ -228,6 +229,9 @@ public class Player {
         this.shootSound = Gdx.audio.newSound(Gdx.files.internal("audio/PlayerShooting.wav"));
         this.reloadSound = Gdx.audio.newSound(Gdx.files.internal("reload.mp3"));
         this.slipSound = Gdx.audio.newSound(Gdx.files.internal("slip.mp3"));
+        if (Gdx.files.internal("ouch.mp3").exists()) {
+            this.ouchSound = Gdx.audio.newSound(Gdx.files.internal("ouch.mp3"));
+        }
 
         this.progression = progression;
         this.gameRef = game;
@@ -660,7 +664,11 @@ public class Player {
     public void takeDamage(int amount) {
         if (godMode || isShielded || invulnerable) return;
 
+        int before = hp;
         hp = Math.max(0, hp - amount);
+        if (ouchSound != null && hp < before) {
+            ouchSound.play(gameRef.getPreferences().getSoundVolume());
+        }
 
         invulnerable = true;
         invulnTimeLeft = 0.8f;
@@ -1071,6 +1079,7 @@ public class Player {
         if (shootSound != null) shootSound.dispose();
         if (reloadSound != null) reloadSound.dispose();
         if (slipSound != null) slipSound.dispose();
+        if (ouchSound != null) ouchSound.dispose();
     }
 
     public void unlockDash() { skillDash = true; }

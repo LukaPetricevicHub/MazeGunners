@@ -1,7 +1,5 @@
 package de.tum.cit.fop.maze.items;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.audio.Sound;
 import de.tum.cit.fop.maze.player.Player;
 
 /**
@@ -10,7 +8,6 @@ import de.tum.cit.fop.maze.player.Player;
  * When picked up, the player receives a gun and bonus score.
  */
 public class GunCollectable extends Collectable {
-    private static Sound pickupSound;
 
     /**
      * Creates a gun collectable at the given world position.
@@ -20,9 +17,6 @@ public class GunCollectable extends Collectable {
      */
     public GunCollectable(float x, float y) {
         super(x, y, "gun.png");
-        if (pickupSound == null) {
-            pickupSound = Gdx.audio.newSound(Gdx.files.internal("coinpickup.mp3"));
-        }
     }
 
     /**
@@ -43,18 +37,5 @@ public class GunCollectable extends Collectable {
     public void applyEffect(Player player) {
         player.equipGun();
         player.addScore(200);
-        if (pickupSound != null) {
-            float vol = Gdx.app.getPreferences("maze_runner_prefs").getFloat("sound_vol", 0.5f);
-            pickupSound.play(vol);
-        }
-    }
-
-    @Override
-    public void dispose() {
-        super.dispose();
-        if (pickupSound != null) {
-            pickupSound.dispose();
-            pickupSound = null;
-        }
     }
 }

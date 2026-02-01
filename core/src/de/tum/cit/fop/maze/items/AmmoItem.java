@@ -11,7 +11,7 @@ public class AmmoItem extends Collectable {
     public AmmoItem(float x, float y) {
         super(x, y, "bullet.png");
         if (pickupSound == null) {
-            pickupSound = Gdx.audio.newSound(Gdx.files.internal("coinpickup.mp3"));
+            pickupSound = Gdx.audio.newSound(Gdx.files.internal("audio/pickup.mp3"));
         }
     }
 

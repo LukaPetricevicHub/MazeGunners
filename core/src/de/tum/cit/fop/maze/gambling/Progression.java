@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.progress;
+package de.tum.cit.fop.maze.gambling;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Preferences;

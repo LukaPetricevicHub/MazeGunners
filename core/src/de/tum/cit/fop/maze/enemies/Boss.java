@@ -3,6 +3,8 @@ package de.tum.cit.fop.maze.enemies;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import de.tum.cit.fop.maze.map.Maze;
@@ -64,6 +66,13 @@ public class Boss {
     private final Room bossRoom;
     private final BossAnimations anims;
 
+    private Sound roarSound;
+    private Sound crySound;
+    private Sound attack1Sound;
+    private Sound attack2Sound;
+    private boolean roarPlayed = false;
+    private boolean cryPlayed = false;
+
     private final Vector2 pos = new Vector2(); // world center
     private final Vector2 vel = new Vector2();
     private final Rectangle hitbox = new Rectangle();
@@ -73,6 +82,7 @@ public class Boss {
     private float stateTime = 0f;
 
     private int hp = MAX_HP;
+    private float damageMult = 1f;
 
     private float attackCd = 0f;
     private float comboCd  = 0f;
@@ -121,6 +131,19 @@ public class Boss {
                 HIT_W,
                 HIT_H
         );
+
+        if (Gdx.files.internal("bossroar.mp3").exists()) {
+            roarSound = Gdx.audio.newSound(Gdx.files.internal("bossroar.mp3"));
+        }
+        if (Gdx.files.internal("bosscry.mp3").exists()) {
+            crySound = Gdx.audio.newSound(Gdx.files.internal("bosscry.mp3"));
+        }
+        if (Gdx.files.internal("swordattack1.mp3").exists()) {
+            attack1Sound = Gdx.audio.newSound(Gdx.files.internal("swordattack1.mp3"));
+        }
+        if (Gdx.files.internal("swordattack2.mp3").exists()) {
+            attack2Sound = Gdx.audio.newSound(Gdx.files.internal("swordattack2.mp3"));
+        }
     }
 
     /**
@@ -175,6 +198,10 @@ public class Boss {
         hp -= scaled;
         if (hp <= 0) {
             hp = 0;
+            if (!cryPlayed && crySound != null) {
+                crySound.play(getSfxVolume());
+                cryPlayed = true;
+            }
             state = BossState.DEATH;
             stateTime = 0f;
             vel.setZero();
@@ -199,7 +226,12 @@ public class Boss {
             return;
         }
 
-        if (!isPlayerInBossRoom(player)) {
+        boolean inRoom = isPlayerInBossRoom(player);
+        if (inRoom && !roarPlayed && roarSound != null) {
+            roarSound.play(getSfxVolume());
+            roarPlayed = true;
+        }
+        if (!inRoom) {
             vel.setZero();
             state = BossState.IDLE;
             stateTime = 0f;
@@ -301,6 +333,7 @@ public class Boss {
         stateTime = 0f;
         vel.setZero();
         attackDamageApplied = false;
+        if (attack1Sound != null) attack1Sound.play(getSfxVolume());
     }
 
     private void updateAttack(PlayerLike player) {
@@ -313,7 +346,7 @@ public class Boss {
 
             Rectangle atk = attackRect();
             if (atk.overlaps(player.getHitbox())) {
-                player.damage(ATTACK_DMG);
+                player.damage(Math.max(1, Math.round(ATTACK_DMG * damageMult)));
             }
         }
 
@@ -330,6 +363,7 @@ public class Boss {
         state = BossState.COMBO;
         stateTime = 0f;
         comboHitApplied = false;
+        if (attack2Sound != null) attack2Sound.play(getSfxVolume());
 
         Vector2 playerPos = player.getPosition();
         Vector2 dir = tmp1.set(playerPos).sub(pos);
@@ -348,7 +382,7 @@ public class Boss {
 
         if (!comboHitApplied && hitbox.overlaps(player.getHitbox())) {
             comboHitApplied = true;
-            player.damage(COMBO_DMG);
+            player.damage(Math.max(1, Math.round(COMBO_DMG * damageMult)));
         }
 
         boolean reached = pos.dst2(comboTarget) < (COMBO_STOP_DIST_T * TILE) * (COMBO_STOP_DIST_T * TILE);
@@ -381,8 +415,8 @@ public class Boss {
     }
 
     private Rectangle attackRect() {
-        float w = 6f * TILE;
-        float h = 4f * TILE;
+        float w = 4f * TILE;
+        float h = 3f * TILE;
         float cx = pos.x, cy = pos.y;
 
         return switch (facing) {
@@ -467,5 +501,21 @@ public class Boss {
         float maxX = (bossRoom.x() + bossRoom.w()) * TILE;
         float maxY = (bossRoom.y() + bossRoom.h()) * TILE;
         return p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY;
+    }
+
+    private float getSfxVolume() {
+        if (Gdx.app == null) return 1f;
+        return Gdx.app.getPreferences("maze_runner_prefs").getFloat("sound_vol", 0.5f);
+    }
+
+    public void dispose() {
+        if (roarSound != null) roarSound.dispose();
+        if (crySound != null) crySound.dispose();
+        if (attack1Sound != null) attack1Sound.dispose();
+        if (attack2Sound != null) attack2Sound.dispose();
+    }
+
+    public void setDamageMult(float mult) {
+        damageMult = Math.max(0.1f, mult);
     }
 }

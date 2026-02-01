@@ -1,4 +1,4 @@
-package de.tum.cit.fop.maze.progress;
+package de.tum.cit.fop.maze.gambling;
 
 public class RunGambleState {
     public int speed = 5;

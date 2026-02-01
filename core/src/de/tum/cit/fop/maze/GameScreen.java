@@ -25,7 +25,6 @@ import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.utils.Timer;
 import de.tum.cit.fop.maze.ui.UiButtons;
 
-
 import de.tum.cit.fop.maze.camera.GameCamera;
 import de.tum.cit.fop.maze.camera.CameraInputController;
 import de.tum.cit.fop.maze.enemies.*;
@@ -331,11 +330,6 @@ public class GameScreen implements Screen {
                             }
                         }
 
-                        if (pickupSound != null) {
-                            long id = pickupSound.play();
-                            pickupSound.setVolume(id, game.getPreferences().getSoundVolume());
-                        }
-
                         item.collect();
                         iter.remove();
                     }
@@ -530,7 +524,7 @@ public class GameScreen implements Screen {
 
         int lv = clampLevel(endlessMode ? floor : level);
 
-        enemyCount = ENEMIES_PER_LEVEL[lv];
+        enemyCount = endlessMode ? computeEndlessEnemyCount(floor) : ENEMIES_PER_LEVEL[lv];
         trapCount  = TRAPS_PER_LEVEL[lv];
         itemCount  = ITEMS_PER_LEVEL[lv];
         for (Room r : rooms) {
@@ -547,11 +541,13 @@ public class GameScreen implements Screen {
         bossDropSpawned = false;
 
         if (clampLevel(endlessMode ? floor : level) == 5) {
+            if (boss != null) boss.dispose();
             bossAnims = new BossAnimations("Sword.png");
             boss = BossSpawner.spawnBossIfFinalLevel(maze, 5, bossAnims);
             if (boss != null && endlessMode) {
                 float bossHpMult = 1f + Math.max(0, floor - 1) * 0.25f;
                 boss.scaleHp(bossHpMult);
+                boss.setDamageMult(computeEndlessDamageMult(floor));
             }
             bossTarget = new PlayerAdapter(player);
         }
@@ -928,6 +924,7 @@ public class GameScreen implements Screen {
                 applyRoomMask(this.maze, this.rooms);
                 assignRoomTypesFromTiles(this.maze, this.rooms);
                 activeLevelFile = endlessFile;
+                resetMinimapExploration();
                 return;
             }
         }
@@ -951,6 +948,7 @@ public class GameScreen implements Screen {
             this.maze.setRooms(this.rooms);
 
             activeLevelFile = null;
+            resetMinimapExploration();
             return;
         }
 
@@ -973,9 +971,16 @@ public class GameScreen implements Screen {
         MazeLoader loader = new MazeLoader();
         this.maze = loader.loadMazeFromProperties(localTarget, TILE_SIZE);
         this.maze.setRooms(this.rooms);
+        resetMinimapExploration();
 
         Gdx.app.log("MAZE", "Generated + saved + reloaded -> " + localTarget.path()
                 + " | rooms=" + (rooms == null ? 0 : rooms.size()));
+    }
+
+    private void resetMinimapExploration() {
+        explored = null;
+        exploredW = -1;
+        exploredH = -1;
     }
 
 
@@ -1253,10 +1258,15 @@ public class GameScreen implements Screen {
     private void advanceToNextFloor() {
         floor++;
         hud.setFloorText("Round: " + floor);
-        int hpGain = Math.max(0, (floor - 1) * 2);
+        int hpGain = computeEndlessHpAdd(floor);
+        float dmgMult = computeEndlessDamageMult(floor);
         String msg = "NEW ROUND STARTED";
-        if (hpGain > 0) {
-            msg += "\nENEMIES + " + hpGain + " HP";
+        msg += "\nENEMIES +" + hpGain + " HP";
+        msg += "\nENEMY DMG x" + String.format(java.util.Locale.US, "%.2f", dmgMult);
+        if (clampLevel(floor) == 5) {
+            float bossHpMult = 1f + Math.max(0, floor - 1) * 0.25f;
+            msg += "\nBOSS HP x" + String.format(java.util.Locale.US, "%.2f", bossHpMult);
+            msg += "\nBOSS DMG x" + String.format(java.util.Locale.US, "%.2f", dmgMult);
         }
         hud.showCenterNotification(msg, 7f);
 
@@ -1264,10 +1274,11 @@ public class GameScreen implements Screen {
         runSeed = seed;
 
         initializeMaze(seed);
+        resetMinimapExploration();
         updateHudExitTarget();
 
         int lv = clampLevel(floor);
-        enemyCount = ENEMIES_PER_LEVEL[lv];
+        enemyCount = computeEndlessEnemyCount(floor);
         trapCount  = TRAPS_PER_LEVEL[lv];
         itemCount  = ITEMS_PER_LEVEL[lv];
 
@@ -1289,11 +1300,13 @@ public class GameScreen implements Screen {
 
         if (clampLevel(floor) == 5) {
             if (bossAnims != null) bossAnims.dispose();
+            if (boss != null) boss.dispose();
             bossAnims = new BossAnimations("Sword.png");
             boss = BossSpawner.spawnBossIfFinalLevel(maze, 5, bossAnims);
             if (boss != null && endlessMode) {
                 float bossHpMult = 1f + Math.max(0, floor - 1) * 0.25f;
                 boss.scaleHp(bossHpMult);
+                boss.setDamageMult(computeEndlessDamageMult(floor));
             }
             bossTarget = new PlayerAdapter(player);
         }
@@ -1506,13 +1519,38 @@ public class GameScreen implements Screen {
             return;
         }
 
-        int hpAdd = Math.max(0, (floor - 1) * 2);
+        int hpAdd = computeEndlessHpAdd(floor);
         if (enemies != null) {
             for (Enemy e : enemies) {
                 if (e != null) e.addHp(hpAdd);
             }
         }
-        combatSystem.setEnemyDamageMult(1f);
+        combatSystem.setEnemyDamageMult(computeEndlessDamageMult(floor));
+    }
+
+    private int computeEndlessEnemyCount(int floor) {
+        int base = ENEMIES_PER_LEVEL[clampLevel(5)];
+        int f = Math.max(1, floor);
+        int linear = base + (f - 1);
+        if (f <= 15) return linear;
+        double extra = Math.pow(1.05, f - 15);
+        return (int) Math.round(linear * extra);
+    }
+
+    private int computeEndlessHpAdd(int floor) {
+        int f = Math.max(1, floor);
+        double base = (f - 1) * 2.0;
+        if (f <= 15) return (int) Math.round(base);
+        double extra = Math.pow(1.05, f - 15);
+        return (int) Math.round(base * extra);
+    }
+
+    private float computeEndlessDamageMult(int floor) {
+        int f = Math.max(1, floor);
+        double base = 1.0 + (f - 1) * 0.05;
+        if (f <= 15) return (float) base;
+        double extra = Math.pow(1.03, f - 15);
+        return (float) (base * extra);
     }
 
 
@@ -1555,6 +1593,7 @@ public class GameScreen implements Screen {
         if (fog != null) fog.dispose();
         if (mazeRenderer != null) mazeRenderer.dispose();
         if (bossAnims != null) bossAnims.dispose();
+        if (boss != null) boss.dispose();
         ObstacleAudioManager.dispose();
     }
 
@@ -1579,13 +1618,11 @@ public class GameScreen implements Screen {
             hud.setExitRoomWorldRect(null);
         }
     }
-
     private FileHandle getLevelTargetFile(int level) {
         FileHandle dir = Gdx.files.local("maps");
         dir.mkdirs();
         return dir.child("level-" + level + ".properties");
     }
-
     private FileHandle getEndlessLevelFile(int floor) {
         String name = "maps/endless-" + floor + ".properties";
 

@@ -16,9 +16,8 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.player.Player;
-import de.tum.cit.fop.maze.progress.Progression;
-import de.tum.cit.fop.maze.progress.RunGambleState;
-import de.tum.cit.fop.maze.ui.UiButtons;
+import de.tum.cit.fop.maze.gambling.Progression;
+import de.tum.cit.fop.maze.gambling.RunGambleState;
 
 public class GamblingScreen implements Screen {
 
@@ -102,7 +101,7 @@ public class GamblingScreen implements Screen {
         dialogueTable = new Table();
         dialogueTable.bottom().pad(16);
 
-        titleLabel = new Label("GAMBLING", game.getSkin(), "title");
+        titleLabel = new Label("THE CASINO", game.getSkin(), "title");
         titleLabel.setAlignment(Align.center);
 
         coinsLabel = new Label("", game.getSkin());
@@ -151,17 +150,6 @@ public class GamblingScreen implements Screen {
         int speedBonus = Math.max(0, run.speed - baseSpeed);
         int strengthBonus = Math.max(0, run.strength - baseStrength);
 
-        info += "Run Bonuses: Speed +" + speedBonus + "   ";
-        info += "Strength +" + strengthBonus + "   ";
-        info += "HP Bonus +" + run.bonusHearts + "   ";
-        info += (run.freezeWeapon ? " | Freeze Weapon: YES" : " | Freeze Weapon: NO");
-        info += (run.poisonKnuckles ? " | Poison Knuckles: YES" : " | Poison Knuckles: NO");
-
-        // Only show current run lives IF player exists
-        if (player != null) {
-            info += "\nCurrent Run Lives: " + player.getLives();
-        }
-
         info += "\nCaution: gambling stats apply only to the current run.";
         statusLabel.setText(info);
     }
@@ -191,7 +179,7 @@ public class GamblingScreen implements Screen {
         menu.defaults().width(240).height(70).pad(8);
         TextButton slotsBtn = UiButtons.button("Slots", game.getSkin());
         TextButton bjBtn = UiButtons.button("Blackjack", game.getSkin());
-        TextButton backBtn = UiButtons.button("Back", game.getSkin());
+        TextButton backBtn = UiButtons.button("Return", game.getSkin());
 
 
         slotsBtn.addListener(new ChangeListener() {
@@ -241,7 +229,8 @@ public class GamblingScreen implements Screen {
         startDialogue(
                 new String[] {
                         "Welcome to the casino.",
-                        "Pick a game and I will explain the rules."
+                        "Don't mind who or what I am and where we are.",
+                        "Just pick a game and I will explain the rules."
                 },
                 () -> contentRoot.setVisible(true)
         );
@@ -258,7 +247,7 @@ public class GamblingScreen implements Screen {
         info += "Run Bonuses: Speed +" + speedBonus + " | ";
         info += "Strength +" + strengthBonus + " | ";
         info += "HP Bonus +" + run.bonusHearts + "\n";
-        info += (run.freezeWeapon ? "Freeze Weapon: YES" : "Freeze Weapon: NO");
+        info += (run.freezeWeapon ? "Freeze Gloves: YES" : "Freeze Gloves: NO");
         info += " | ";
         info += (run.poisonKnuckles ? "Poison Knuckles: YES" : "Poison Knuckles: NO");
         if (player != null) info += "\nCurrent run lives: " + player.getLives();
@@ -332,9 +321,8 @@ public class GamblingScreen implements Screen {
                 "Cost per spin: " + SLOT_SPIN_COST + " coins\n" +
                         "You can win run Speed/Strength\n" +
                         "Random chance to unlock hidden items:\n" +
-                        "- Freeze Weapon (run-only)\n" +
-                        "- Poison Knuckles (run-only)\n\n" +
-                        "To play: Speed AND Strength must be at least " + STAT_MIN_TO_PLAY + ".",
+                        "- Freeze Gloves \n" +
+                        "- Poison Knuckles \n",
                 game.getSkin()
         );
         rules.setAlignment(Align.center);
@@ -370,8 +358,6 @@ public class GamblingScreen implements Screen {
         t.add(result).colspan(2).width(700).padTop(18).row();
 
         contentRoot.add(t).expand().center();
-
-        setStatusHint("Slots ready. If your stats are below 5, buy them first.");
         refreshTopBar();
     }
 
@@ -385,40 +371,9 @@ public class GamblingScreen implements Screen {
         spinBtn.setDisabled(!(canPlay && hasCoinsForSpin));
     }
 
-    private String buyStat(String which) {
-        int coins = prog.getCoins();
-        if (coins < STAT_BUY_COST) return "Not enough coins.";
-
-        if (which.equals("speed")) {
-            int v = run.speed;
-            if (v >= STAT_MAX) return "Speed is already at max (" + STAT_MAX + ").";
-            if (v >= STAT_MIN_TO_PLAY) return "You can only buy Speed here if it is below " + STAT_MIN_TO_PLAY + ".";
-            if (!prog.spendCoins(STAT_BUY_COST)) return "Not enough coins.";
-            run.speed = Math.min(STAT_MAX, run.speed + 1);
-            return "Bought +1 Speed. New Speed = " + run.speed;
-        }
-
-        if (which.equals("strength")) {
-            int v = run.strength;
-            if (v >= STAT_MAX) return "Strength is already at max (" + STAT_MAX + ").";
-            if (v >= STAT_MIN_TO_PLAY) return "You can only buy Strength here if it is below " + STAT_MIN_TO_PLAY + ".";
-            if (!prog.spendCoins(STAT_BUY_COST)) return "Not enough coins.";
-            run.strength = Math.min(STAT_MAX, run.strength + 1);
-            return "Bought +1 Strength. New Strength = " + run.strength;
-        }
-
-        return "Unknown stat.";
-    }
-
     private String doSlotSpin() {
         int ps = run.speed;
         int st = run.strength;
-
-        if (ps < STAT_MIN_TO_PLAY || st < STAT_MIN_TO_PLAY) {
-            setDealerLine("You need the minimum stats before I can spin those.");
-            return "You cannot play Slots until Speed AND Strength are at least " + STAT_MIN_TO_PLAY +
-                    ". Buy stats for " + STAT_BUY_COST + " coins each.";
-        }
 
         if (!prog.spendCoins(SLOT_SPIN_COST)) {
             setDealerLine("No coins, no spin. That's the rule.");
@@ -428,13 +383,13 @@ public class GamblingScreen implements Screen {
         // Outcomes:
         // 0-59: nothing
         // 60-89: stat buff
-        // 90-94: unlock freeze weapon (run-only)
+        // 90-94: unlock freeze gloves (run-only)
         // 95-99: unlock poison knuckles (run-only)
         int roll = MathUtils.random(0, 99);
 
         if (roll <= 59) {
-            setDealerLine("Nothing today. Come back when the luck shifts.");
-            return "Nothing happened. The house always wins... sometimes.";
+            setDealerLine("Look's like you got nothing this time...");
+            return "Nothing happened. Better luck next time!";
         }
 
         if (roll <= 89) {
@@ -445,7 +400,7 @@ public class GamblingScreen implements Screen {
             if (affectSpeed) run.speed = Math.min(STAT_MAX, run.speed + amt);
             else run.strength = Math.min(STAT_MAX, run.strength + amt);
 
-            setDealerLine("That's a win. House lets you keep the shine.");
+            setDealerLine("That's a win. Good for you.");
             return "BUFF! +" + amt + " " + statName +
                     "\nSpeed=" + run.speed +
                     " Strength=" + run.strength;
@@ -459,12 +414,12 @@ public class GamblingScreen implements Screen {
                 if (player != null) {
                     player.applyRunGamble(run);
                 }
-                setDealerLine("Rare pull. Keep that cold steel close.");
-                return "Hidden reward unlocked: FREEZE WEAPON (run-only)!\n" +
+                setDealerLine("Oh nice you got the freeze gloves. I use those to keep my food fresh sometimes...");
+                return "Hidden reward unlocked: FREEZE GLOVES!\n" +
                         "Bonus: +10 Speed, +10 Strength";
             }
-            setDealerLine("You hit it, but you already own it.");
-            return "You hit the Freeze Weapon slot... but you already own it.";
+            setDealerLine("Oh nice you got the freeze gloves. But you got those on already...");
+            return "You hit the Freeze Gloves slot... but you already own it.";
         }
 
         if (!run.poisonKnuckles) {
@@ -474,13 +429,13 @@ public class GamblingScreen implements Screen {
             if (player != null) {
                 player.applyRunGamble(run);
             }
-            setDealerLine("Poison knuckles. Nasty. I like it.");
-            return "Hidden reward unlocked: POISON KNUCKLES (run-only)!\n" +
+            setDealerLine("Poison knuckles, I don't mind losing those, they're hard to wear...");
+            return "Hidden reward unlocked: POISON KNUCKLES!\n" +
                     "Bonus: +10 Speed, +10 Strength";
         }
 
-        setDealerLine("You hit it, but you already own it.");
-        return "You hit the Poison Knuckles slot... but you already own it.";
+        setDealerLine("Poison knuckles, you already got them on...");
+        return "You hit the Poison Knuckles slot... but looks like you've already got it.";
     }
 
     // =========================================================
@@ -582,7 +537,7 @@ public class GamblingScreen implements Screen {
                 stage.addAction(Actions.sequence(
                         Actions.delay(0.5f),
                         Actions.run(() -> {
-                            state.setText("Dealer reveals...\n\n" + blackjack.renderState(true));
+                            state.setText("My turn now...\n\n" + blackjack.renderState(true));
                         }),
                         Actions.delay(0.6f),
                         Actions.run(() -> animateDealerPlay(state, placeBetBtn, hitBtn, standBtn))
@@ -636,7 +591,7 @@ public class GamblingScreen implements Screen {
         if (bet > prog.getCoins()) return "Not enough coins for that bet.";
 
         // Deduct bet up-front
-        if (!prog.spendCoins(bet)) return "Not enough coins for that bet.";
+        if (!prog.spendCoins(bet)) return "Looks like you don't have enough coins to play this game.";
 
         blackjack.startHand(bet);
 
@@ -686,7 +641,7 @@ public class GamblingScreen implements Screen {
                 game.getAchievementManager().unlockAchievement("win_it_big");
             }
 
-            setDealerLine("Nice hand. Take your winnings.");
+            setDealerLine("You won. Take what you've earned.");
             String msg = "You WIN! Dealer=" + dv + " You=" + pv +
                     "\nPayout: " + payout + " coins" +
                     "\nHP Bonus gained! Total HP bonus: " + run.bonusHearts +
@@ -696,12 +651,12 @@ public class GamblingScreen implements Screen {
 
         if (pv == dv) {
             prog.addCoins(blackjack.bet);
-            setDealerLine("Push. We call it even.");
+            setDealerLine("Push. I guess we can call it even.");
             String msg = "PUSH. Dealer=" + dv + " You=" + pv + "\nRefunded: " + blackjack.bet + " coins";
             return msg;
         }
 
-        setDealerLine("House wins this one.");
+        setDealerLine("You lose, better luck next time.");
         String msg = "You LOSE. Dealer=" + dv + " You=" + pv + "\nLost bet: " + blackjack.bet + " coins";
         return msg;
     }
