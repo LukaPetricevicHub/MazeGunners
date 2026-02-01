@@ -9,7 +9,7 @@ import de.tum.cit.fop.maze.map.Maze;
  * Prevents the entity from moving through walls.
  */
 public class CollisionHandler {
-    // Attributes
+    
     private final Rectangle hitBox;
     private final float collisionPadding;
     private static final float MIN_MOVEMENT_THRESHOLD = 0.001f;
@@ -71,7 +71,7 @@ public class CollisionHandler {
     }
 
 
-    // Detect walls at current position
+    
     private boolean isHittingObstacle(Vector2 checkPos, Maze maze) {
         float leftEdge = checkPos.x + collisionPadding;
         float rightEdge = checkPos.x + hitBox.width - collisionPadding;

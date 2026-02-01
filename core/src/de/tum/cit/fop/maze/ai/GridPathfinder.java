@@ -149,7 +149,7 @@ public final class GridPathfinder {
                     return false;
 
                 if (maze.isEnemyOccupied(tx, ty)) {
-                    // Allow our own footprint at the start position
+                    
                     if (start == null) return false;
 
                     boolean isOwnFootprint =

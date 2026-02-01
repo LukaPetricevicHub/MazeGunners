@@ -23,15 +23,15 @@ import de.tum.cit.fop.maze.ui.DevConsole;
 
 public class Hud {
 
-    // --- CONFIG ---
+    
     private static final float TILE_SIZE = 32f;
     private static final float NOTIF_DURATION = 3.0f;
 
-    // --- CORE ---
+    
     private final Stage stage;
     private final Skin skin;
 
-    // --- TEXTURES ---
+    
     private final Texture pixelTexture;
     private final Texture keyIconTexture;
     private final Texture arrowTexture;
@@ -41,14 +41,14 @@ public class Hud {
     private final Texture bossBgTexture;
     private final Texture bossFillTexture;
 
-    // --- UI ELEMENTS ---
+    
     private final Label floorLabel;
     private final Label hintLabel;
     private final Label objectiveLabel;
     private final Image keyIcon;
     private final Label endlessLabel;
 
-    // ✅ NEW: coins
+    
     private final Label coinsLabel;
     private final Label damageLabel;
     private final Label statsLabel;
@@ -65,39 +65,39 @@ public class Hud {
     private final Label notificationLabel;
     private final Label centerNotificationLabel;
 
-    // Arrow pinned top-right
+    
     private final Image arrow;
     private float exitX, exitY;
     private boolean hasExitTarget = false;
 
-    // Boss HUD (overlay group so it never drifts)
+    
     private Group bossGroup;
     private Table bossTable;
     private final Label bossLabel;
     private final ProgressBar bossHpBar;
 
-    // Boss sha
+    
     private float lastBossRatio = -1f;
     private boolean bossShakeEnabled = true;
 
-    // Minimap container pinned bottom-right (optional)
+    
     private final Table minimapContainer;
 
-    // Timer for notifications
+    
     private float messageTimer = 0f;
     private float hintMaxTiles = 50f;
     private Rectangle exitRoomWorldRect = null;
 
-    // Console
+    
     private final DevConsole devConsole;
     private Window achievementPopup;
 
-    // ✅ FIXED: constructor back to 3 params (no Label passed in)
+    
     public Hud(Viewport viewport, SpriteBatch batch, Skin skin) {
         this.stage = new Stage(viewport, batch);
         this.skin = skin;
 
-        // 1x1 pixel texture (for backgrounds/bars)
+        
         Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pm.setColor(Color.WHITE);
         pm.fill();
@@ -116,14 +116,14 @@ public class Hud {
         Drawable panelBg = new TextureRegionDrawable(new TextureRegion(pixelTexture))
                 .tint(new Color(0f, 0f, 0f, 0.55f));
 
-        // =========================
-        // TOP-LEFT (Hearts + Coins + Key + Floor)
-        // =========================
+        
+        
+        
         Table topLeft = new Table();
         topLeft.pad(6);
         topLeft.left().top();
 
-        coinsLabel = new Label("Coins: 0", skin); // ✅ new
+        coinsLabel = new Label("Coins: 0", skin); 
         damageLabel = new Label("DMG: bullet 0 | melee 0", skin);
         statsLabel = new Label("Stats: STR 5 | SPD 5", skin);
         ammoLabel = new Label("Ammo: 0/0", skin);
@@ -168,9 +168,9 @@ public class Hud {
         topLeftWrap.add(topLeft);
         stage.addActor(topLeftWrap);
 
-        // =========================
-        // TOP-CENTER (BOSS HUD) - OVERLAY GROUP (NO LAYOUT DRIFT)
-        // =========================
+        
+        
+        
         bossLabel = new Label("SWORD", skin);
         bossLabel.setAlignment(Align.center);
         bossLabel.setColor(Color.WHITE);
@@ -201,9 +201,9 @@ public class Hud {
 
         layoutBossHud();
 
-        // =========================
-        // BOTTOM-LEFT (Level + XP + Hint)
-        // =========================
+        
+        
+        
         ProgressBar.ProgressBarStyle xpStyle = new ProgressBar.ProgressBarStyle();
         xpStyle.background = new TextureRegionDrawable(new TextureRegion(pixelTexture)).tint(Color.DARK_GRAY);
         xpStyle.knobBefore = new TextureRegionDrawable(new TextureRegion(pixelTexture)).tint(Color.CYAN);
@@ -242,9 +242,9 @@ public class Hud {
         bottomLeftWrap.add(bottomLeft);
         stage.addActor(bottomLeftWrap);
 
-        // =========================
-        // TOP-RIGHT (Arrow)
-        // =========================
+        
+        
+        
         arrow = new Image(arrowTexture);
         arrow.setSize(80, 80);
         arrow.setOrigin(arrow.getWidth() / 2f, arrow.getHeight() / 2f);
@@ -258,9 +258,9 @@ public class Hud {
         topRightWrap.add(arrow).size(80, 80).right();
         stage.addActor(topRightWrap);
 
-        // =========================
-        // BOTTOM-RIGHT (Minimap container)
-        // =========================
+        
+        
+        
         minimapContainer = new Table();
         minimapContainer.pad(6);
 
@@ -270,9 +270,9 @@ public class Hud {
         bottomRightWrap.add(minimapContainer);
         stage.addActor(bottomRightWrap);
 
-        // =========================
-        // Notification (top-right, under arrow)
-        // =========================
+        
+        
+        
         notificationLabel = new Label("", skin);
         notificationLabel.setVisible(false);
         notificationLabel.setAlignment(Align.right);
@@ -284,9 +284,9 @@ public class Hud {
         notifWrap.add(notificationLabel);
         stage.addActor(notifWrap);
 
-        // =========================
-        // Center Notification (round popups)
-        // =========================
+        
+        
+        
         centerNotificationLabel = new Label("", skin);
         centerNotificationLabel.setVisible(false);
         centerNotificationLabel.setAlignment(Align.center);
@@ -299,7 +299,7 @@ public class Hud {
         stage.addActor(centerWrap);
 
 
-        // Console
+        
         devConsole = new DevConsole(skin, (MazeRunnerGame) Gdx.app.getApplicationListener());
         stage.addActor(devConsole);
     }
@@ -327,10 +327,10 @@ public class Hud {
         hpTextLabel.setText("HP: " + hp + " / " + maxHp);
 
 
-        // ✅ Coins text
+        
         coinsLabel.setText("Coins: " + player.getCoins());
 
-        // Damage + stats + gambling multipliers
+        
         int strength = player.getStrengthStat();
         int strengthBonus = Math.max(0, strength - 5);
         float dmgMult = player.getDamageMult();
@@ -350,7 +350,7 @@ public class Hud {
 
         keyIcon.setVisible(player.hasKey());
 
-        // Level + XP
+        
         levelLabel.setText("LEVEL " + player.getPlayerLevel());
 
         float currentXp = player.getExperience();
@@ -361,10 +361,10 @@ public class Hud {
 
         objectiveLabel.setText(player.hasKey() ? "Objective: Find the exit" : "Objective: Find the key");
 
-        // Hint updates continuously
+        
         updateHeatHint(player);
 
-        // Arrow logic
+        
         boolean showArrow = player.hasKey() && hasExitTarget;
         arrow.setVisible(showArrow);
 
@@ -534,7 +534,7 @@ public class Hud {
         arrow.setVisible(false);
     }
 
-    // Boss control (call from GameScreen)
+    
     public void setBossHp(float current, float max) {
         if (max <= 0f) return;
 

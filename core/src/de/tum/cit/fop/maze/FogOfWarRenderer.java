@@ -23,8 +23,8 @@ import java.util.List;
 
 public class FogOfWarRenderer {
 
-    private float radiusWorld = 3f * 32f;   // e.g. 3 tiles * TILE_SIZE
-    private float softEdgeWorld = 2f * 32f; // optional: also in world units
+    private float radiusWorld = 3f * 32f;   
+    private float softEdgeWorld = 2f * 32f; 
     private FrameBuffer fbo;
     private Texture black1x1;
     private Texture holeMask;
@@ -43,7 +43,7 @@ public class FogOfWarRenderer {
      */
     public FogOfWarRenderer() {
         black1x1 = createSolidTexture(1, 1, 0x000000ff);
-        holeMask = createRadialMask(256, 256); // alpha=1 center -> 0 edge
+        holeMask = createRadialMask(256, 256); 
         resize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
     }
 
@@ -60,7 +60,7 @@ public class FogOfWarRenderer {
         if (fbo != null) fbo.dispose();
         fbo = new FrameBuffer(Format.RGBA8888, screenW, screenH, false);
 
-        // y-up ortho for screen drawing
+        
         screenProj.setToOrtho2D(0, 0, screenW, screenH);
     }
     public void setFogAlpha(float fogAlpha) { this.fogAlpha = clamp01(fogAlpha); }
@@ -83,7 +83,7 @@ public class FogOfWarRenderer {
                        float bulletRadiusWorld) {
         if (fbo == null) return;
 
-        // Convert player position from world -> screen coordinates (pixels)
+        
         tmp.set(playerWorldX, playerWorldY, 0f);
         worldCam.project(tmp);
 
@@ -95,7 +95,7 @@ public class FogOfWarRenderer {
         float radiusScreen = radiusWorld / zoom;
         float softScreen   = softEdgeWorld / zoom;
 
-        // 1) Render fog into FBO
+        
         fbo.begin();
         Gdx.gl.glClearColor(0, 0, 0, 0);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -105,12 +105,12 @@ public class FogOfWarRenderer {
 
         Gdx.gl.glEnable(GL20.GL_BLEND);
 
-        // draw full-screen dark fog
+        
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         batch.setColor(0f, 0f, 0f, fogAlpha);
         batch.draw(black1x1, 0, 0, screenW, screenH);
 
-        // 2) Punch hole in the fog layer (make fog alpha transparent near player)
+        
         batch.setColor(1f, 1f, 1f, 1f);
         batch.setBlendFunctionSeparate(
                 GL20.GL_ZERO, GL20.GL_ONE,
@@ -120,7 +120,7 @@ public class FogOfWarRenderer {
         float size = (radiusScreen + softScreen) * 2f;
         batch.draw(holeMask, pxScreen - size / 2f, pyScreen - size / 2f, size, size);
 
-        // 2b) Bullet light holes (temporary)
+        
         if (bullets != null && bulletRadiusWorld > 0f) {
             float bulletRadiusScreen = bulletRadiusWorld / zoom;
             float bulletSoftScreen = Math.max(1f, softScreen * 0.5f);
@@ -142,14 +142,14 @@ public class FogOfWarRenderer {
             }
         }
 
-        // restore defaults
+        
         batch.setBlendFunction(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         batch.setColor(1f, 1f, 1f, 1f);
 
         batch.end();
         fbo.end();
 
-        // 3) Draw fog texture to screen (on top of the already-rendered world)
+        
         Texture fogTex = fbo.getColorBufferTexture();
         fogTex.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
@@ -173,7 +173,7 @@ public class FogOfWarRenderer {
         holeMask = null;
     }
 
-    // Helpers
+    
     private static Texture createSolidTexture(int w, int h, int rgba8888) {
         Pixmap pm = new Pixmap(w, h, Format.RGBA8888);
         pm.setColor(
@@ -202,7 +202,7 @@ public class FogOfWarRenderer {
                 float dy = y - cy;
                 float d = (float) Math.sqrt(dx * dx + dy * dy);
 
-                float a = 1f - (d / maxR); // center 1 -> edge 0
+                float a = 1f - (d / maxR); 
                 a = clamp01(a);
 
                 pm.setColor(1f, 1f, 1f, a);

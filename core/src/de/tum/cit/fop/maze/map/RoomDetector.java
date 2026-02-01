@@ -44,15 +44,15 @@ public final class RoomDetector {
                 if (visited[x][y]) continue;
                 if (!maze.getTile(x, y).isWalkable()) continue;
 
-                // Flood fill this walkable region and compute its bounds
+                
                 Bounds b = floodBounds(maze, x, y, visited);
 
-                // Filter tiny blobs (thin corridors, noise)
-                // Tune these if needed.
+                
+                
                 int bw = b.maxX - b.minX + 1;
                 int bh = b.maxY - b.minY + 1;
 
-                if (bw < 6 || bh < 6) continue; // ignore small corridor chunks
+                if (bw < 6 || bh < 6) continue; 
 
                 out.add(new Room(b.minX, b.minY, bw, bh));
             }
@@ -87,7 +87,7 @@ public final class RoomDetector {
             int x = p[0], y = p[1];
             b.include(x, y);
 
-            // 4-neighborhood
+            
             tryPush(maze, x + 1, y, visited, w, h, q);
             tryPush(maze, x - 1, y, visited, w, h, q);
             tryPush(maze, x, y + 1, visited, w, h, q);

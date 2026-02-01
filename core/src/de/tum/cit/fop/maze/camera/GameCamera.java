@@ -53,7 +53,7 @@ public class GameCamera {
      * @param deltaTime time passed since the last frame
      */
     public void follow(float targetX, float targetY, float deltaTime) {
-        // Clamp target to avoid jitter at edges
+        
         float halfW = camera.viewportWidth * camera.zoom * 0.5f;
         float halfH = camera.viewportHeight * camera.zoom * 0.5f;
 

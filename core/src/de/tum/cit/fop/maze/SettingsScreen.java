@@ -22,6 +22,9 @@ import de.tum.cit.fop.maze.ui.UiButtons;
  * and custom key mappings.
  */
 
+/**
+ * Settings screen for audio, controls, and gameplay preferences.
+ */
 public class SettingsScreen implements Screen {
 
     private final MazeRunnerGame game;
@@ -54,10 +57,10 @@ public class SettingsScreen implements Screen {
         title.setFontScale(1.5f);
         contentTable.add(title).padBottom(40).row();
 
-        // Audio section
+        
         contentTable.add(new Label("Audio", game.getSkin())).padBottom(15).row();
 
-        // FIXED: Removed "small" - uses default font now
+        
         contentTable.add(new Label("Music Volume", game.getSkin())).padBottom(5).row();
 
         final Slider volumeSlider = new Slider(0f, 1f, 0.1f, false, game.getSkin());
@@ -72,7 +75,7 @@ public class SettingsScreen implements Screen {
             }
         });
 
-        // FIXED: Removed "small"
+        
         contentTable.add(new Label("Sound Effects", game.getSkin())).padBottom(5).row();
 
         final Slider sfxSlider = new Slider(0f, 1f, 0.05f, false, game.getSkin());
@@ -86,7 +89,7 @@ public class SettingsScreen implements Screen {
             }
         });
 
-        // --- DISPLAY SECTION ---
+        
         contentTable.add(new Label("Display", game.getSkin())).padBottom(15).row();
 
         String currentMode = Gdx.graphics.isFullscreen() ? "Fullscreen: ON" : "Fullscreen: OFF";
@@ -101,7 +104,7 @@ public class SettingsScreen implements Screen {
         });
         contentTable.add(fullscreenBtn).width(elementWidth).height(50).padBottom(40).row();
 
-        // Controls section
+        
         contentTable.add(new Label("Controls", game.getSkin())).padBottom(20).row();
 
         addKeyBindRow(contentTable, "Up", game.getPreferences().getKeyUp(),
@@ -141,7 +144,7 @@ public class SettingsScreen implements Screen {
                 key -> game.getPreferences().setKeyRepulse(key), elementWidth);
 
 
-        // --- BACK BUTTON ---
+        
         TextButton backButton = UiButtons.button("Back to Menu", game.getSkin());
         backButton.addListener(new ChangeListener() {
             @Override

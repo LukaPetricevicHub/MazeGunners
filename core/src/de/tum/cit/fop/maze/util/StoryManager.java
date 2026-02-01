@@ -3,7 +3,7 @@ package de.tum.cit.fop.maze.util;
 public final class StoryManager {
 
     private StoryManager() {
-        // Utility class
+        
     }
 
     public static String getIntroTitle(int level) {

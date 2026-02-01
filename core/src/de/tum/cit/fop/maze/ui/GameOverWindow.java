@@ -20,6 +20,9 @@ import de.tum.cit.fop.maze.ui.UiButtons;
  * to the leaderboard, and provides navigation options such as
  * continuing to the next level or returning to the main menu.
  */
+/**
+ * Game-over modal that shows results and handles score submission.
+ */
 public class GameOverWindow extends Window {
 
     /**
@@ -38,17 +41,17 @@ public class GameOverWindow extends Window {
     public GameOverWindow(Skin skin, MazeRunnerGame game, int currentLevel, boolean won, FileHandle currentLevelFile, int score, Player player, boolean endlessMode, int floor) {
         super(won ? "LEVEL COMPLETED" : "GAME OVER", skin);
 
-        // 1. VISUAL SETUP
+        
         this.getTitleLabel().setAlignment(Align.center);
         this.setMovable(false);
         this.setModal(true);
         this.setResizable(false);
-        this.pad(60); // Big internal padding
-        this.defaults().spaceBottom(20); // Add gap between every row
-        this.defaults().align(Align.center); // Center everything
+        this.pad(60); 
+        this.defaults().spaceBottom(20); 
+        this.defaults().align(Align.center); 
 
 
-        // 2. Message & Score
+        
         String message = won ? "Great Job! You escaped." : "You died.";
         Label messageLabel = new Label(message, skin);
         messageLabel.setFontScale(1.2f);
@@ -58,7 +61,7 @@ public class GameOverWindow extends Window {
         scoreLabel.setFontScale(1.1f);
         this.add(scoreLabel).padBottom(30).row();
 
-        // 3. Name Entry
+        
         this.add(new Label("Enter Name:", skin)).spaceBottom(10).row();
 
         final TextField nameField = new TextField("Player", skin);
@@ -85,9 +88,9 @@ public class GameOverWindow extends Window {
         });
         this.add(submitBtn).width(300).padBottom(30).row();
 
-        // 4. Navigation Buttons
+        
 
-        // "Next Level" (Only if you won)
+        
         if (won) {
             TextButton nextBtn = UiButtons.button("Next Level", skin);
             nextBtn.addListener(new ChangeListener() {
@@ -107,7 +110,7 @@ public class GameOverWindow extends Window {
             this.add(nextBtn).width(300).row();
         }
 
-        // "Main Menu" (Always visible)
+
         TextButton menuBtn = UiButtons.button("Main Menu", skin);
         menuBtn.addListener(new ChangeListener() {
             @Override

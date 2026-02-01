@@ -14,6 +14,9 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.util.Achievement;
 import de.tum.cit.fop.maze.ui.UiButtons;
 
+/**
+ * Full-screen achievement browser for the main menu.
+ */
 public class AchievementScreen implements Screen {
 
     private final MazeRunnerGame game;
@@ -27,27 +30,27 @@ public class AchievementScreen implements Screen {
         mainTable.setFillParent(true);
         stage.addActor(mainTable);
 
-        // Title
+        
         mainTable.add(new Label("Achievements", game.getSkin(), "title")).padBottom(30).row();
 
-        // --- THE SCROLLABLE LIST ---
+        
         Table listTable = new Table();
         listTable.top();
 
-        // 1. Get the achievements from the manager
-        // 2. Loop through them and create a label for each
+        
+        
         for (Achievement a : game.getAchievementManager().getAchievements().values()) {
 
             Table row = new Table();
-            // Optional: Add a dark background to each row so it's easier to read
-            // (If this crashes, remove the .setBackground line)
+            
+            
             if (game.getSkin().has("white", com.badlogic.gdx.scenes.scene2d.utils.Drawable.class)) {
                 row.setBackground(game.getSkin().newDrawable("white", 0, 0, 0, 0.5f));
             }
 
             row.pad(10);
 
-            // Determine Text & Color based on unlock status
+            
             String titleText = a.getTitle();
             String descText = a.isUnlocked() ? a.getDescription() : "Locked";
             Color titleColor = a.isUnlocked() ? Color.GREEN : Color.GRAY;
@@ -60,19 +63,19 @@ public class AchievementScreen implements Screen {
             descLabel.setFontScale(0.8f);
             descLabel.setColor(Color.LIGHT_GRAY);
 
-            // Add text to the row
+            
             row.add(titleLabel).left().expandX().row();
             row.add(descLabel).left().expandX().padTop(5);
 
-            // Add the row to the big list
+            
             listTable.add(row).growX().padBottom(10).row();
         }
 
-        // 3. Wrap the list in a ScrollPane
+        
         ScrollPane scrollPane = new ScrollPane(listTable, game.getSkin());
         mainTable.add(scrollPane).width(600).height(400).padBottom(20).row();
 
-        // --- BACK BUTTON ---
+        
         TextButton backBtn = UiButtons.button("Back", game.getSkin());
         backBtn.addListener(new ChangeListener() {
             @Override
@@ -85,12 +88,12 @@ public class AchievementScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        // Allow ESC to go back
+        
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.goToMenu();
         }
 
-        // Clear screen to black
+        
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 

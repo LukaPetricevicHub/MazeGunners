@@ -16,7 +16,7 @@ import com.badlogic.gdx.math.Rectangle;
  */
 public class LightningTrap extends Obstacle {
 
-    // Gameplay
+    
     private static final int TRAP_DAMAGE = 1;
     private static final float RETRIGGER_COOLDOWN = 3f;
     private static final float SPEED_PENALTY = 0.1f;
@@ -28,7 +28,7 @@ public class LightningTrap extends Obstacle {
     private boolean triggeredThisFrame = false;
 
 
-    // Animation
+    
     private static final float FRAME_DURATION = 0.08f;
     private static final int FRAME_COLS = 12;
     private static final int FRAME_ROWS = 1;
@@ -79,7 +79,7 @@ public class LightningTrap extends Obstacle {
 
 
 
-    // State
+    
     private float stateTime = 0f;
     private float activeDebuffTimer = 0f;
 
@@ -94,7 +94,7 @@ public class LightningTrap extends Obstacle {
         super(spawnPosition, TRAP_DAMAGE, RETRIGGER_COOLDOWN, 32f, 64f);
 
         this.vertical = vertical;
-        float tileSize = 32f; // maze tile size
+        float tileSize = 32f; 
 
         float centerX = spawnPosition.x + getWidth() * 0.5f;
         float centerY = spawnPosition.y + getHeight() * 0.5f;

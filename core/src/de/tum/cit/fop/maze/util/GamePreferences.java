@@ -39,7 +39,7 @@ public class GamePreferences {
     public void setMaxLevel(int level) {
         if (level > getMaxLevel()) {
             getPrefs().putInteger(PREF_MAX_LEVEL, level);
-            getPrefs().flush(); // Save to disk
+            getPrefs().flush(); 
         }
     }
 
@@ -83,7 +83,7 @@ public class GamePreferences {
      * camera controls, and special abilities.
      */
 
-    // Movement
+    
     public int getKeyUp() {
         return getPrefs().getInteger(PREF_KEY_UP, com.badlogic.gdx.Input.Keys.UP);
     }
@@ -120,7 +120,7 @@ public class GamePreferences {
         getPrefs().flush();
     }
 
-    // Gameplay & UI
+    
     public int getKeyPause() {
         return getPrefs().getInteger(PREF_KEY_PAUSE, com.badlogic.gdx.Input.Keys.ESCAPE);
     }
@@ -157,7 +157,7 @@ public class GamePreferences {
         getPrefs().flush();
     }
 
-    // Camera & Skills
+    
     public int getKeyZoomIn() {
         return getPrefs().getInteger(PREF_KEY_ZOOM_IN, com.badlogic.gdx.Input.Keys.E);
     }

@@ -21,6 +21,9 @@ import de.tum.cit.fop.maze.ui.UiButtons;
  * Allows the player to view high scores for individual levels
  * as well as endless mode.
  */
+/**
+ * Screen that displays per-level and endless leaderboards.
+ */
 public class LeaderboardScreen implements Screen {
     private final MazeRunnerGame game;
     private final Stage stage;
@@ -42,7 +45,7 @@ public class LeaderboardScreen implements Screen {
         table.setFillParent(true);
         stage.addActor(table);
 
-        // Title
+        
         table.add(new Label("HALL OF FAME", game.getSkin(), "title")).padBottom(20).row();
 
         Table buttons = new Table();
@@ -62,7 +65,7 @@ public class LeaderboardScreen implements Screen {
         table.add(listTable).padBottom(30).row();
         showSelectHint();
 
-        // Back Button
+        
         TextButton backBtn = UiButtons.button("Back to Menu", game.getSkin());
         backBtn.addListener(new ChangeListener() {
             @Override

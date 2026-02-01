@@ -32,7 +32,7 @@ public class CombatSystem {
     private List<Enemy> enemies;
     private float enemyDamageMult = 1f;
 
-    // floor hazard loop sound removed
+    
     private boolean wasPlayerAttacking = false;
     private final java.util.HashSet<Enemy> meleeHitThisSwing = new java.util.HashSet<>();
 
@@ -78,7 +78,7 @@ public class CombatSystem {
         int repulseDamage = Math.max(1, Math.round(base * dmgMult * 0.6f));
 
 
-        // 1) BULLETS => ENEMIES/BOSS
+        
         if (player.getBullets() != null) {
 
             Iterator<Bullet> bIter = player.getBullets().iterator();
@@ -127,7 +127,7 @@ public class CombatSystem {
         }
 
 
-        // 1b) DRONE LASERS => PLAYER
+        
         boolean playerHitByAnyLaser = false;
 
         for (Enemy enemy : enemies) {
@@ -173,7 +173,7 @@ public class CombatSystem {
         }
 
 
-        // 2) PLAYER MELEE => BOSS
+        
         if (boss != null && !boss.isDead()
                 && player.isAttacking()
                 && player.getAttackHitbox() != null
@@ -184,12 +184,12 @@ public class CombatSystem {
         }
 
 
-        // 3) BOSS AI
+        
         if (boss != null && !boss.isDead() && bossTarget != null) {
             boss.update(deltaTime, bossTarget);
         }
 
-        // 4) REPULSE SKILL
+        
         if (player.isRepulseActive()) {
 
             float repulseRange = 200f;
@@ -209,7 +209,7 @@ public class CombatSystem {
             }
         }
 
-        // 5) ENEMIES (touch dmg + melee hit)
+        
         if (!wasPlayerAttacking && player.isAttacking()) {
             meleeHitThisSwing.clear();
         }
@@ -241,12 +241,12 @@ public class CombatSystem {
             enemy.update(deltaTime, maze);
             enemy.applyEnemySeparation(enemies, player, deltaTime, maze);
 
-            // Touch damage
+            
             if (playerHitbox.overlaps(enemy.getCollisionBox())) {
                 player.takeDamage(touchDamage);
             }
 
-            // Player melee hit
+            
             if (player.isAttacking()
                     && enemy.canBeHitByMelee()
                     && player.getAttackHitbox() != null
@@ -257,7 +257,7 @@ public class CombatSystem {
                     meleeHitThisSwing.add(enemy);
                 }
 
-                // Rewards: freeze + poison
+                
                 if (player.hasFreezeWeapon()) {
                     enemy.applyFreeze(1.25f);
                 }
@@ -265,7 +265,7 @@ public class CombatSystem {
                     enemy.applyPoison(4.0f, 0.75f);
                 }
 
-                // Gloves knockback
+                
                 float kb = player.getGloveKnockbackStrength();
                 if (kb > 0f) {
                     Vector2 push = enemy.getPosition().cpy().sub(new Vector2(player.getX() + 16f, player.getY() + 32f)).nor().scl(kb);
@@ -287,7 +287,7 @@ public class CombatSystem {
             }
         }
 
-        // 6) OBSTACLES
+        
         float speedModifier = 1f;
         float visibilityFactor = 1f;
 
@@ -305,7 +305,7 @@ public class CombatSystem {
                 if (hazard.justEntered(playerFeetHitbox)) {
                     player.activateFloorHazard(2.5f, hazard.getSpeedBoost());
                 }
-                // no floor hazard loop sound
+                
                 continue;
             }
 
@@ -369,7 +369,7 @@ public class CombatSystem {
             }
         }
 
-        // floor hazard loop sound removed
+        
 
         player.setSpeedMultiplier(speedModifier);
         gameCamera.setZoomMultiplier(visibilityFactor);
@@ -413,7 +413,7 @@ public class CombatSystem {
      * Stops any looping combat-related sound effects.
      */
     public void stopLoopingSfx() {
-        // floor hazard loop sound removed
+        
     }
 
     private boolean isWall(Rectangle rect, Maze maze) {

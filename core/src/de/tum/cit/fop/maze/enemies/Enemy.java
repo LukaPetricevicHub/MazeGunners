@@ -18,7 +18,7 @@ import java.util.List;
  */
 public abstract class Enemy {
 
-    // Attributes
+    
     protected Vector2 worldPosition;
     protected float movementSpeed;
     protected Rectangle collisionBounds;
@@ -36,7 +36,7 @@ public abstract class Enemy {
     private static final float CHASE_MEMORY_DURATION = 2.0f;
     protected boolean aggroLocked = false;
 
-    // Health
+    
     protected int health = 3;
     protected int maxHealth = 3;
     protected boolean markedForRemoval = false;
@@ -44,7 +44,7 @@ public abstract class Enemy {
     private float hitFlashTimer = 0f;
     private static final float HIT_FLASH_DURATION = 0.12f;
 
-    // Status
+    
     private boolean frozen = false;
     private float freezeTimer = 0f;
 
@@ -52,13 +52,13 @@ public abstract class Enemy {
     private float poisonDps = 0f;
     private float poisonTickAccumulator = 0f;
 
-    // Stuck handling
+    
     private final Vector2 prevPosition = new Vector2();
     private float stuckTimer = 0f;
     private static final float STUCK_TIME_THRESHOLD = 0.4f;
     private static final float MIN_MOVEMENT_EPSILON = 0.5f;
 
-    // Interaction
+    
     private final Rectangle interactionRect = new Rectangle();
     protected static final float INTERACTION_MARGIN = 2f;
     protected static final float INTERACTION_BODY_HEIGHT = 32f;
@@ -277,7 +277,7 @@ public abstract class Enemy {
     private void updateStatusEffects(float dt) {
         if (dying) return;
 
-        // Freeze timer
+        
         if(frozen) {
             freezeTimer -= dt;
             if (freezeTimer <= 0f) {
@@ -286,13 +286,13 @@ public abstract class Enemy {
             }
         }
 
-        // Poison
+        
         if (poisonTimer > 0f) {
             poisonTimer -= dt;
 
             poisonTickAccumulator += poisonDps * dt;
 
-            // deal damage as integer ticks
+            
             while (poisonTickAccumulator >= 1f) {
                 takeDamage(1);
                 poisonTickAccumulator -= 1f;
@@ -308,7 +308,7 @@ public abstract class Enemy {
         }
     }
 
-    // Getters
+    
     public Vector2 getPosition() { return worldPosition; }
     public float getSpeed() { return movementSpeed; }
     public Rectangle getCollisionBox() { return collisionBounds; }
@@ -331,7 +331,7 @@ public abstract class Enemy {
         this.activeBehavior = behavior;
     }
 
-    // Enemy - Enemy col
+    
     public Rectangle getInteractionRect() {
         interactionRect.set(worldPosition.x - INTERACTION_MARGIN, worldPosition.y - INTERACTION_MARGIN, getRenderWidth() + INTERACTION_MARGIN * 2, INTERACTION_BODY_HEIGHT + INTERACTION_MARGIN * 2);
         return interactionRect;
@@ -379,7 +379,7 @@ public abstract class Enemy {
         getCollisionHandler().move(pos, correction, deltaTime, maze);
     }
 
-    // Combat lock
+    
     protected void updateCombatLock(float deltaTime) {
         switch (combatLockState) {
 

@@ -36,7 +36,7 @@ public class Coin extends Collectable {
      * @param amount coin value (e.g. 5, 20, 50)
      */
     public Coin(float x, float y, int amount) {
-        super(x, y, "coin5.png"); // placeholder
+        super(x, y, "coin5.png"); 
         this.amount = amount;
 
         if (this.texture != null) {

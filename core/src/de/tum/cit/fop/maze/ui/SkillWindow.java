@@ -16,6 +16,9 @@ import de.tum.cit.fop.maze.ui.UiButtons;
  * and upgrades. Skills are grouped into categories and include
  * hover descriptions and dependency checks.
  */
+/**
+ * In-game window for spending skill points and showing upgrade descriptions.
+ */
 public class SkillWindow extends Window {
     private final Player player;
     private final Skin skin;
@@ -53,18 +56,18 @@ public class SkillWindow extends Window {
     public void refresh() {
         this.clearChildren();
 
-        // 1. Title & Points Header
+        
         Table headerTable = new Table();
         pointsLabel = new Label("Skill Points Available: " + player.getSkillPoints(), skin);
         pointsLabel.setFontScale(1.1f);
         headerTable.add(pointsLabel).padBottom(15);
         this.add(headerTable).colspan(3).row();
 
-        // 2. Main Content Table (3 Columns)
+        
         Table content = new Table();
         content.defaults().pad(10).top();
 
-        // --- COLUMN 1: GUNNER ---
+        
         Table colGunner = new Table();
         colGunner.add(new Label("GUNNER", skin)).padBottom(10).row();
 
@@ -84,7 +87,7 @@ public class SkillWindow extends Window {
         content.add(new Image(skin.newDrawable("white", 1, 1, 1, 0.3f))).width(2).fillY().pad(0, 10, 0, 10);
 
 
-        // --- COLUMN 2: SPEEDSTER ---
+        
         Table colSpeed = new Table();
         colSpeed.add(new Label("SPEEDSTER", skin)).padBottom(10).row();
 
@@ -104,7 +107,7 @@ public class SkillWindow extends Window {
         content.add(new Image(skin.newDrawable("white", 1, 1, 1, 0.3f))).width(2).fillY().pad(0, 10, 0, 10);
 
 
-        // --- COLUMN 3: TANK ---
+        
         Table colTank = new Table();
         colTank.add(new Label("TANK", skin)).padBottom(10).row();
 
@@ -123,18 +126,18 @@ public class SkillWindow extends Window {
         content.add(colTank);
         this.add(content).row();
 
-        // 3. Description Area (The Hover Box)
-        // We put it in a container with a fixed height so the UI doesn't jump around
+        
+        
         descriptionLabel = new Label("Hover over a skill to see details...", skin);
         descriptionLabel.setAlignment(Align.center);
         descriptionLabel.setWrap(true);
-        descriptionLabel.setColor(1f, 1f, 0.7f, 1f); // Light Yellow text
+        descriptionLabel.setColor(1f, 1f, 0.7f, 1f); 
 
-        // Add a background or separator line
+        
         this.add(new Image(skin.newDrawable("white", 1, 1, 1, 0.3f))).height(2).fillX().padTop(20).padBottom(10).row();
         this.add(descriptionLabel).width(500).height(50).padBottom(10).row();
 
-        // 4. Close Button
+        
         TextButton closeBtn = UiButtons.button("Close", skin);
         closeBtn.addListener(new ChangeListener() {
             @Override
@@ -159,7 +162,7 @@ public class SkillWindow extends Window {
     }
 
     private TextButton createSkillButton(String name, String desc, boolean isUnlocked, boolean isParentUnlocked, Runnable unlockAction) {
-        // BUTTON TEXT: Only Name + Status
+        
         String text = name;
         if (isUnlocked) text += "\n[UNLOCKED]";
         else if (!isParentUnlocked) text += "\n[LOCKED]";
@@ -169,7 +172,7 @@ public class SkillWindow extends Window {
         btn.getLabel().setFontScale(0.85f);
         btn.getLabel().setAlignment(Align.center);
 
-        // Color Logic
+        
         if (isUnlocked) {
             btn.setDisabled(true);
             btn.setColor(0.5f, 1f, 0.5f, 1f);
@@ -181,7 +184,7 @@ public class SkillWindow extends Window {
             btn.setColor(0.6f, 0.6f, 0.6f, 1f);
         }
 
-        // 1. Click Listener (To Buy)
+        
         if (!btn.isDisabled()) {
             btn.addListener(new ChangeListener() {
                 @Override
@@ -194,17 +197,17 @@ public class SkillWindow extends Window {
             });
         }
 
-        // 2. Hover Listener (To Show Description)
+        
         btn.addListener(new InputListener() {
             @Override
             public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
-                // When mouse enters, update the label at the bottom
+                
                 descriptionLabel.setText(name + ": " + desc);
             }
 
             @Override
             public void exit(InputEvent event, float x, float y, int pointer, Actor toActor) {
-                // When mouse leaves, reset text
+                
                 descriptionLabel.setText("Hover over a skill to see details...");
             }
         });
@@ -213,7 +216,7 @@ public class SkillWindow extends Window {
     }
 
     private TextButton createStatButton(String name, String desc, int currentLevel, int maxLevel, Runnable upgradeAction) {
-        // BUTTON TEXT: Only Name + Level
+        
         String text = name + " " + currentLevel + "/" + maxLevel;
         if (currentLevel < maxLevel) text += "\nCost: 1 Pt";
         else text += "\n[MAXED]";
@@ -230,7 +233,7 @@ public class SkillWindow extends Window {
             btn.setColor(0.6f, 0.6f, 0.6f, 1f);
         }
 
-        // 1. Click Listener
+        
         if (!btn.isDisabled()) {
             btn.addListener(new ChangeListener() {
                 @Override
@@ -241,7 +244,7 @@ public class SkillWindow extends Window {
             });
         }
 
-        // 2. Hover Listener
+        
         btn.addListener(new InputListener() {
             @Override
             public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {

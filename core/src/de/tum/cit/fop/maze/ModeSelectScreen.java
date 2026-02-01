@@ -20,6 +20,9 @@ import de.tum.cit.fop.maze.ui.UiButtons;
  * The player can start the story mode or unlock and play
  * endless mode after completing the story.
  */
+/**
+ * Mode selection screen for story and endless gameplay.
+ */
 public class ModeSelectScreen implements Screen {
 
     private final MazeRunnerGame game;
@@ -52,7 +55,7 @@ public class ModeSelectScreen implements Screen {
         title.setAlignment(Align.center);
         root.add(title).padBottom(30).row();
 
-        // STORY
+        
         TextButton storyBtn = UiButtons.button("Story Mode", game.getSkin());
         storyBtn.addListener(new ChangeListener() {
             @Override
@@ -62,7 +65,7 @@ public class ModeSelectScreen implements Screen {
         });
         root.add(storyBtn).width(360).padBottom(12).row();
 
-        // ENDLESS (locked until story completed)
+        
         boolean unlocked = game.getProgression().isStoryCompleted();
         TextButton endlessBtn = UiButtons.button(unlocked ? "Endless Mode" : "Endless Mode (Locked)", game.getSkin());
         endlessBtn.setDisabled(!unlocked);
@@ -70,7 +73,7 @@ public class ModeSelectScreen implements Screen {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 if (endlessBtn.isDisabled()) return;
-                // Start endless at floor 1
+                
                 game.setScreen(new GameScreen(game, 1, null, true, 1));
             }
         });

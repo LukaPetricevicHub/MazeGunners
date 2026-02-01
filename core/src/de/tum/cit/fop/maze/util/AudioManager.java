@@ -34,14 +34,14 @@ public class AudioManager {
             return;
         }
 
-        // 1. Stop remove old music
+        
         if (backgroundMusic != null) {
             backgroundMusic.stop();
             backgroundMusic.dispose();
             backgroundMusic = null;
         }
 
-        // 2. Try to load the new file safely
+        
         try {
             if (!Gdx.files.internal(filePath).exists()) {
                 System.err.println("ERROR: Music file NOT found at: " + filePath);

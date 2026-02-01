@@ -136,12 +136,12 @@ public class FlyingDrone extends Enemy {
         deathSound = Gdx.audio.newSound(Gdx.files.internal("Enemies/FlyingDrone/FlyingDroneDeath.wav"));
     }
 
-    // Apply nearest filtering
+    
     private static void setNearest(Texture texture) {
         texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
     }
 
-    // Build looping animation strip
+    
     private static Animation<TextureRegion> buildStripAnim(Texture tex, int frames, float frameDuration) {
         int frameWidth = tex.getWidth() / frames;
         int frameHeight = tex.getHeight();
@@ -282,7 +282,7 @@ public class FlyingDrone extends Enemy {
         updateDirectionFromMovement();
     }
 
-    // Spawn laser projectile
+    
     private void fireLaserAtPlayer() {
         if (targetPlayer == null) return;
 
@@ -294,7 +294,7 @@ public class FlyingDrone extends Enemy {
         lasers.add(new DroneLaser(start.x, start.y, px, py));
     }
 
-    // Move away if too close
+    
     private void moveAwayFromPlayer(float deltaTime, Maze maze) {
         Vector2 pos = getPosition();
         Vector2 playerPos = getPlayerPosition();
@@ -306,7 +306,7 @@ public class FlyingDrone extends Enemy {
         getCollisionHandler().move(pos, awayDir, deltaTime, maze);
     }
 
-    // Update facing from movement
+    
     private void updateDirectionFromMovement() {
         Vector2 pos = getPosition();
 
@@ -350,7 +350,7 @@ public class FlyingDrone extends Enemy {
         return patrolScan.getKeyFrame(animationTimer, true);
     }
 
-    // Hover bob offset
+    
     public float getHoverYOffset() {
         int frameIndex = patrolScan.getKeyFrameIndex(animationTimer);
         return HOVER_Y_OFFSETS[frameIndex % HOVER_Y_OFFSETS.length];
@@ -418,7 +418,7 @@ public class FlyingDrone extends Enemy {
         laserSound.setVolume(laserSoundId, volume);
     }
 
-    // Stop laser sound
+    
     private void stopLaserSound() {
         if (laserSound == null) return;
         if (laserSoundId == -1) return;

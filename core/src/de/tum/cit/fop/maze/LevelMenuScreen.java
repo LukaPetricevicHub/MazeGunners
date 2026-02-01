@@ -23,6 +23,9 @@ import de.tum.cit.fop.maze.ui.UiButtons;
  * directory and allows the player to select and start a level.
  * Levels that are not yet unlocked are shown as locked and cannot be selected.
  */
+/**
+ * Level selection screen for story mode.
+ */
 public class LevelMenuScreen implements Screen {
 
     private final MazeRunnerGame game;
@@ -87,7 +90,7 @@ public class LevelMenuScreen implements Screen {
                     @Override
                     public void changed(ChangeEvent event, Actor actor) {
                         if (btn.isDisabled()) return;
-                        // Your MazeRunnerGame uses: new GameScreen(game, mapPathString)
+                        
                         game.setScreen(new GameScreen(game, levelFile.path()));
                     }
                 });

@@ -8,6 +8,9 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.utils.Align;
 
+/**
+ * Simple dialogue box for narrative text and confirmations.
+ */
 public class DialogueWindow extends Window {
 
     private final String fullText;
@@ -42,7 +45,7 @@ public class DialogueWindow extends Window {
             @Override
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
                 handleClick();
-                return true; // consume input so it doesn't pass through
+                return true; 
             }
         });
     }

@@ -18,7 +18,7 @@ import java.util.Random;
  * The escape path is recalculated from time to time or when the player moves.
  */
 public class EvadeBehavior implements BehaviorState {
-    // Attributes
+    
     private static final float RECALC_COOLDOWN = 0.6f;
     private static final float ARRIVAL_RANGE = 4f;
     private static final int SCAN_RANGE = 10;
@@ -98,7 +98,7 @@ public class EvadeBehavior implements BehaviorState {
     }
 
 
-    // Convert world coordinates to tile
+    
     private static Point worldToTileCoords(Vector2 worldPos, Maze maze) {
         return new Point(
                 GridUtils.worldToTile(worldPos.x, maze.getTileSize()),
@@ -107,7 +107,7 @@ public class EvadeBehavior implements BehaviorState {
     }
 
 
-    // Get center position of tile
+    
     private static Vector2 getTileCenter(Point p, Maze maze) {
         float size = maze.getTileSize();
 
@@ -115,7 +115,7 @@ public class EvadeBehavior implements BehaviorState {
     }
 
 
-    // Find suitable tile to escape
+    
     private Point findSafeSpot(Point enemyLoc, Point playerLoc, Maze maze) {
         List<Point> potentialTiles = new ArrayList<>();
         Random randomGen = new Random();

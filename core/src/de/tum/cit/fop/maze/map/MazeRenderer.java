@@ -27,11 +27,11 @@ public class MazeRenderer {
 
     private final Texture tileset;
 
-    // size of ONE tile inside tileset image (e.g. 16x16)
+    
     private final int tilePxW;
     private final int tilePxH;
 
-    // computed grid size of the sheet
+    
     @SuppressWarnings("unused")
     private final int cols;
     @SuppressWarnings("unused")
@@ -39,14 +39,14 @@ public class MazeRenderer {
 
     private final Map<WallShape, TextureRegion> wall = new EnumMap<>(WallShape.class);
 
-    // Floor variation pools
+    
     private TextureRegion[] roomFloors;
     private int[] roomFloorWeights;
 
     private TextureRegion[] hallFloors;
     private int[] hallFloorWeights;
 
-    // Specials (door intentionally ignored visually)
+    
     private TextureRegion spawn;
     private TextureRegion exit;
     private TextureRegion key;
@@ -99,7 +99,7 @@ public class MazeRenderer {
     public void render(Maze maze, SpriteBatch batch) {
         int w = maze.getWidth();
         int h = maze.getHeight();
-        int dst = maze.getTileSize(); // world tile size (32px) - we scale tileset tiles up
+        int dst = maze.getTileSize(); 
 
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
@@ -112,7 +112,7 @@ public class MazeRenderer {
 
                     case FLOOR -> r = pickFloor(maze, x, y);
 
-                    //Render door like floor
+                    
                     case DOOR -> r = pickFloor(maze, x, y);
 
                     case SPAWN -> r = spawn;
@@ -185,19 +185,19 @@ public class MazeRenderer {
 
         if (!N && !S && !E && !W) return wall.get(WallShape.SOLID);
 
-        // inner corners (concave)
+        
         if (S && E && !SE) return wall.get(WallShape.INNER_TL);
         if (S && W && !SW) return wall.get(WallShape.INNER_TR);
         if (N && E && !NE) return wall.get(WallShape.INNER_BL);
         if (N && W && !NW) return wall.get(WallShape.INNER_BR);
 
-        // outer corners (convex)
+        
         if (S && E && !N && !W) return wall.get(WallShape.OUTER_TL);
         if (S && W && !N && !E) return wall.get(WallShape.OUTER_TR);
         if (N && E && !S && !W) return wall.get(WallShape.OUTER_BL);
         if (N && W && !S && !E) return wall.get(WallShape.OUTER_BR);
 
-        // edges
+        
         if (S) return wall.get(WallShape.EDGE_TOP);
         if (N) return wall.get(WallShape.EDGE_BOTTOM);
         if (E) return wall.get(WallShape.EDGE_LEFT);
@@ -221,10 +221,10 @@ public class MazeRenderer {
                 tile(m.ROOM_F3_C, m.ROOM_F3_R)
         };
         roomFloorWeights = new int[] {
-                70, 20, 8, 2   // example: mostly F0, rare F3
+                70, 20, 8, 2   
         };
 
-        // Hall floor pool + weights
+        
         hallFloors = new TextureRegion[] {
                 tile(m.HALL_F0_C, m.HALL_F0_R),
                 tile(m.HALL_F1_C, m.HALL_F1_R),
@@ -235,19 +235,19 @@ public class MazeRenderer {
                 70, 25, 15, 5
         };
 
-        // Specials
+        
         spawn = tile(m.SPAWN_C, m.SPAWN_R);
         exit  = tile(m.EXIT_C, m.EXIT_R);
         key   = tile(m.KEY_C, m.KEY_R);
 
-        // Walls
+        
         wall.put(WallShape.SOLID, tile(m.WALL_SOLID_C,       m.WALL_SOLID_R));
         wall.put(WallShape.EDGE_TOP,tile(m.WALL_EDGE_TOP_C,    m.WALL_EDGE_TOP_R));
         wall.put(WallShape.EDGE_BOTTOM, tile(m.WALL_EDGE_BOTTOM_C, m.WALL_EDGE_BOTTOM_R));
         wall.put(WallShape.EDGE_LEFT, tile(m.WALL_EDGE_LEFT_C,   m.WALL_EDGE_LEFT_R));
         wall.put(WallShape.EDGE_RIGHT, tile(m.WALL_EDGE_RIGHT_C,  m.WALL_EDGE_RIGHT_R));
 
-        // corners optional — if your tileset doesn't have some of them, fallbacks handle it
+        
         wall.put(WallShape.OUTER_TL, tile(m.WALL_OUTER_TL_C, m.WALL_OUTER_TL_R));
         wall.put(WallShape.OUTER_TR, tile(m.WALL_OUTER_TR_C, m.WALL_OUTER_TR_R));
         wall.put(WallShape.OUTER_BL, tile(m.WALL_OUTER_BL_C, m.WALL_OUTER_BL_R));
@@ -305,24 +305,24 @@ public class MazeRenderer {
      *   row: 0..12   (row 0 = BOTTOM)
      */
     private static final class TilesetMapping {
-        // Room floors (pick 4 nice ones)
+        
         int ROOM_F0_C = 0, ROOM_F0_R = 1;
         int ROOM_F1_C = 4, ROOM_F1_R = 2;
         int ROOM_F2_C = 7, ROOM_F2_R = 1;
         int ROOM_F3_C = 2, ROOM_F3_R = 1;
 
-        // Hall floors (pick 4 nice ones)
+        
         int HALL_F0_C = 0, HALL_F0_R = 1;
         int HALL_F1_C = 6, HALL_F1_R = 1;
         int HALL_F2_C = 3, HALL_F2_R = 1;
         int HALL_F3_C = 7, HALL_F3_R = 2;
 
-        // Specials (set to whatever you want)
+        
         int SPAWN_C = 3, SPAWN_R = 3;
         int EXIT_C  = 4, EXIT_R  = 3;
         int KEY_C   = 4, KEY_R   = 4;
 
-        // Walls
+        
         int WALL_SOLID_C = 0, WALL_SOLID_R = 6;
 
         int WALL_EDGE_TOP_C    = 2, WALL_EDGE_TOP_R    = 7;
@@ -335,7 +335,7 @@ public class MazeRenderer {
         int WALL_OUTER_BL_C = 3, WALL_OUTER_BL_R = 9;
         int WALL_OUTER_BR_C = 1, WALL_OUTER_BR_R = 9;
 
-        // If you don’t have inner corners, point them anywhere; fallbacks will cover them.
+        
         int WALL_INNER_TL_C = 0, WALL_INNER_TL_R = 6;
         int WALL_INNER_TR_C = 0, WALL_INNER_TR_R = 6;
         int WALL_INNER_BL_C = 0, WALL_INNER_BL_R = 6;

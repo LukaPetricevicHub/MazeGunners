@@ -4,6 +4,9 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 
+/**
+ * TextButton that shrinks its label font to fit the available width.
+ */
 public class AutoScaleTextButton extends TextButton {
     private final float baseScaleX;
     private final float baseScaleY;

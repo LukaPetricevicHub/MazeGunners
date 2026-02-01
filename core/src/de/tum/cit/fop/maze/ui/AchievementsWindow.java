@@ -16,6 +16,9 @@ import de.tum.cit.fop.maze.ui.UiButtons;
 import java.util.Collection;
 import de.tum.cit.fop.maze.ui.UiButtons;
 
+/**
+ * Pop-up window listing achievements during gameplay.
+ */
 public class AchievementsWindow extends Window {
 
     private final Runnable onClose;

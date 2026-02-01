@@ -49,7 +49,7 @@ public class SpikeTrap extends Obstacle {
 
         TextureRegion[][] split = TextureRegion.split(SPIKE_TEXTURE, frameWidth, frameHeight);
 
-        frames = split[0]; // 14 frames
+        frames = split[0]; 
 
         if(frames.length != FRAME_COLS) {
             throw new IllegalStateException("SpikeTrap.png must have exactly " + FRAME_COLS + " frames, but has " + frames.length);
@@ -71,7 +71,7 @@ public class SpikeTrap extends Obstacle {
 
         frameTimer += delta;
 
-        // cooldown ticks
+        
         if(cooldownTimer > 0f) {
             cooldownTimer -= delta;
 
@@ -82,14 +82,14 @@ public class SpikeTrap extends Obstacle {
             }
         }
 
-        // activation condition
+        
         if(playerOnTrap && cooldownTimer <= 0f && !activating && currentFrame == 0) {
             activate();
             cooldownTimer = RESET_COOLDOWN;
         }
 
 
-        // extending
+        
         if (activating) {
 
             if(frameTimer >= FRAME_TIME) {
@@ -120,7 +120,7 @@ public class SpikeTrap extends Obstacle {
         frameTimer = 0f;
         currentFrame = 0;
 
-        ObstacleAudioManager.playSpikeTrap(); // sound
+        ObstacleAudioManager.playSpikeTrap(); 
     }
 
 

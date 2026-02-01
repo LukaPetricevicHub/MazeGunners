@@ -20,7 +20,7 @@ import de.tum.cit.fop.maze.player.Player;
  */
 public class RobotGuard extends Enemy {
 
-    private static final int MAX_HP = 15; // tweak
+    private static final int MAX_HP = 15; 
 
     public static final float RENDER_WIDTH  = 32f;
     public static final float RENDER_HEIGHT = 32f;
@@ -146,7 +146,7 @@ public class RobotGuard extends Enemy {
         t.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
     }
 
-    // Animation
+    
     private static Animation<TextureRegion> buildRowAnim(Texture sheet, int row, int startCol, int frames, float frameDuration, boolean loop) {
         int frameWidth  = sheet.getWidth() / SHEET_COLS;
         int frameHeight = sheet.getHeight() / SHEET_ROWS;
@@ -230,7 +230,7 @@ public class RobotGuard extends Enemy {
         updateDirectionFromMovement();
     }
 
-    // Update facing from movement
+    
     private void updateDirectionFromMovement() {
         Vector2 pos = getPosition();
         float dx = pos.x - lastPosition.x;
@@ -269,7 +269,7 @@ public class RobotGuard extends Enemy {
     }
 
 
-    // Step back when too close
+    
     private void stepBackFromPlayer(float deltaTime, Maze maze) {
         Vector2 pos = getPosition();
         Vector2 playerPos = getPlayerPosition();
@@ -295,7 +295,7 @@ public class RobotGuard extends Enemy {
         getCollisionHandler().move(pos, dir, deltaTime, maze);
     }
 
-    // Get attack animation
+    
     private Animation<TextureRegion> getAttackAnimation() {
         switch (getAttackDirection()) {
             case LEFT:  return attackLeft;
@@ -347,7 +347,7 @@ public class RobotGuard extends Enemy {
         return false;
     }
 
-    // Decide attack direction
+    
     private Direction getAttackDirection() {
         Vector2 pos = getPosition();
         Vector2 p = getPlayerPosition();

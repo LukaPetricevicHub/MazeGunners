@@ -101,7 +101,7 @@ public class Maze {
 
         Tiles old = grid[x][y];
 
-        // Remove old special state
+        
         if (old == Tiles.SPAWN && entryCell != null &&
                 entryCell.x == x && entryCell.y == y) {
             entryCell = null;
@@ -116,7 +116,7 @@ public class Maze {
 
         grid[x][y] = tile;
 
-        // Add new special state
+        
         if (tile == Tiles.SPAWN) {
             entryCell = new Point(x, y);
         } else if (tile == Tiles.EXIT) {
@@ -297,7 +297,7 @@ public class Maze {
 
             if (e.ignoresEnemyCollision()) continue;
 
-            // World => tile
+            
 
             Rectangle r = e.getCollisionBox();
 

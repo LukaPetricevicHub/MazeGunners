@@ -23,28 +23,28 @@ public class Boss {
 
     private final float TILE;
 
-    private final float DRAW_W; // 10 tiles
-    private final float DRAW_H; // 10 tiles
+    private final float DRAW_W; 
+    private final float DRAW_H; 
 
-    // Hitbox smaller for fairness
-    private final float HIT_W;  // 7 tiles
-    private final float HIT_H;  // 7 tiles
+    
+    private final float HIT_W;  
+    private final float HIT_H;  
 
-    // HP / PHASE
+    
     private static final int MAX_HP = 250;
     private static final float DAMAGE_TAKEN_MULT = 0.5f;
     private static final float RUN2_HP_PCT = 0.25f;
 
 
-    // TUNING
-    private static final float WALK_SPEED_TPS = 2.8f;   // tiles per second
+    
+    private static final float WALK_SPEED_TPS = 2.8f;   
     private static final float RUN_SPEED_TPS  = 5.0f;
     private static final float RUN2_SPEED_TPS = 6.6f;
 
     private static final float COMBO_SPEED_TPS = 11.25f;
 
-    private static final float ATTACK_START_DIST_T = 6.5f; // tiles
-    private static final float COMBO_START_DIST_T  = 9.0f; // tiles
+    private static final float ATTACK_START_DIST_T = 6.5f; 
+    private static final float COMBO_START_DIST_T  = 9.0f; 
 
     private static final int ATTACK_DMG = 10;
     private static final int COMBO_DMG  = 14;
@@ -56,12 +56,12 @@ public class Boss {
     private static final float ATTACK_CD = 0.9f;
     private static final float COMBO_CD  = 2.5f;
 
-    // Combo dash control
-    private static final float COMBO_OVERSHOOT_T = 12f; // tiles beyond player
-    private static final float COMBO_MAX_TIME = 0.75f;  // seconds
+    
+    private static final float COMBO_OVERSHOOT_T = 12f; 
+    private static final float COMBO_MAX_TIME = 0.75f;  
     private static final float COMBO_STOP_DIST_T = 1.0f;
 
-    // CORE FIELDS
+    
     private final Maze maze;
     private final Room bossRoom;
     private final BossAnimations anims;
@@ -73,7 +73,7 @@ public class Boss {
     private boolean roarPlayed = false;
     private boolean cryPlayed = false;
 
-    private final Vector2 pos = new Vector2(); // world center
+    private final Vector2 pos = new Vector2(); 
     private final Vector2 vel = new Vector2();
     private final Rectangle hitbox = new Rectangle();
 
@@ -92,10 +92,10 @@ public class Boss {
 
     private final Random rng = new Random();
 
-    // Combo dash target
+    
     private final Vector2 comboTarget = new Vector2();
 
-    // temps to avoid allocations
+    
     private final Vector2 tmp1 = new Vector2();
     private final Vector2 tmp2 = new Vector2();
     private final Rectangle tmpRect1 = new Rectangle();
@@ -208,7 +208,7 @@ public class Boss {
             return;
         }
 
-        // hit reaction
+        
         state = BossState.HIT;
         stateTime = 0f;
         vel.setZero();
@@ -243,7 +243,7 @@ public class Boss {
         attackCd = Math.max(0f, attackCd - dt);
         comboCd  = Math.max(0f, comboCd - dt);
 
-        // face player
+        
         tmp1.set(player.getPosition()).sub(pos);
         updateFacing(tmp1);
 
@@ -282,7 +282,7 @@ public class Boss {
 
 
     private void updateIdle(PlayerLike player) {
-        // immediately start pursuing
+        
         state = (getHpPct() <= RUN2_HP_PCT) ? BossState.RUN_2 : BossState.RUN;
         stateTime = 0f;
     }
@@ -295,10 +295,10 @@ public class Boss {
             return;
         }
 
-        // slow stalking
+        
         moveToward(dt, player.getPosition(), WALK_SPEED_TPS * TILE);
 
-        // if player is far, go to running chase
+        
         if (dist > 7.5f * TILE) {
             state = (getHpPct() <= RUN2_HP_PCT) ? BossState.RUN_2 : BossState.RUN;
             stateTime = 0f;
@@ -313,7 +313,7 @@ public class Boss {
             return;
         }
 
-        // combo sometimes when far
+        
         if (dist >= COMBO_START_DIST_T * TILE && comboCd <= 0f && rng.nextFloat() < 0.015f) {
             startComboDashTowardPlayer(player);
             return;
@@ -321,7 +321,7 @@ public class Boss {
 
         moveToward(dt, player.getPosition(), runSpeed);
 
-        // if close, switch to walk for nicer motion (unless attacking)
+        
         if (dist < 6.8f * TILE) {
             state = BossState.WALK;
             stateTime = 0f;
@@ -337,10 +337,10 @@ public class Boss {
     }
 
     private void updateAttack(PlayerLike player) {
-        // windup
+        
         if (stateTime < ATTACK_WINDUP_T) return;
 
-        // damage once
+        
         if (!attackDamageApplied && stateTime >= ATTACK_WINDUP_T + 0.05f) {
             attackDamageApplied = true;
 
@@ -350,10 +350,10 @@ public class Boss {
             }
         }
 
-        // end
+        
         if (stateTime >= ATTACK_WINDUP_T + ATTACK_ACTIVE_T) {
             attackCd = ATTACK_CD;
-            // return to chase (phase-aware)
+            
             state = (getHpPct() <= RUN2_HP_PCT) ? BossState.RUN_2 : BossState.RUN;
             stateTime = 0f;
         }
@@ -370,7 +370,7 @@ public class Boss {
         if (dir.len2() < 1f) dir.set(1, 0);
         dir.nor();
 
-        // aim past player
+        
         comboTarget.set(playerPos).mulAdd(dir, COMBO_OVERSHOOT_T * TILE);
         clampToBossRoom(comboTarget);
 
@@ -442,7 +442,7 @@ public class Boss {
         float nx = pos.x + velocity.x * dt;
         float ny = pos.y + velocity.y * dt;
 
-        // try X
+        
         tmpRect1.set(hitbox);
         tmpRect1.x = (nx - HIT_W / 2f);
         if (!maze.isWallRect(tmpRect1)) {
@@ -450,7 +450,7 @@ public class Boss {
             hitbox.x = tmpRect1.x;
         }
 
-        // try Y
+        
         tmpRect2.set(hitbox);
         tmpRect2.y = (ny - HIT_H / 2f);
         if (!maze.isWallRect(tmpRect2)) {

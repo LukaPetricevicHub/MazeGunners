@@ -18,6 +18,9 @@ import de.tum.cit.fop.maze.player.Player;
  * god mode, level loading, and currency manipulation.
  * Intended for development and testing purposes only.
  */
+/**
+ * Lightweight developer console for entering debug commands during gameplay.
+ */
 public class DevConsole extends Table {
 
     private final TextField inputField;
@@ -253,8 +256,8 @@ public class DevConsole extends Table {
                             log("Loading level " + lvl + " from " + file.path());
                             game.setScreen(new GameScreen(game, lvl, file));
                         } else {
-                            // If file missing: still open GameScreen with null file
-                            // -> your GameScreen initializeMaze() can generate a local file fallback
+                            
+                            
                             log("Level file not found. Generating/loading fallback for level " + lvl + "...");
                             game.setScreen(new GameScreen(game, lvl, null));
                         }

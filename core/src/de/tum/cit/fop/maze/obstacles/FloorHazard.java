@@ -13,7 +13,7 @@ import com.badlogic.gdx.math.Vector2;
  */
 public class FloorHazard extends Obstacle {
 
-    // Attributes
+    
     private static final float SPEED_UP_FACTOR = 1.6f;
     private static final float MAX_BOOST_TIME = 2.5f;
 

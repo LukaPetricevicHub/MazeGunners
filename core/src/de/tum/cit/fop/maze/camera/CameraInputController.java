@@ -35,7 +35,7 @@ public class CameraInputController extends InputAdapter {
      * @param delta time since last frame (seconds)
      */
     public void update(float delta) {
-        // Hold key to zoom in/out
+        
         int zoomInKey = preferences.getKeyZoomIn();
         int zoomOutKey = preferences.getKeyZoomOut();
 

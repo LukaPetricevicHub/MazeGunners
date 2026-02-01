@@ -40,7 +40,7 @@ public class EntranceFinder {
         for (int x = room.x(); x < room.x() + room.w(); x++) {
             for (int y = room.y(); y < room.y() + room.h(); y++) {
 
-                // Only consider ROOM EDGE tiles
+                
                 if (!isRoomEdge(room, x, y)) continue;
                 if (maze.getTile(x, y) != Tiles.FLOOR) continue;
 

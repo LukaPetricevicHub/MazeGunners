@@ -17,12 +17,12 @@ public class BossAnimations implements Disposable {
     private static final int FRAME_W = 128;
     private static final int FRAME_H = 64;
 
-    // Rows 0-7
+    
     private static final int ROW_IDLE   = 0;
     private static final int ROW_WALK   = 1;
     private static final int ROW_RUN_1  = 2;
     private static final int ROW_RUN_2  = 3;
-    private static final int ROW_ATTACK = 4; // "normal"
+    private static final int ROW_ATTACK = 4; 
     private static final int ROW_COMBO  = 5;
     private static final int ROW_HIT    = 6;
     private static final int ROW_DEATH  = 7;

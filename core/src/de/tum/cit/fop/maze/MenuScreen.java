@@ -15,6 +15,9 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.ui.LeaderboardScreen;
 import de.tum.cit.fop.maze.ui.UiButtons;
 
+/**
+ * Main menu screen with navigation to game modes and settings.
+ */
 public class MenuScreen implements Screen {
 
     private final Stage stage;
@@ -62,12 +65,12 @@ public class MenuScreen implements Screen {
             }
         });
 
-        // ✅ Gambling is MENU-ONLY (no Player instance)
+        
         TextButton gamblingBtn = UiButtons.button("The Casino", game.getSkin());
         gamblingBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                game.goToGambling(); // opens menu-only GamblingScreen
+                game.goToGambling(); 
             }
         });
 

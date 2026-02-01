@@ -18,7 +18,7 @@ public class ItemSpawner {
     private final Random random = new Random();
 
     private static final int[] COIN_VALUES  = { 5, 20, 50};
-    private static final int[] COIN_WEIGHTS = { 80, 16, 4}; // sums to 100
+    private static final int[] COIN_WEIGHTS = { 80, 16, 4}; 
 
     /**
      * Spawns items with a default number of coins.
@@ -46,22 +46,22 @@ public class ItemSpawner {
     public List<Collectable> spawnItems(Maze maze, int count, int coinCount) {
         List<Collectable> items = new ArrayList<>();
 
-        // 1) GUARANTEED GUN
+        
         spawnSingleItem(maze, items, 4);
 
-        // 2) OTHER ITEMS
+        
         for (int i = 0; i < Math.max(0, count - 1); i++) {
-            int type = random.nextInt(4); // heart/speed/shield/ammo
+            int type = random.nextInt(4); 
             spawnSingleItem(maze, items, type);
         }
 
-        // Extra ammo pickups
+        
         int extraAmmo = Math.max(2, count);
         for (int i = 0; i < extraAmmo; i++) {
             spawnSingleItem(maze, items, 3);
         }
 
-        // 3) COINS
+        
         for (int i = 0; i < coinCount; i++) {
             spawnSingleItem(maze, items, 5);
         }

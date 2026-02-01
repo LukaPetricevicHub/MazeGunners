@@ -14,7 +14,7 @@ import de.tum.cit.fop.maze.map.Tiles;
  */
 public final class RoomPatrolBuilder {
 
-    private static final int MAX_PATROL_STEPS = 2; // ← THIS fixes everything
+    private static final int MAX_PATROL_STEPS = 2; 
 
     private RoomPatrolBuilder() {}
 
@@ -27,7 +27,7 @@ public final class RoomPatrolBuilder {
         float ts = maze.getTileSize();
         Array<Vector2> pts = new Array<>();
 
-        int ax = e.x() - e.dirX(); // move in the room
+        int ax = e.x() - e.dirX(); 
         int ay = e.y() - e.dirY();
 
 

@@ -14,7 +14,7 @@ import com.badlogic.gdx.math.Vector2;
  */
 public abstract class Obstacle {
 
-    // Attributes
+    
     protected Vector2 worldPosition;
     protected Rectangle collisionBounds;
     protected boolean isActive;
@@ -124,25 +124,25 @@ public abstract class Obstacle {
     }
 
 
-    // Return the obstacle collision box
+    
     public Rectangle getCollisionBox() {
         return collisionBounds;
     }
 
 
-    // Check if obstacle is active
+    
     public boolean isActive() {
         return isActive;
     }
 
 
-    // Return width of the obstacle
+    
     public float getWidth() {
         return collisionBounds.width;
     }
 
 
-    // Return height of the obstacle
+    
     public float getHeight() {
         return collisionBounds.height;
     }

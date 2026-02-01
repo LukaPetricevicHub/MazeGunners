@@ -21,7 +21,7 @@ import java.util.Iterator;
 import java.util.List;
 
 public class Player {
-    // Attributes
+    
     private float x;
     private float y;
 
@@ -43,7 +43,7 @@ public class Player {
     private int permanentHeartsBonus = 0;
 
 
-    // Coins (persisted)
+    
     private int coins = 0;
     private final Progression progression;
     private final MazeRunnerGame gameRef;
@@ -52,31 +52,31 @@ public class Player {
     private boolean hasKey = false;
     private int score = 0;
 
-    // Status
+    
     private boolean invulnerable = false;
     private float invulnTimeLeft = 0f;
     private boolean damageFlash = false;
     private float flashTimeLeft = 0f;
 
-    // Movement
+    
     private static final float WALK_SPEED_BASE = 300f;
     private static final float RUN_MULTIPLIER = 1.7f;
 
-    private float speedMultiplier = 1f; // temporary speed powerups + slow debuffs
+    private float speedMultiplier = 1f; 
     private float speedTimer = 0f;
 
-    // Dimensions
+    
     private static final float WIDTH = 32f;
     private static final float HEIGHT = 32f;
     private static final float COLLISION_INSET = 2f;
 
-    // Animation - Walking
+    
     private final Animation<TextureRegion> animDown, animUp, animLeft, animRight;
     private final Animation<TextureRegion> idleDown, idleUp, idleLeft, idleRight;
     private Animation<TextureRegion> currentAnimation;
     private float animTime = 0f;
 
-    // Animation - Shooting
+    
     private final Animation<TextureRegion> shootLeftAnim;
     private final Animation<TextureRegion> shootRightAnim;
     private final Animation<TextureRegion> shootUpAnim;
@@ -96,25 +96,25 @@ public class Player {
     private Sound ouchSound;
 
 
-    // Powerups
+    
     private boolean isShielded = false;
     private float shieldTimer = 0f;
 
-    // Debug
+    
     private boolean godMode = false;
     private boolean noClip = false;
 
-    // RPG / Leveling
+    
     private int experience = 0;
     private int playerLevel = 1;
     private int skillPoints = 0;
     private static final int XP_PER_LEVEL_BASE = 100;
 
-    // Skills (0 to 5)
+    
     private int skillSpeedLevel = 0;
     private int skillHealthLevel = 0;
 
-    // Combat and weapons
+    
     private boolean hasGun = false;
     private static final int MAX_CLIP_AMMO = 20;
     private int ammoInClip = 0;
@@ -128,10 +128,10 @@ public class Player {
     private Rectangle attackHitbox;
 
 
-    // Direction
+    
     private final Vector2 facingDirection = new Vector2(0, -1);
 
-    // Floor hazard effect
+    
     private float hazardWallDamageTimer = 0f;
     private float slideTimer = 0f;
     private static final float SLIDE_DURATION = 3.5f;
@@ -143,23 +143,23 @@ public class Player {
     private final Vector2 lastMovementDir = new Vector2(0, 1);
     private boolean hazardWallDamageUsed = false;
 
-    // Lightning trap visuals/debuff
+    
     private boolean lightningSlowed = false;
     private float lightningAnimTime = 0f;
     private float lightningDebuffTimer = 0f;
 
-    // Repulse Skill
+    
     private boolean isRepulsing = false;
     private float repulseCooldownTimer = 0f;
 
     private enum Facing { UP, DOWN, LEFT, RIGHT }
     private Facing currentFacing = Facing.DOWN;
 
-    // Bullets
+    
     private final List<Bullet> bullets = new ArrayList<>();
     private final TextureRegion bulletRegion;
 
-    // Skill flags
+    
     private boolean skillRapidFire = false;
     private boolean skillShotgun = false;
     private boolean skillPiercing = false;
@@ -170,7 +170,7 @@ public class Player {
     private boolean skillThorns = false;
     private boolean skillRepulse = false;
 
-    // Dash
+    
     private boolean isDashing = false;
     private float dashTimer = 0f;
     private float dashCooldown = 0f;
@@ -179,13 +179,13 @@ public class Player {
     private static final float DASH_SPEED = 1200f;
     private static final float DASH_COOLDOWN_MAX = 1.0f;
 
-    // Shooting cooldown
+    
     private float shootTimer = 0f;
 
-    // Drone laser
+    
     private float laserDamageAccumulator = 0f;
     private float laserHeat = 0f;
-    private int permanentStrength = 5; // starts playable
+    private int permanentStrength = 5; 
     private int permanentSpeed = 5;
 
     private boolean freezeWeapon = false;
@@ -196,7 +196,7 @@ public class Player {
         boolean isBlocked(Rectangle playerRect);
     }
 
-    // Constructor
+    
     public Player(float startX, float startY, Progression progression, Animation<TextureRegion> down, Animation<TextureRegion> up, Animation<TextureRegion> left, Animation<TextureRegion> right, MazeRunnerGame game) {
 
         this.x = startX;
@@ -258,7 +258,7 @@ public class Player {
 
     }
 
-    // If permanent hearts updated while running
+    
     public void refreshPermanentProgression(MazeRunnerGame game) {
         if (game.getProgression() == null) return;
 
@@ -285,7 +285,7 @@ public class Player {
         this.hp = getMaxHp();
     }
 
-    // Main update loop
+    
     public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker, Camera camera) {
         updateTimers(dt);
 
@@ -294,7 +294,7 @@ public class Player {
         if (shootTimer > 0) shootTimer -= dt;
         if (repulseCooldownTimer > 0) repulseCooldownTimer -= dt;
 
-        // Dash
+        
         if (isDashing) {
             dashTimer -= dt;
             attemptMove(dashDirection.x * DASH_SPEED * dt, dashDirection.y * DASH_SPEED * dt, maze, game, null);
@@ -317,7 +317,7 @@ public class Player {
         if (hasGun) updateFacingToMouse(camera);
         else updateFacingDirection(game);
 
-        // Sliding
+        
         if (isSliding) {
             if (input.dx != 0f || input.dy != 0f) {
                 Vector2 inputVelocity = new Vector2(input.dx / dt, input.dy / dt);
@@ -327,23 +327,23 @@ public class Player {
             moveDy = slideVelocity.y * dt;
         }
 
-        // Dash skill
+        
         if (skillDash && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyDash()) && dashCooldown <= 0 && moving) {
             startDash(input.dx, input.dy);
         }
 
-        // Repulse skill
+        
         if (skillRepulse && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyRepulse()) && repulseCooldownTimer <= 0) {
             isRepulsing = true;
             repulseCooldownTimer = 5.0f;
         }
 
-        // Melee
+        
         if (!isParalyzed() && Gdx.input.isKeyJustPressed(game.getPreferences().getKeyMelee())) {
             attack();
         }
 
-        // Shooting
+        
         boolean shootPressed = Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)
                 || Gdx.input.isKeyJustPressed(game.getPreferences().getKeyShoot());
         boolean reloadPressed = Gdx.input.isKeyJustPressed(Input.Keys.R);
@@ -360,7 +360,7 @@ public class Player {
             shooting = false;
         }
 
-        // Anim
+        
         if (shooting) selectShootingAnimation();
         else selectWalkAnimation(moving);
 
@@ -375,13 +375,13 @@ public class Player {
             animTime = 0f;
         }
 
-        // Movement
+        
         attemptMove(moveDx, moveDy, maze, game, blockChecker);
 
-        // Bullets
+        
         updateBullets(dt);
 
-        // Melee window
+        
         if (isAttacking) {
             attackTimer -= dt;
             if (attackTimer <= 0) isAttacking = false;
@@ -561,7 +561,7 @@ public class Player {
         return new Rectangle(px, py, WIDTH, HEIGHT);
     }
 
-    // Close combat logic
+    
     public boolean attack() {
         if (attackCooldownTimer <= 0 && !isAttacking) {
             isAttacking = true;
@@ -581,7 +581,7 @@ public class Player {
     public boolean isAttacking() { return isAttacking; }
     public Rectangle getAttackHitbox() { return attackHitbox; }
 
-    // Bullets
+    
     private void spawnBullet(Camera camera) {
         if (!hasGun) return;
         if (ammoInClip <= 0) return;
@@ -660,7 +660,7 @@ public class Player {
     }
 
 
-    // Dmg, traps and laser
+    
     public void takeDamage(int amount) {
         if (godMode || isShielded || invulnerable) return;
 
@@ -711,7 +711,7 @@ public class Player {
         return 1f;
     }
 
-    // Player render
+    
     public void draw(SpriteBatch batch) {
         for (Bullet b : bullets) b.draw(batch, bulletRegion);
 
@@ -784,7 +784,7 @@ public class Player {
         };
     }
 
-    // powerups
+    
     public void activateSpeedBoost(float duration, float multiplier) {
         this.speedTimer = duration;
         this.speedMultiplier = multiplier;
@@ -815,9 +815,9 @@ public class Player {
         }
     }
 
-    // =========================
-    // LEVELING
-    // =========================
+    
+    
+    
     public void addExperience(int amount) {
         experience += amount;
         checkLevelUp();
@@ -869,10 +869,10 @@ public class Player {
         permanentSpeed = MathUtils.clamp(permanentSpeed + delta, 0, 99);
     }
 
-    // Gambling buff
+    
     public float getDamageMult() { return damageMult; }
 
-    // Dev override (no clamp, not persisted)
+    
     public void setDamageMultRaw(float v) {
         damageMult = v;
     }
@@ -903,7 +903,7 @@ public class Player {
         return hasGloves ? 250f : 0f;
     }
 
-    // Slot stats
+    
     public int getStrengthStat() { return strengthStat; }
     public int getSpeedStat() { return speedStat; }
 
@@ -912,7 +912,7 @@ public class Player {
         if (progression != null) progression.setPermanentStrength(strengthStat);
     }
 
-    // Dev override (no clamp, not persisted)
+    
     public void setStrengthStatRaw(int v) {
         strengthStat = v;
     }
@@ -938,7 +938,7 @@ public class Player {
         if (progression != null) progression.setHasPoisonKnuckles(true);
     }
 
-    // Coins
+    
     public void addCoins(int amount) {
         if (amount <= 0) return;
         coins = Math.max(0, coins + amount);
@@ -953,7 +953,7 @@ public class Player {
         return true;
     }
 
-    // Getters & Setters
+    
     public int getCoins() { return coins; }
 
     public int getHeartsCount() {

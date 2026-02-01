@@ -7,6 +7,9 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 
+/**
+ * Utility factory for creating consistently styled buttons with shared sound effects.
+ */
 public final class UiButtons {
     private UiButtons() {}
 

@@ -15,7 +15,7 @@ import java.util.List;
  * Paths are recalculated periodically to avoid getting stuck.
  */
 public class RetreatBehavior implements BehaviorState {
-    // Attributes
+    
     private static final float RECALC_COOLDOWN = 0.7f;
     private static final float ARRIVAL_THRESHOLD = 4f;
 
@@ -88,13 +88,13 @@ public class RetreatBehavior implements BehaviorState {
     }
 
 
-    // Convert world coordinates to tile
+    
     private static Point convertToTileCoords(Vector2 worldPos, Maze maze) {
         return new Point(GridUtils.worldToTile(worldPos.x, maze.getTileSize()), GridUtils.worldToTile(worldPos.y, maze.getTileSize()));
     }
 
 
-    // Get center position of tile
+    
     private static Vector2 getTileCenter(Point tileCoords, Maze maze) {
         float size = maze.getTileSize();
 

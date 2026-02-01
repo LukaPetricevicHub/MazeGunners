@@ -46,15 +46,15 @@ public class MazeRunnerGame extends Game {
     private AudioManager audioManager;
     private GamePreferences preferences;
 
-    // Permanent progression (endless unlock + gambling rewards)
+    
     private Progression progression;
     private RunGambleState runGamble;
 
-    // Standard Walking Animations
+    
     private Animation<TextureRegion> animDown, animUp, animLeft, animRight;
     private Animation<TextureRegion> idleDown, idleUp, idleLeft, idleRight;
 
-    // Shooting Animations
+    
     private Animation<TextureRegion> shootDownAnim, shootUpAnim, shootLeftAnim, shootRightAnim;
     private Animation<TextureRegion> gunDownIdleRun;
     private Animation<TextureRegion> gunUpIdleRun;
@@ -65,7 +65,7 @@ public class MazeRunnerGame extends Game {
     private Animation<TextureRegion> gunSideShoot;
     private Animation<TextureRegion> gunSideLeftShoot;
 
-    // Bullet Texture
+    
     private TextureRegion bulletRegion;
 
     private Texture tileset;
@@ -127,12 +127,18 @@ public class MazeRunnerGame extends Game {
         pixmap.dispose();
     }
 
+    /**
+     * Plays the wall-hit sound effect (volume scaled by user settings).
+     */
     public void playWallHitSound() {
         if (wallHitSound != null) {
             wallHitSound.play(0.6f * getPreferences().getSoundVolume());
         }
     }
 
+    /**
+     * Switches to the main menu screen and starts menu music.
+     */
     public void goToMenu() {
         if (audioManager != null) {
             audioManager.playBackgroundMusic("mainmenu.mp3");
@@ -140,11 +146,18 @@ public class MazeRunnerGame extends Game {
         setScreen(new MenuScreen(this));
     }
 
-
+    /**
+     * Switches to the casino screen.
+     */
     public void goToGambling() {
         setScreen(new GamblingScreen(this));
     }
 
+    /**
+     * Loads a saved game state from disk.
+     *
+     * @return true if a save was found and loaded
+     */
     public boolean loadGame() {
         FileHandle file = Gdx.files.local("saves/save.json");
         if (!file.exists()) {
@@ -279,6 +292,11 @@ public class MazeRunnerGame extends Game {
         System.out.println("GAME SAVED! (Enemies: " + state.enemies.size() + ", Items: " + state.items.size() + ")");
     }
 
+    /**
+     * Captures state needed for post-level flow and keeps run data in sync.
+     *
+     * @param player Current player instance
+     */
     public void handleLevelTransition(Player player) {
         GameState state = new GameState();
         state.level = 0;
@@ -315,11 +333,18 @@ public class MazeRunnerGame extends Game {
      *
      * @return The pending game state or null if none exists
      */
+    /**
+     * Returns a pending save state used to resume gameplay.
+     */
     public GameState getPendingSaveState() { return pendingSaveState; }
+
+    /**
+     * Clears any pending save state so the next run starts fresh.
+     */
     public void clearPendingSaveState() { pendingSaveState = null; }
 
     private void loadCharacterAnimation() {
-        // Character 2 assets (6 frames per strip, 64x64 each)
+        
         animDown = loadStripAnimation("character2/The Male adventurer - Free/Walk/walk_down.png", 0.08f);
         animUp = loadStripAnimation("character2/The Male adventurer - Free/Walk/walk_up.png", 0.08f);
         animLeft = loadStripAnimation("character2/The Male adventurer - Free/Walk/walk_left_down.png", 0.08f);
@@ -335,7 +360,7 @@ public class MazeRunnerGame extends Game {
         shootLeftAnim = animLeft;
         shootRightAnim = animRight;
 
-        // Paper-doll gun overlays (directional sheets)
+        
         gunDownIdleRun = loadGunAnimation("Gun/Gun_down_idle-and-run-Sheet6.png", 6, 0.08f);
         gunUpIdleRun = loadGunAnimation("Gun/Gun_up_idle-and-run-Sheet6.png", 6, 0.08f);
         gunSideIdleRun = loadGunAnimation("Gun/Gun_side_idle-and-run-Sheet6.png", 6, 0.08f);
@@ -353,7 +378,7 @@ public class MazeRunnerGame extends Game {
         int frameCount = 8;
         int frameWidth = texture.getWidth() / frameCount;
         if (frameWidth <= 0 || texture.getWidth() % frameCount != 0) {
-            // Fallback to square frames
+            
             frameWidth = frameHeight;
             frameCount = Math.max(1, texture.getWidth() / frameWidth);
         }
@@ -379,6 +404,9 @@ public class MazeRunnerGame extends Game {
         return new Animation<>(frameDuration, regions, Animation.PlayMode.LOOP);
     }
 
+    /**
+     * Marks story completion to unlock endless mode and save progression.
+     */
     public void markStoryCompleted() {
         progression.setStoryCompleted(true);
     }
@@ -436,11 +464,19 @@ public class MazeRunnerGame extends Game {
     public Progression getProgression() { return progression; }
     public RunGambleState getRunGamble() { return runGamble; }
 
+    /**
+     * Resets run-only gambling rewards to their defaults.
+     */
     public void resetRunGamble() {
         if (runGamble == null) runGamble = new RunGambleState();
         runGamble.resetToDefaults();
     }
 
+    /**
+     * Restores run-only gambling rewards from a saved game state.
+     *
+     * @param state Loaded save state
+     */
     public void applyRunGambleFromState(GameState state) {
         if (runGamble == null) runGamble = new RunGambleState();
         if (state == null) return;
