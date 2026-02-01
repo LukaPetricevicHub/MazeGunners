@@ -14,17 +14,11 @@ import com.badlogic.gdx.math.Vector3;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.map.Maze;
 import de.tum.cit.fop.maze.progress.Progression;
+import de.tum.cit.fop.maze.progress.RunGambleState;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
-/**
- * Represents the player character.
- *
- * Handles movement, combat, skills, health, leveling,
- * input handling, and rendering of the player.
- */
 
 public class Player {
     // Attributes
@@ -43,8 +37,8 @@ public class Player {
     private boolean hasPoisonKnuckles = false;
     private int hp;
 
-    private static final int BASE_HEARTS = 5;
-    private static final int HP_PER_HEART = 2;
+    private static final int BASE_HP = 100;
+    private static final int HP_PER_UPGRADE = 5;
 
     private int permanentHeartsBonus = 0;
 
@@ -53,6 +47,7 @@ public class Player {
     private int coins = 0;
     private final Progression progression;
     private final MazeRunnerGame gameRef;
+
 
     private boolean hasKey = false;
     private int score = 0;
@@ -118,6 +113,9 @@ public class Player {
 
     // Combat and weapons
     private boolean hasGun = false;
+    private static final int MAX_CLIP_AMMO = 20;
+    private int ammoInClip = 0;
+    private int ammoReserve = 0;
 
     private boolean isAttacking = false;
     private float attackTimer = 0f;
@@ -193,18 +191,7 @@ public class Player {
         boolean isBlocked(Rectangle playerRect);
     }
 
-    /**
-     * Creates a new player instance.
-     *
-     * @param startX starting X position in world coordinates
-     * @param startY starting Y position in world coordinates
-     * @param progression permanent progression data
-     * @param down walking animation (down)
-     * @param up walking animation (up)
-     * @param left walking animation (left)
-     * @param right walking animation (right)
-     * @param game reference to the main game instance
-     */
+    // Constructor
     public Player(float startX, float startY, Progression progression, Animation<TextureRegion> down, Animation<TextureRegion> up, Animation<TextureRegion> left, Animation<TextureRegion> right, MazeRunnerGame game) {
 
         this.x = startX;
@@ -254,8 +241,8 @@ public class Player {
 
         this.damageMult = MathUtils.clamp(this.damageMult, 0.5f, 3.0f);
         this.bonusSpeedMult = MathUtils.clamp(this.bonusSpeedMult, 0.5f, 3.0f);
-        this.strengthStat = MathUtils.clamp(this.strengthStat, 1, 10);
-        this.speedStat = MathUtils.clamp(this.speedStat, 1, 10);
+        this.strengthStat = MathUtils.clamp(this.strengthStat, 1, 99);
+        this.speedStat = MathUtils.clamp(this.speedStat, 1, 99);
 
         this.hp = getMaxHp();
 
@@ -267,8 +254,8 @@ public class Player {
 
         this.permanentHeartsBonus = game.getProgression().getPermanentHearts();
 
-        this.strengthStat = MathUtils.clamp(game.getProgression().getPermanentStrength(), 1, 10);
-        this.speedStat = MathUtils.clamp(game.getProgression().getPermanentSpeedStat(), 1, 10);
+        this.strengthStat = MathUtils.clamp(game.getProgression().getPermanentStrength(), 1, 99);
+        this.speedStat = MathUtils.clamp(game.getProgression().getPermanentSpeedStat(), 1, 99);
         this.hasFreezeWeapon = game.getProgression().hasFreezeWeapon();
         this.hasPoisonKnuckles = game.getProgression().hasPoisonKnuckles();
 
@@ -276,18 +263,19 @@ public class Player {
         if (hp > max) hp = max;
     }
 
-    /**
-     * Updates the player state.
-     *
-     * Handles input, movement, combat actions, skills,
-     * timers, collisions, and bullets.
-     *
-     * @param dt time since last frame
-     * @param maze current maze
-     * @param game main game reference
-     * @param blockChecker collision checker for obstacles
-     * @param camera active game camera
-     */
+    public void applyRunGamble(RunGambleState run) {
+        if (run == null) return;
+        this.strengthStat = MathUtils.clamp(run.strength, 1, 99);
+        this.speedStat = MathUtils.clamp(run.speed, 1, 99);
+        this.damageMult = MathUtils.clamp(run.damageMult, 0.5f, 3.0f);
+        this.bonusSpeedMult = MathUtils.clamp(run.speedMult, 0.5f, 3.0f);
+        this.permanentHeartsBonus = Math.max(0, run.bonusHearts);
+        this.hasFreezeWeapon = run.freezeWeapon;
+        this.hasPoisonKnuckles = run.poisonKnuckles;
+        this.hp = getMaxHp();
+    }
+
+    // Main update loop
     public void update(float dt, Maze maze, MazeRunnerGame game, BlockChecker blockChecker, Camera camera) {
         updateTimers(dt);
 
@@ -348,8 +336,12 @@ public class Player {
         // Shooting
         boolean shootPressed = Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)
                 || Gdx.input.isKeyJustPressed(game.getPreferences().getKeyShoot());
+        boolean reloadPressed = Gdx.input.isKeyJustPressed(Input.Keys.R);
+        if (reloadPressed && hasGun) {
+            reload();
+        }
         if (!isParalyzed() && shootPressed && hasGun) {
-            if (shootTimer <= 0) {
+            if (shootTimer <= 0 && ammoInClip > 0) {
                 spawnBullet(camera);
                 shootTimer = skillRapidFire ? 0.2f : 0.4f;
                 shooting = true;
@@ -575,6 +567,8 @@ public class Player {
     // Bullets
     private void spawnBullet(Camera camera) {
         if (!hasGun) return;
+        if (ammoInClip <= 0) return;
+        ammoInClip--;
 
         float cx = x + WIDTH / 2f;
         float cy = y + HEIGHT / 2f;
@@ -649,11 +643,7 @@ public class Player {
     }
 
 
-    /**
-     * Applies damage to the player if not shielded.
-     *
-     * @param amount damage value
-     */
+    // Dmg, traps and laser
     public void takeDamage(int amount) {
         if (godMode || isShielded || invulnerable) return;
 
@@ -700,11 +690,7 @@ public class Player {
         return 1f;
     }
 
-    /**
-     * Draws the player and all active bullets.
-     *
-     * @param batch sprite batch used for rendering
-     */
+    // Player render
     public void draw(SpriteBatch batch) {
         for (Bullet b : bullets) b.draw(batch, bulletRegion);
 
@@ -804,7 +790,9 @@ public class Player {
         isSliding = true;
     }
 
+    // =========================
     // LEVELING
+    // =========================
     public void addExperience(int amount) {
         experience += amount;
         checkLevelUp();
@@ -849,11 +837,11 @@ public class Player {
     }
 
     public void addPermanentStrength(int delta) {
-        permanentStrength = MathUtils.clamp(permanentStrength + delta, 0, 10);
+        permanentStrength = MathUtils.clamp(permanentStrength + delta, 0, 99);
     }
 
     public void addPermanentSpeed(int delta) {
-        permanentSpeed = MathUtils.clamp(permanentSpeed + delta, 0, 10);
+        permanentSpeed = MathUtils.clamp(permanentSpeed + delta, 0, 99);
     }
 
     // Gambling buff
@@ -895,7 +883,7 @@ public class Player {
     public int getSpeedStat() { return speedStat; }
 
     public void setStrengthStat(int v) {
-        strengthStat = MathUtils.clamp(v, 1, 10);
+        strengthStat = MathUtils.clamp(v, 1, 99);
         if (progression != null) progression.setPermanentStrength(strengthStat);
     }
 
@@ -905,7 +893,7 @@ public class Player {
     }
 
     public void setSpeedStat(int v) {
-        speedStat = MathUtils.clamp(v, 1, 10);
+        speedStat = MathUtils.clamp(v, 1, 99);
         if (progression != null) progression.setPermanentSpeedStat(speedStat);
     }
 
@@ -944,16 +932,16 @@ public class Player {
     public int getCoins() { return coins; }
 
     public int getHeartsCount() {
-        return MathUtils.clamp((int) Math.ceil(hp / (float) HP_PER_HEART), 0, getMaxHearts());
+        return MathUtils.clamp((int) Math.ceil(hp / (float) HP_PER_UPGRADE), 0, getMaxHearts());
     }
 
 
     public int getMaxHearts() {
-        return BASE_HEARTS + skillHealthLevel + permanentHeartsBonus;
+        return (BASE_HP / HP_PER_UPGRADE) + skillHealthLevel + permanentHeartsBonus;
     }
 
     public int getMaxHp() {
-        return getMaxHearts() * HP_PER_HEART;
+        return BASE_HP + (skillHealthLevel + permanentHeartsBonus) * HP_PER_UPGRADE;
     }
 
     public int getHp() { return hp; }
@@ -982,7 +970,7 @@ public class Player {
     }
 
     public void addLife() {
-        healHp(HP_PER_HEART);
+        healHp(HP_PER_UPGRADE);
     }
     public void setPlayerLevel(int level) { this.playerLevel = Math.max(1, level); }
     public int getPlayerLevel() { return playerLevel; }
@@ -1019,8 +1007,34 @@ public class Player {
     public void addScore(int amount) { this.score += amount; }
     public int getScore() { return score; }
 
-    public void equipGun() { hasGun = true; }
+    public void equipGun() {
+        hasGun = true;
+        if (ammoInClip == 0 && ammoReserve == 0) {
+            ammoInClip = MAX_CLIP_AMMO;
+        }
+    }
     public boolean hasGun() { return hasGun; }
+    public int getAmmoInClip() { return ammoInClip; }
+    public int getAmmoReserve() { return ammoReserve; }
+    public void setAmmo(int clip, int reserve) {
+        ammoInClip = Math.max(0, Math.min(MAX_CLIP_AMMO, clip));
+        ammoReserve = Math.max(0, reserve);
+    }
+    public void addAmmo(int amount) {
+        if (amount <= 0) return;
+        ammoReserve += amount;
+        if (hasGun && ammoInClip == 0) {
+            reload();
+        }
+    }
+    private void reload() {
+        if (ammoInClip >= MAX_CLIP_AMMO) return;
+        if (ammoReserve <= 0) return;
+        int needed = MAX_CLIP_AMMO - ammoInClip;
+        int taken = Math.min(needed, ammoReserve);
+        ammoInClip += taken;
+        ammoReserve -= taken;
+    }
 
     public boolean isDamageFlashing() { return damageFlash; }
 

@@ -13,6 +13,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.score.ScoreEntry;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 /**
  * Screen displaying the game's leaderboards.
@@ -62,7 +63,7 @@ public class LeaderboardScreen implements Screen {
         showSelectHint();
 
         // Back Button
-        TextButton backBtn = new TextButton("Back to Menu", game.getSkin());
+        TextButton backBtn = UiButtons.button("Back to Menu", game.getSkin());
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -101,7 +102,7 @@ public class LeaderboardScreen implements Screen {
     @Override public void resume() {}
 
     private TextButton makeBoardButton(String label, String boardKey) {
-        TextButton btn = new TextButton(label, game.getSkin());
+        TextButton btn = UiButtons.button(label, game.getSkin());
         btn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -146,3 +147,4 @@ public class LeaderboardScreen implements Screen {
         listTable.add(new Label("Select a leaderboard above.", game.getSkin())).pad(10);
     }
 }
+

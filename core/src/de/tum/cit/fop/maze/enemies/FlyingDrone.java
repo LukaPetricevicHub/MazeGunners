@@ -37,7 +37,7 @@ public class FlyingDrone extends Enemy {
     private boolean attacking = false;
     private float attackTimer = 0f;
 
-    private static final int MAX_HP = 8;
+    private static final int MAX_HP = 5;
 
     private final Array<DroneLaser> lasers = new Array<>();
     private float laserLockTime = 0f;

@@ -13,33 +13,16 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import de.tum.cit.fop.maze.ui.LeaderboardScreen;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
-/**
- * Main menu screen of the game.
- *
- * This screen is shown when the game starts and allows the player
- * to navigate to different parts of the game such as starting a new
- * game, loading a save file, opening settings, viewing achievements,
- * leaderboards, or exiting the game.
- *
- * All navigation to other screens is handled from here.
- */
 public class MenuScreen implements Screen {
 
-    // Core game reference
     private final Stage stage;
     private final MazeRunnerGame game;
-    private final Viewport viewport;
-
-    // Visuals & audio
     private Texture background;
     private com.badlogic.gdx.audio.Sound clickSound;
+    private final Viewport viewport;
 
-    /**
-     * Creates the main menu screen and initializes all UI elements.
-     *
-     * @param game Reference to the main game instance
-     */
     public MenuScreen(MazeRunnerGame game) {
         this.game = game;
 
@@ -56,7 +39,7 @@ public class MenuScreen implements Screen {
         title.setFontScale(1.2f);
         table.add(title).padBottom(80).padTop(-40).row();
 
-        TextButton goToGameButton = new TextButton("New Game", game.getSkin());
+        TextButton goToGameButton = UiButtons.button("New Game", game.getSkin());
         goToGameButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -68,7 +51,7 @@ public class MenuScreen implements Screen {
             }
         });
 
-        TextButton loadButton = new TextButton("Load Game", game.getSkin());
+        TextButton loadButton = UiButtons.button("Load Game", game.getSkin());
         loadButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -81,17 +64,18 @@ public class MenuScreen implements Screen {
             }
         });
 
-        TextButton gamblingBtn = new TextButton("The Casino", game.getSkin());
+        // ✅ Gambling is MENU-ONLY (no Player instance)
+        TextButton gamblingBtn = UiButtons.button("The Casino", game.getSkin());
         gamblingBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 playClickSound();
-                game.goToGambling();
+                game.goToGambling(); // opens menu-only GamblingScreen
             }
         });
 
 
-        TextButton leaderboardBtn = new TextButton("Leaderboard", game.getSkin());
+        TextButton leaderboardBtn = UiButtons.button("Leaderboard", game.getSkin());
         leaderboardBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -100,7 +84,7 @@ public class MenuScreen implements Screen {
             }
         });
 
-        TextButton settingsButton = new TextButton("Settings", game.getSkin());
+        TextButton settingsButton = UiButtons.button("Settings", game.getSkin());
         settingsButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -109,7 +93,7 @@ public class MenuScreen implements Screen {
             }
         });
 
-        TextButton exitButton = new TextButton("Exit", game.getSkin());
+        TextButton exitButton = UiButtons.button("Exit", game.getSkin());
         exitButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -119,7 +103,7 @@ public class MenuScreen implements Screen {
         });
 
         Table grid = new Table();
-        grid.defaults().width(300).height(60).pad(8);
+        grid.defaults().width(360).height(80).pad(24);
 
         grid.add(goToGameButton);
         grid.add(loadButton);
@@ -128,10 +112,11 @@ public class MenuScreen implements Screen {
 
         grid.add(leaderboardBtn);
         grid.add(settingsButton);
+        grid.add(exitButton);
         grid.row();
 
         grid.add();
-        grid.add(exitButton);
+        grid.add();
         grid.add();
 
         table.add(grid);
@@ -144,14 +129,6 @@ public class MenuScreen implements Screen {
         }
     }
 
-    /**
-     * Renders the menu screen.
-     *
-     * Draws the background image and all UI elements and updates
-     * the stage each frame.
-     *
-     * @param delta Time elapsed since the last frame
-     */
     @Override
     public void render(float delta) {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -169,9 +146,6 @@ public class MenuScreen implements Screen {
 
     @Override public void resize(int width, int height) { stage.getViewport().update(width, height, true); }
 
-    /**
-     * Disposes all resources used by the menu screen.
-     */
     @Override
     public void dispose() {
         stage.dispose();
@@ -179,10 +153,6 @@ public class MenuScreen implements Screen {
         if (clickSound != null) clickSound.dispose();
     }
 
-    /**
-     * Called when this screen becomes active.
-     * Sets the input processor and loads the click sound.
-     */
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
@@ -198,3 +168,4 @@ public class MenuScreen implements Screen {
     @Override public void resume() {}
     @Override public void hide() {}
 }
+

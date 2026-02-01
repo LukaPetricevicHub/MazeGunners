@@ -75,8 +75,8 @@ public class CombatSystem {
 
         int base = Math.max(1, strength);
         int bulletDamage = Math.max(1, Math.round(base * dmgMult));
-        int meleeDamage  = Math.max(1, Math.round(base * dmgMult));
-        int repulseDamage = Math.max(1, Math.round(base * dmgMult));
+        int meleeDamage  = Math.max(1, Math.round(base * dmgMult * 0.6f));
+        int repulseDamage = Math.max(1, Math.round(base * dmgMult * 0.6f));
 
 
         // 1) BULLETS => ENEMIES/BOSS
@@ -180,7 +180,7 @@ public class CombatSystem {
                 && player.getAttackHitbox() != null
                 && player.getAttackHitbox().overlaps(boss.getHitbox())) {
 
-            int bossMelee = Math.max(1, Math.round(Math.max(1, strength) * dmgMult));
+            int bossMelee = Math.max(1, Math.round(Math.max(1, strength) * dmgMult * 0.6f));
             boss.damage(bossMelee);
         }
 

@@ -20,7 +20,7 @@ import de.tum.cit.fop.maze.player.Player;
  */
 public class RobotGuard extends Enemy {
 
-    private static final int MAX_HP = 14; // tweak
+    private static final int MAX_HP = 15; // tweak
 
     public static final float RENDER_WIDTH  = 32f;
     public static final float RENDER_HEIGHT = 32f;

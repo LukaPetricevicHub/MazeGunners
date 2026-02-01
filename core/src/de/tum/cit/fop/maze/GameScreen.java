@@ -23,6 +23,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.utils.Timer;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 
 import de.tum.cit.fop.maze.camera.GameCamera;
@@ -41,13 +42,16 @@ import de.tum.cit.fop.maze.world.*;
 import de.tum.cit.fop.maze.ui.PauseMenuWindow;
 import de.tum.cit.fop.maze.ui.GameOverWindow;
 import de.tum.cit.fop.maze.ui.DialogueWindow;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 /**
  * Main gameplay screen of the Maze Runner game.
@@ -620,6 +624,9 @@ public class GameScreen implements Screen {
             if (savedState.hasGun) {
                 player.equipGun();
             }
+            if (savedState.ammoInClip > 0 || savedState.ammoReserve > 0) {
+                player.setAmmo(savedState.ammoInClip, savedState.ammoReserve);
+            }
             if (savedState.hasKey) {
                 player.giveKey();
             }
@@ -638,6 +645,8 @@ public class GameScreen implements Screen {
                 }
             }
         }
+
+        player.applyRunGamble(game.getRunGamble());
     }
 
     /**
@@ -689,6 +698,7 @@ public class GameScreen implements Screen {
                 else if (is.type.equals("speed")) items.add(new SpeedItem(is.x, is.y));
                 else if (is.type.equals("shield")) items.add(new ShieldItem(is.x, is.y));
                 else if (is.type.equals("key") && !player.hasKey()) items.add(new KeyItem(is.x, is.y));
+                else if (is.type.equals("ammo")) items.add(new AmmoItem(is.x, is.y));
             }
         } else {
             items = new ItemSpawner().spawnItems(maze, itemCount); // use per-level
@@ -1040,7 +1050,12 @@ public class GameScreen implements Screen {
         pauseWindow = new PauseMenuWindow(
                 game.getSkin(),
                 () -> { playClickSound(); togglePause(); },
-                () -> { playClickSound(); pauseWindow.setVisible(false); settingsWindow.setVisible(true); },
+                () -> {
+                    playClickSound();
+                    pauseWindow.setVisible(false);
+                    settingsWindow.setVisible(true);
+                    centerSettingsWindow();
+                },
                 () -> {
                     playClickSound();
                     skillWindow.refresh();
@@ -1071,7 +1086,7 @@ public class GameScreen implements Screen {
                 () -> { playClickSound(); game.goToMenu(); }
         );
 
-        TextButton saveButton = new TextButton("Save Game", game.getSkin());
+        TextButton saveButton = UiButtons.button("Save Game", game.getSkin());
         saveButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -1166,7 +1181,7 @@ public class GameScreen implements Screen {
             }
         });
 
-        TextButton backBtn = new TextButton("Back", game.getSkin());
+        TextButton backBtn = UiButtons.button("Back", game.getSkin());
         backBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -1178,6 +1193,11 @@ public class GameScreen implements Screen {
 
         settingsWindow.add(backBtn).width(200).pad(10).row();
         settingsWindow.pack();
+        centerSettingsWindow();
+    }
+
+    private void centerSettingsWindow() {
+        if (settingsWindow == null || viewport == null) return;
         settingsWindow.setPosition(
                 (viewport.getWorldWidth() - settingsWindow.getWidth()) / 2f,
                 (viewport.getWorldHeight() - settingsWindow.getHeight()) / 2f
@@ -1192,6 +1212,7 @@ public class GameScreen implements Screen {
         if (hud != null) hud.resize(width, height, true);
         if (gameCamera != null) gameCamera.resize(viewport.getWorldWidth(), viewport.getWorldHeight());
         if (fog != null) fog.resize(width, height);
+        centerSettingsWindow();
     }
 
 
@@ -1200,12 +1221,13 @@ public class GameScreen implements Screen {
      */
     private void advanceToNextFloor() {
         floor++;
-        hud.showNotification("ROUND " + floor);
         hud.setFloorText("Round: " + floor);
         int hpGain = Math.max(0, (floor - 1) * 2);
+        String msg = "NEW ROUND STARTED";
         if (hpGain > 0) {
-            hud.showNotification("ENEMIES + " + hpGain + " HP");
+            msg += "\nENEMIES + " + hpGain + " HP";
         }
+        hud.showCenterNotification(msg, 7f);
 
         long seed = System.nanoTime();
         runSeed = seed;
@@ -1542,3 +1564,4 @@ public class GameScreen implements Screen {
         return null;
     }
 }
+

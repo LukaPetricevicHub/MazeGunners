@@ -16,20 +16,17 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.progress.Progression;
+import de.tum.cit.fop.maze.progress.RunGambleState;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
-/**
- * Screen providing a casino-style gameplay hub.
- *
- * Allows the player to gamble coins and permanent stats through
- * different game modes such as Slots, Russian Roulette, and Blackjack.
- * Can be accessed both from the main menu and during a run.
- */
 public class GamblingScreen implements Screen {
 
-    private enum Mode { MENU, SHOP, SLOTS, RUSSIAN_ROULETTE, BLACKJACK }
+    private enum Mode { MENU, SLOTS, BLACKJACK }
+
 
     private final MazeRunnerGame game;
     private final Progression prog;
+    private final RunGambleState run;
     private final Player player; // can be null if opened from Menu
 
     private final Stage stage;
@@ -49,50 +46,35 @@ public class GamblingScreen implements Screen {
     private int dialogueIndex = 0;
     private Runnable dialogueOnDone = null;
     private boolean dialogueActive = false;
+    private boolean dialogueShowContentOnEnd = true;
 
     private Mode mode = Mode.MENU;
 
     // Slots constants
-    private static final int SLOT_SPIN_COST = 50;
+    private static final int SLOT_SPIN_COST = 100;
     private static final int STAT_BUY_COST = 20;
     private static final int STAT_MIN_TO_PLAY = 5;
-    private static final int STAT_MAX = 10;
-
-    // Roulette constants
-    private static final int ROULETTE_HEAL_COST = 200;
-    private static final int ROULETTE_PERMANENT_HEART_CHANCE = 6; // 1 in 6
+    private static final int STAT_MAX = 99;
 
     // Blackjack
     private BlackjackGame blackjack;
 
-    /**
-     * Creates the gambling screen without an active player.
-     *
-     * Used when the screen is opened from the main menu.
-     *
-     * @param game Reference to the main game instance
-     */
     public GamblingScreen(MazeRunnerGame game) {
         this(game, null);
     }
 
-    /**
-     * Creates the gambling screen for an active run.
-     *
-     * Allows interaction with player-specific data such as lives
-     * and immediate progression effects.
-     *
-     * @param game Reference to the main game instance
-     * @param player Active player instance
-     */
     public GamblingScreen(MazeRunnerGame game, Player player) {
         this.game = game;
         this.prog = game.getProgression();
+        this.run = game.getRunGamble();
         this.player = player;
         this.stage = new Stage(new ScreenViewport(), game.getSpriteBatch());
         buildUI();
     }
 
+    // =========================================================
+    // UI BUILD
+    // =========================================================
 
     private void buildUI() {
         root = new Stack();
@@ -139,7 +121,7 @@ public class GamblingScreen implements Screen {
         dealerLabel.setWrap(true);
         dealerLabel.setAlignment(Align.center);
 
-        dialogueNextBtn = new TextButton("Next", game.getSkin());
+        dialogueNextBtn = UiButtons.button("Next", game.getSkin());
         dialogueNextBtn.addListener(new ChangeListener() {
             @Override public void changed(ChangeEvent event, Actor actor) {
                 advanceDialogue();
@@ -148,6 +130,8 @@ public class GamblingScreen implements Screen {
 
         dialogueTable.add(dealerLabel).width(900).pad(10).row();
         dialogueTable.add(dialogueNextBtn).width(160).height(50).padBottom(8).row();
+
+        dialogueTable.row();
 
         uiLayer.add(contentRoot).expand().fill().row();
         uiLayer.add(dialogueTable).expandX().fillX().bottom().pad(8);
@@ -160,23 +144,30 @@ public class GamblingScreen implements Screen {
         coinsLabel.setText("Coins: " + prog.getCoins());
 
         String info = "";
-        info += "Perm Speed: " + prog.getPermanentSpeed() + "   ";
-        info += "Perm Strength: " + prog.getPermanentStrength() + "   ";
-        info += "Perm Hearts: " + prog.getPermanentHearts() + "   ";
-        info += (prog.hasFreezeWeapon() ? " | Freeze Weapon: YES" : " | Freeze Weapon: NO");
-        info += (prog.hasPoisonKnuckles() ? " | Poison Knuckles: YES" : " | Poison Knuckles: NO");
+        int baseSpeed = 5;
+        int baseStrength = 5;
+        int speedBonus = Math.max(0, run.speed - baseSpeed);
+        int strengthBonus = Math.max(0, run.strength - baseStrength);
+
+        info += "Run Bonuses: Speed +" + speedBonus + "   ";
+        info += "Strength +" + strengthBonus + "   ";
+        info += "HP Bonus +" + run.bonusHearts + "   ";
+        info += (run.freezeWeapon ? " | Freeze Weapon: YES" : " | Freeze Weapon: NO");
+        info += (run.poisonKnuckles ? " | Poison Knuckles: YES" : " | Poison Knuckles: NO");
 
         // Only show current run lives IF player exists
         if (player != null) {
             info += "\nCurrent Run Lives: " + player.getLives();
         }
 
+        info += "\nCaution: gambling stats apply only to the current run.";
         statusLabel.setText(info);
     }
 
 
     private void clearBelowTop() {
-
+        // Keep first 3 rows (title + coins + status). Remove everything else.
+        // Easiest: rebuild full content below by clearing & re-adding top area.
         contentRoot.clearChildren();
 
         contentRoot.add(titleLabel).expandX().fillX().row();
@@ -186,31 +177,19 @@ public class GamblingScreen implements Screen {
         contentRoot.add(new Label("", game.getSkin())).padTop(10).row();
     }
 
+    // =========================================================
+    // MAIN MENU
+    // =========================================================
 
     private void showMenu() {
         mode = Mode.MENU;
         clearBelowTop();
 
         Table menu = new Table();
-        menu.defaults().width(360).height(54).pad(6);
-        TextButton shopBtn = new TextButton("Shop", game.getSkin());
-        TextButton slotsBtn = new TextButton("Slots", game.getSkin());
-        TextButton rrBtn = new TextButton("Russian Roulette", game.getSkin());
-        TextButton bjBtn = new TextButton("Blackjack", game.getSkin());
-        TextButton backBtn = new TextButton("Back", game.getSkin());
-
-        shopBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                startDialogue(
-                        new String[] {
-                                "Shop is open.",
-                                "Buy missing Speed or Strength if you're below the minimum.",
-                                "You can also buy a Casino Heart if you're down to one."
-                        },
-                        GamblingScreen.this::showShop
-                );
-            }
-        });
+        menu.defaults().width(240).height(70).pad(8);
+        TextButton slotsBtn = UiButtons.button("Slots", game.getSkin());
+        TextButton bjBtn = UiButtons.button("Blackjack", game.getSkin());
+        TextButton backBtn = UiButtons.button("Back", game.getSkin());
 
 
         slotsBtn.addListener(new ChangeListener() {
@@ -218,22 +197,10 @@ public class GamblingScreen implements Screen {
                 startDialogue(
                         new String[] {
                                 "Slots cost coins per spin.",
-                                "You can win or lose permanent Speed or Strength.",
+                                "You can win run Speed or Strength.",
                                 "You might unlock rare items."
                         },
                         GamblingScreen.this::showSlots
-                );
-            }
-        });
-
-        rrBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                startDialogue(
-                        new String[] {
-                                "Russian Roulette uses Casino Hearts.",
-                                "You can lose a heart or gain a permanent heart."
-                        },
-                        GamblingScreen.this::showRussianRoulette
                 );
             }
         });
@@ -244,7 +211,7 @@ public class GamblingScreen implements Screen {
                         new String[] {
                                 "Blackjack is a straight bet.",
                                 "Beat the dealer and win double your bet.",
-                                "A win also grants a permanent heart."
+                                "A win also grants a run heart."
                         },
                         GamblingScreen.this::showBlackjack
                 );
@@ -257,18 +224,15 @@ public class GamblingScreen implements Screen {
             }
         });
 
-        menu.add(shopBtn).row();
-        menu.add(slotsBtn).row();
-        menu.add(rrBtn).row();
-        menu.add(bjBtn).row();
-        menu.add(backBtn).padTop(18).row();
+        menu.add(slotsBtn);
+        menu.add(bjBtn);
+        menu.add(backBtn);
 
-        contentRoot.add(menu).expand().center().row();
+        contentRoot.add(menu).expandY().bottom().padBottom(16).row();
 
         setStatusHint(
                 "Choose a mode.\n\n" +
-                        "- Slots: win/lose permanent Speed/Strength, unlock hidden items.\n" +
-                        "- Roulette: risk a casino heart for a permanent heart.\n" +
+                        "- Slots: win/lose run Speed/Strength, unlock hidden items.\n" +
                         "- Blackjack: bet coins, win = 2x bet.\n"
         );
         refreshTopBar();
@@ -281,123 +245,23 @@ public class GamblingScreen implements Screen {
         );
     }
 
-    private void showShop() {
-        mode = Mode.SHOP;
-        contentRoot.setVisible(true);
-        clearBelowTop();
-        setDealerLine("Stock up if you need to. House favors the prepared.");
-
-        Table t = new Table();
-        t.defaults().pad(6);
-
-        Label header = new Label("SHOP", game.getSkin(), "title");
-        header.setAlignment(Align.center);
-
-        // --- Determine insufficiencies ---
-        int ps = prog.getPermanentSpeed();
-        int st = prog.getPermanentStrength();
-
-        boolean needSpeed = ps < STAT_MIN_TO_PLAY;
-        boolean needStrength = st < STAT_MIN_TO_PLAY;
-
-        // Casino hearts = the only heart value that always exists here
-        int casinoHearts = prog.getCasinoHearts();
-        boolean needHearts = casinoHearts <= 1;
-
-        StringBuilder sb = new StringBuilder();
-
-        // Only show the warning text if something is insufficient
-        if (needSpeed || needStrength || needHearts) {
-            sb.append("WARNING: You are insufficient in:\n");
-            if (needSpeed) sb.append("- Speed (").append(ps).append(" < ").append(STAT_MIN_TO_PLAY).append(")\n");
-            if (needStrength) sb.append("- Strength (").append(st).append(" < ").append(STAT_MIN_TO_PLAY).append(")\n");
-            if (needHearts) sb.append("- Casino Hearts (").append(casinoHearts).append(")\n");
-
-            sb.append("\nBuy what you need below.");
-        } else {
-            sb.append("You're good to go.\nLET'S GO GAMBLING!");
-        }
-
-        Label info = new Label(sb.toString(), game.getSkin());
-        info.setAlignment(Align.center);
-        info.setWrap(true);
-
-        // --- Shop buttons ---
-        TextButton buySpeedBtn = new TextButton("Buy +1 Speed (" + STAT_BUY_COST + ")", game.getSkin());
-        TextButton buyStrBtn   = new TextButton("Buy +1 Strength (" + STAT_BUY_COST + ")", game.getSkin());
-
-        // If you want hearts purchasable in Shop too, reuse roulette cost:
-        TextButton buyHeartBtn = new TextButton("Buy +1 Casino Heart (" + ROULETTE_HEAL_COST + ")", game.getSkin());
-
-        TextButton backBtn = new TextButton("Back", game.getSkin());
-
-        buySpeedBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                String msg = buyStat("speed");
-                // Refresh the shop so message updates
-                showShop();
-            }
-        });
-
-        buyStrBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                String msg = buyStat("strength");
-                showShop();
-            }
-        });
-
-        buyHeartBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                // Let shop buy a casino heart only when at 1 (same rule as roulette),
-                // or change this condition if you want a normal shop purchase.
-                buyRouletteLife();
-                showShop();
-            }
-        });
-
-        backBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                showMenu();
-            }
-        });
-
-        // --- Layout ---
-        t.add(header).colspan(2).padBottom(10).row();
-        t.add(info).colspan(2).width(760).row();
-
-        t.add(buySpeedBtn).width(320).height(54).padTop(10);
-        t.add(buyStrBtn).width(320).height(54).padTop(10).row();
-
-        t.add(buyHeartBtn).colspan(2).width(660).height(54).padTop(8).row();
-
-        t.add(backBtn).colspan(2).width(300).height(54).padTop(16).row();
-
-        contentRoot.add(t).expand().center();
-
-        // Button state rules
-        // Speed/Strength: allow buying if below min-to-play and < max and has coins
-        buySpeedBtn.setDisabled(!(prog.getCoins() >= STAT_BUY_COST && ps < STAT_MIN_TO_PLAY && ps < STAT_MAX));
-        buyStrBtn.setDisabled(!(prog.getCoins() >= STAT_BUY_COST && st < STAT_MIN_TO_PLAY && st < STAT_MAX));
-
-        // Heart buying in shop: same as roulette rule (only at exactly 1)
-        buyHeartBtn.setDisabled(!(casinoHearts == 1 && prog.getCoins() >= ROULETTE_HEAL_COST));
-
-        refreshTopBar();
-    }
-
 
     private void setStatusHint(String text) {
         String info = "";
         info += "Coins: " + prog.getCoins() + "\n";
-        info += "Perm Speed: " + prog.getPermanentSpeed() + " | ";
-        info += "Perm Strength: " + prog.getPermanentStrength() + " | ";
-        info += "Perm Hearts: " + prog.getPermanentHearts() + "\n";
-        info += (prog.hasFreezeWeapon() ? "Freeze Weapon: YES" : "Freeze Weapon: NO");
+        int baseSpeed = 5;
+        int baseStrength = 5;
+        int speedBonus = Math.max(0, run.speed - baseSpeed);
+        int strengthBonus = Math.max(0, run.strength - baseStrength);
+        info += "Run Bonuses: Speed +" + speedBonus + " | ";
+        info += "Strength +" + strengthBonus + " | ";
+        info += "HP Bonus +" + run.bonusHearts + "\n";
+        info += (run.freezeWeapon ? "Freeze Weapon: YES" : "Freeze Weapon: NO");
         info += " | ";
-        info += (prog.hasPoisonKnuckles() ? "Poison Knuckles: YES" : "Poison Knuckles: NO");
+        info += (run.poisonKnuckles ? "Poison Knuckles: YES" : "Poison Knuckles: NO");
         if (player != null) info += "\nCurrent run lives: " + player.getLives();
 
-        statusLabel.setText(info + "\n\n" + text);
+        statusLabel.setText(info + "\nCaution: gambling stats apply only to the current run.\n\n" + text);
     }
 
     private void setDealerLine(String text) {
@@ -413,12 +277,13 @@ public class GamblingScreen implements Screen {
         dialogueIndex = 0;
         dialogueOnDone = onDone;
         dialogueActive = true;
+        dialogueShowContentOnEnd = true;
 
         contentRoot.setVisible(false);
         dialogueTable.setVisible(true);
 
         dealerLabel.setText(lines.length > 0 ? lines[0] : "");
-        dialogueNextBtn.setText(lines.length > 1 ? "Next" : "Continue");
+        dialogueNextBtn.setText("Next");
         dialogueNextBtn.setVisible(lines.length > 0);
     }
 
@@ -428,7 +293,7 @@ public class GamblingScreen implements Screen {
         dialogueIndex++;
         if (dialogueIndex < dialogueLines.length) {
             dealerLabel.setText(dialogueLines[dialogueIndex]);
-            dialogueNextBtn.setText((dialogueIndex == dialogueLines.length - 1) ? "Continue" : "Next");
+            dialogueNextBtn.setText("Next");
             return;
         }
 
@@ -440,10 +305,15 @@ public class GamblingScreen implements Screen {
             dialogueOnDone = null;
             r.run();
         }
-        contentRoot.setVisible(true);
+        if (dialogueShowContentOnEnd) {
+            contentRoot.setVisible(true);
+        }
     }
 
-    // Slots
+    // =========================================================
+    // SLOTS
+    // =========================================================
+
     private void showSlots() {
         mode = Mode.SLOTS;
         contentRoot.setVisible(true);
@@ -458,10 +328,10 @@ public class GamblingScreen implements Screen {
 
         Label rules = new Label(
                 "Cost per spin: " + SLOT_SPIN_COST + " coins\n" +
-                        "You can win/lose permanent Speed/Strength\n" +
+                        "You can win run Speed/Strength\n" +
                         "Random chance to unlock hidden items:\n" +
-                        "- Freeze Weapon (club/knife) -> freeze enemies\n" +
-                        "- Poison Knuckles -> damage over time\n\n" +
+                        "- Freeze Weapon (run-only)\n" +
+                        "- Poison Knuckles (run-only)\n\n" +
                         "To play: Speed AND Strength must be at least " + STAT_MIN_TO_PLAY + ".",
                 game.getSkin()
         );
@@ -472,8 +342,8 @@ public class GamblingScreen implements Screen {
         result.setAlignment(Align.center);
         result.setWrap(true);
 
-        TextButton spinBtn = new TextButton("SPIN", game.getSkin());
-        TextButton backBtn = new TextButton("Back", game.getSkin());
+        TextButton spinBtn = UiButtons.button("SPIN", game.getSkin());
+        TextButton backBtn = UiButtons.button("Back", game.getSkin());
 
         spinBtn.addListener(new ChangeListener() {
             @Override public void changed(ChangeEvent event, Actor actor) {
@@ -504,8 +374,8 @@ public class GamblingScreen implements Screen {
     }
 
     private void updateSlotsButtonStates(TextButton spinBtn) {
-        int ps = prog.getPermanentSpeed();
-        int st = prog.getPermanentStrength();
+        int ps = run.speed;
+        int st = run.strength;
 
         boolean canPlay = (ps >= STAT_MIN_TO_PLAY && st >= STAT_MIN_TO_PLAY);
         boolean hasCoinsForSpin = prog.getCoins() >= SLOT_SPIN_COST;
@@ -518,29 +388,29 @@ public class GamblingScreen implements Screen {
         if (coins < STAT_BUY_COST) return "Not enough coins.";
 
         if (which.equals("speed")) {
-            int v = prog.getPermanentSpeed();
+            int v = run.speed;
             if (v >= STAT_MAX) return "Speed is already at max (" + STAT_MAX + ").";
             if (v >= STAT_MIN_TO_PLAY) return "You can only buy Speed here if it is below " + STAT_MIN_TO_PLAY + ".";
             if (!prog.spendCoins(STAT_BUY_COST)) return "Not enough coins.";
-            prog.addPermanentSpeed(1);
-            return "Bought +1 Speed. New Speed = " + prog.getPermanentSpeed();
+            run.speed = Math.min(STAT_MAX, run.speed + 1);
+            return "Bought +1 Speed. New Speed = " + run.speed;
         }
 
         if (which.equals("strength")) {
-            int v = prog.getPermanentStrength();
+            int v = run.strength;
             if (v >= STAT_MAX) return "Strength is already at max (" + STAT_MAX + ").";
             if (v >= STAT_MIN_TO_PLAY) return "You can only buy Strength here if it is below " + STAT_MIN_TO_PLAY + ".";
             if (!prog.spendCoins(STAT_BUY_COST)) return "Not enough coins.";
-            prog.addPermanentStrength(1);
-            return "Bought +1 Strength. New Strength = " + prog.getPermanentStrength();
+            run.strength = Math.min(STAT_MAX, run.strength + 1);
+            return "Bought +1 Strength. New Strength = " + run.strength;
         }
 
         return "Unknown stat.";
     }
 
     private String doSlotSpin() {
-        int ps = prog.getPermanentSpeed();
-        int st = prog.getPermanentStrength();
+        int ps = run.speed;
+        int st = run.strength;
 
         if (ps < STAT_MIN_TO_PLAY || st < STAT_MIN_TO_PLAY) {
             setDealerLine("You need the minimum stats before I can spin those.");
@@ -553,159 +423,68 @@ public class GamblingScreen implements Screen {
             return "Not enough coins to spin.";
         }
 
-
+        // Outcomes:
+        // 0-59: nothing
+        // 60-89: stat buff
+        // 90-94: unlock freeze weapon (run-only)
+        // 95-99: unlock poison knuckles (run-only)
         int roll = MathUtils.random(0, 99);
 
-        if (roll <= 54) {
-            boolean win = MathUtils.randomBoolean(0.55f);
-            int amt = MathUtils.random(1, 5);
+        if (roll <= 59) {
+            setDealerLine("Nothing today. Come back when the luck shifts.");
+            return "Nothing happened. The house always wins... sometimes.";
+        }
 
-            // pick which stat
+        if (roll <= 89) {
+            int amt = MathUtils.random(1, 3);
             boolean affectSpeed = MathUtils.randomBoolean();
             String statName = affectSpeed ? "Speed" : "Strength";
 
-            if (win) {
-                if (affectSpeed) prog.addPermanentSpeed(+amt);
-                else prog.addPermanentStrength(+amt);
+            if (affectSpeed) run.speed = Math.min(STAT_MAX, run.speed + amt);
+            else run.strength = Math.min(STAT_MAX, run.strength + amt);
 
-                setDealerLine("That's a win. House lets you keep the shine.");
-                return "WIN! +" + amt + " " + statName +
-                        "\nSpeed=" + prog.getPermanentSpeed() +
-                        " Strength=" + prog.getPermanentStrength();
-            } else {
-                if (affectSpeed) prog.addPermanentSpeed(-amt);
-                else prog.addPermanentStrength(-amt);
-
-                setDealerLine("Oof. The wheel takes what it wants.");
-                return "LOSS! -" + amt + " " + statName +
-                        "\nSpeed=" + prog.getPermanentSpeed() +
-                        " Strength=" + prog.getPermanentStrength();
-            }
+            setDealerLine("That's a win. House lets you keep the shine.");
+            return "BUFF! +" + amt + " " + statName +
+                    "\nSpeed=" + run.speed +
+                    " Strength=" + run.strength;
         }
 
-        if (roll <= 69) {
-            if (!prog.hasFreezeWeapon()) {
-                prog.unlockFreezeWeapon();
+        if (roll <= 94) {
+            if (!run.freezeWeapon) {
+                run.freezeWeapon = true;
+                run.speed = Math.min(STAT_MAX, run.speed + 10);
+                run.strength = Math.min(STAT_MAX, run.strength + 10);
+                if (player != null) {
+                    player.applyRunGamble(run);
+                }
                 setDealerLine("Rare pull. Keep that cold steel close.");
-                return "Hidden reward unlocked: FREEZE WEAPON (club/knife)!\n(Freeze enemies on hit)";
+                return "Hidden reward unlocked: FREEZE WEAPON (run-only)!\n" +
+                        "Bonus: +10 Speed, +10 Strength";
             }
             setDealerLine("You hit it, but you already own it.");
             return "You hit the Freeze Weapon slot... but you already own it.";
         }
 
-        if (roll <= 84) {
-            if (!prog.hasPoisonKnuckles()) {
-                prog.unlockPoisonKnuckles();
-                setDealerLine("Poison knuckles. Nasty. I like it.");
-                return "Hidden reward unlocked: POISON KNUCKLES!\n(Poison enemies for damage over time)";
+        if (!run.poisonKnuckles) {
+            run.poisonKnuckles = true;
+            run.speed = Math.min(STAT_MAX, run.speed + 10);
+            run.strength = Math.min(STAT_MAX, run.strength + 10);
+            if (player != null) {
+                player.applyRunGamble(run);
             }
-            setDealerLine("You hit it, but you already own it.");
-            return "You hit the Poison Knuckles slot... but you already own it.";
+            setDealerLine("Poison knuckles. Nasty. I like it.");
+            return "Hidden reward unlocked: POISON KNUCKLES (run-only)!\n" +
+                    "Bonus: +10 Speed, +10 Strength";
         }
 
-        setDealerLine("Nothing today. Come back when the luck shifts.");
-        return "Nothing happened. The house always wins... sometimes.";
+        setDealerLine("You hit it, but you already own it.");
+        return "You hit the Poison Knuckles slot... but you already own it.";
     }
 
-    // RUSSIAN ROULETTE
-    private void showRussianRoulette() {
-        mode = Mode.RUSSIAN_ROULETTE;
-        contentRoot.setVisible(true);
-        clearBelowTop();
-        setDealerLine("Roulette is a dare. You ready to test fate?");
-
-        Table t = new Table();
-        t.defaults().pad(6);
-
-        Label header = new Label("RUSSIAN ROULETTE", game.getSkin(), "title");
-        header.setAlignment(Align.center);
-
-        Label rules = new Label(
-                "Risk a Casino Heart to try for a PERMANENT HEART.\n" +
-                        "Uses Casino Hearts (outside runs).\n" +
-                        "If you have 1 Casino Heart left, you cannot play.\n" +
-                        "You may pay 200 coins to buy +1 Casino Heart ONLY when you have exactly 1.",
-                game.getSkin()
-        );
-
-        rules.setAlignment(Align.center);
-        rules.setWrap(true);
-
-        Label result = new Label("", game.getSkin());
-        result.setAlignment(Align.center);
-        result.setWrap(true);
-
-        TextButton playBtn = new TextButton("PULL TRIGGER", game.getSkin());
-        TextButton backBtn = new TextButton("Back", game.getSkin());
-
-        playBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                String msg = doRoulette();
-                result.setText(msg);
-                refreshTopBar();
-                updateRouletteButtons(playBtn);
-            }
-        });
-
-        backBtn.addListener(new ChangeListener() {
-            @Override public void changed(ChangeEvent event, Actor actor) {
-                showMenu();
-            }
-        });
-
-        t.add(header).colspan(2).padBottom(10).row();
-        t.add(rules).colspan(2).width(700).row();
-
-        t.add(playBtn).width(300).height(54).padTop(10);
-        t.add(backBtn).width(300).height(54).padTop(10).row();
-
-        t.add(result).colspan(2).width(700).padTop(18).row();
-
-        contentRoot.add(t).expand().center();
-
-        updateRouletteButtons(playBtn);
-        setStatusHint("Roulette ready. Step up if you dare.");
-        refreshTopBar();
-    }
-
-    private void updateRouletteButtons(TextButton playBtn) {
-        int hearts = prog.getCasinoHearts();
-        playBtn.setDisabled(hearts <= 1);
-    }
-
-
-    private String buyRouletteLife() {
-        int hearts = prog.getCasinoHearts();
-        if (hearts != 1) return "You can only buy a heart when you have exactly 1 heart left.";
-        if (!prog.spendCoins(ROULETTE_HEAL_COST)) return "Not enough coins.";
-
-        prog.setCasinoHearts(2); // buying back one heart from 1 -> 2
-        return "Bought +1 heart. Casino Hearts = " + prog.getCasinoHearts();
-    }
-
-    private String doRoulette() {
-        int hearts = prog.getCasinoHearts();
-
-        if (hearts <= 1) {
-            setDealerLine("One heart left. I won't let you do that to yourself.");
-            return "You cannot play Roulette with 1 heart left. Pay 200 coins to buy +1 heart.";
-        }
-
-        // 1 in 6 win: permanent heart
-        int roll = MathUtils.random(1, ROULETTE_PERMANENT_HEART_CHANCE);
-        if (roll == 1) {
-            prog.addPermanentHeart();
-            setDealerLine("Lucky. Real lucky.");
-            return "CLICK... YOU WIN!\nPermanent Heart gained! Total perm hearts: " + prog.getPermanentHearts();
-        }
-
-        // lose 1 casino heart
-        prog.setCasinoHearts(hearts - 1);
-        setDealerLine("BANG. You live, but it stings.");
-        return "BANG!\nYou lost 1 casino heart. Casino Hearts = " + prog.getCasinoHearts();
-    }
-
+    // =========================================================
     // BLACKJACK
+    // =========================================================
+
     private void showBlackjack() {
         mode = Mode.BLACKJACK;
         contentRoot.setVisible(true);
@@ -737,10 +516,10 @@ public class GamblingScreen implements Screen {
         betField.setMessageText("Bet amount");
         betField.setTextFieldFilter(new TextField.TextFieldFilter.DigitsOnlyFilter());
 
-        TextButton placeBetBtn = new TextButton("Place Bet / Deal", game.getSkin());
-        TextButton hitBtn = new TextButton("Hit", game.getSkin());
-        TextButton standBtn = new TextButton("Stand", game.getSkin());
-        TextButton backBtn = new TextButton("Back", game.getSkin());
+        TextButton placeBetBtn = UiButtons.button("Place Bet / Deal", game.getSkin());
+        TextButton hitBtn = UiButtons.button("Hit", game.getSkin());
+        TextButton standBtn = UiButtons.button("Stand", game.getSkin());
+        TextButton backBtn = UiButtons.button("Back", game.getSkin());
 
         hitBtn.setDisabled(true);
         standBtn.setDisabled(true);
@@ -763,6 +542,7 @@ public class GamblingScreen implements Screen {
 
                 setBlackjackButtonsEnabled(placeBetBtn, hitBtn, standBtn, false);
 
+                // Dramatic pause: draw -> update -> maybe resolve
                 stage.addAction(Actions.sequence(
                         Actions.delay(0.35f),
                         Actions.run(() -> {
@@ -774,6 +554,7 @@ public class GamblingScreen implements Screen {
                         Actions.delay(0.35f),
                         Actions.run(() -> {
                             if (!blackjack.inHand) {
+                                // hand resolved (bust or 21 auto-stand)
                                 setBlackjackButtonsEnabled(placeBetBtn, hitBtn, standBtn, true);
                                 hitBtn.setDisabled(true);
                                 standBtn.setDisabled(true);
@@ -864,6 +645,7 @@ public class GamblingScreen implements Screen {
         if (!blackjack.inHand) return "No active hand.";
 
         if (blackjack.playerValue() > 21) {
+            // Player busts -> loses bet (already spent)
             blackjack.inHand = false;
             setDealerLine("Bust. Better luck next hand.");
             return "You BUSTED. You lose your bet (" + blackjack.bet + ").";
@@ -871,7 +653,7 @@ public class GamblingScreen implements Screen {
 
         if (blackjack.playerValue() == 21) {
             blackjack.revealDealer = true;
-            blackjack.dealerPlay();
+            blackjack.dealerPlay(); // dealer finishes immediately here
             return resolveBlackjackAndMaybeGrantHeart();
         }
 
@@ -889,12 +671,11 @@ public class GamblingScreen implements Screen {
             int payout = blackjack.bet * 2;
             prog.addCoins(payout);
 
-            // Gain a permanent heart on win
-            prog.addPermanentHeart();
+            // Gain a run heart on win
+            run.bonusHearts += 1;
 
             if (player != null) {
-                player.refreshPermanentProgression(game);
-                player.setHp(player.getMaxHp());
+                player.applyRunGamble(run);
             }
 
             boolean bigWin = blackjack.bet > 1000;
@@ -903,25 +684,30 @@ public class GamblingScreen implements Screen {
             }
 
             setDealerLine("Nice hand. Take your winnings.");
-            return "You WIN! Dealer=" + dv + " You=" + pv +
+            String msg = "You WIN! Dealer=" + dv + " You=" + pv +
                     "\nPayout: " + payout + " coins" +
-                    "\nPermanent Heart gained! Total perm hearts: " + prog.getPermanentHearts() +
+                    "\nHP Bonus gained! Total HP bonus: " + run.bonusHearts +
                     (bigWin ? "\nAchievement unlocked: win_it_big" : "");
+            return msg;
         }
 
         if (pv == dv) {
             prog.addCoins(blackjack.bet);
             setDealerLine("Push. We call it even.");
-            return "PUSH. Dealer=" + dv + " You=" + pv + "\nRefunded: " + blackjack.bet + " coins";
+            String msg = "PUSH. Dealer=" + dv + " You=" + pv + "\nRefunded: " + blackjack.bet + " coins";
+            return msg;
         }
 
         setDealerLine("House wins this one.");
-        return "You LOSE. Dealer=" + dv + " You=" + pv + "\nLost bet: " + blackjack.bet + " coins";
+        String msg = "You LOSE. Dealer=" + dv + " You=" + pv + "\nLost bet: " + blackjack.bet + " coins";
+        return msg;
     }
 
 
+    // =========================================================
+    // BLACKJACK GAME LOGIC (simple) (simple)
+    // =========================================================
 
-    // BLACKJACK GAME LOGIC
     private static class BlackjackGame {
         boolean revealDealer = false;
         int bet = 0;
@@ -934,6 +720,7 @@ public class GamblingScreen implements Screen {
         }
 
 
+        // each card is 1..11 (Ace=11), face cards treated as 10
         int[] player = new int[12];
         int playerCount = 0;
 
@@ -1011,7 +798,7 @@ public class GamblingScreen implements Screen {
                 if (c == 11) aces++;
             }
 
-            // Convert Ace 11 => 1 if bust
+            // Convert Ace 11 -> 1 if bust
             while (sum > 21 && aces > 0) {
                 sum -= 10;
                 aces--;
@@ -1036,6 +823,7 @@ public class GamblingScreen implements Screen {
         }
 
         private int drawCard() {
+            // 1..13 mapped to values: Ace=11, 2..10=2..10, J/Q/K=10
             int r = MathUtils.random(1, 13);
             if (r == 1) return 11;        // Ace
             if (r >= 11) return 10;       // Face
@@ -1043,22 +831,15 @@ public class GamblingScreen implements Screen {
         }
     }
 
+    // =========================================================
+    // Screen lifecycle
+    // =========================================================
 
-    /**
-     * Sets the input processor when this screen becomes active.
-     */
     @Override
     public void show() {
         Gdx.input.setInputProcessor(stage);
     }
 
-    /**
-     * Updates and renders the gambling screen.
-     *
-     * Handles user input, UI updates, and animations.
-     *
-     * @param delta Time elapsed since the last frame
-     */
     @Override
     public void render(float delta) {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
@@ -1107,12 +888,6 @@ public class GamblingScreen implements Screen {
     }
 
 
-    /**
-     * Updates the viewport and background when the window size changes.
-     *
-     * @param width New window width
-     * @param height New window height
-     */
     @Override public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
         if (dealerImage != null) dealerImage.setSize(width, height);
@@ -1120,13 +895,16 @@ public class GamblingScreen implements Screen {
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
-
-    /**
-     * Disposes all resources used by this screen.
-     */
     @Override public void dispose() {
         stage.dispose();
         if (dealerTexture != null) dealerTexture.dispose();
     }
 }
+
+
+
+
+
+
+
 

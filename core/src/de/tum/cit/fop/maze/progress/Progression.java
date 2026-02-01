@@ -93,13 +93,13 @@ public class Progression {
     }
 
     public void setPermanentSpeed(int v) {
-        v = Math.max(1, Math.min(10, v));
+        v = Math.max(1, Math.min(99, v));
         prefs.putInteger("perm_speed", v);
         prefs.flush();
     }
 
     public void setPermanentStrength(int v) {
-        v = Math.max(1, Math.min(10, v));
+        v = Math.max(1, Math.min(99, v));
         prefs.putInteger("perm_strength", v);
         prefs.flush();
     }

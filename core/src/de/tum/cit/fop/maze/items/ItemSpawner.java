@@ -46,17 +46,17 @@ public class ItemSpawner {
         List<Collectable> items = new ArrayList<>();
 
         // 1) GUARANTEED GUN
-        spawnSingleItem(maze, items, 3);
+        spawnSingleItem(maze, items, 4);
 
         // 2) OTHER ITEMS
         for (int i = 0; i < Math.max(0, count - 1); i++) {
-            int type = random.nextInt(3); // heart/speed/shield
+            int type = random.nextInt(4); // heart/speed/shield/ammo
             spawnSingleItem(maze, items, type);
         }
 
         // 3) COINS
         for (int i = 0; i < coinCount; i++) {
-            spawnSingleItem(maze, items, 4);
+            spawnSingleItem(maze, items, 5);
         }
 
         return items;
@@ -85,8 +85,9 @@ public class ItemSpawner {
             case 0 -> items.add(new HeartItem(wx, wy));
             case 1 -> items.add(new SpeedItem(wx, wy));
             case 2 -> items.add(new ShieldItem(wx, wy));
-            case 3 -> items.add(new GunCollectable(wx, wy));
-            case 4 -> items.add(new Coin(wx, wy, rollCoinValue()));
+            case 3 -> items.add(new AmmoItem(wx, wy));
+            case 4 -> items.add(new GunCollectable(wx, wy));
+            case 5 -> items.add(new Coin(wx, wy, rollCoinValue()));
         }
     }
 

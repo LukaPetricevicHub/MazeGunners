@@ -23,6 +23,7 @@ import de.tum.cit.fop.maze.enemies.RobotGuard;
 import de.tum.cit.fop.maze.items.*;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.progress.Progression;
+import de.tum.cit.fop.maze.progress.RunGambleState;
 import de.tum.cit.fop.maze.score.LeaderboardManager;
 import de.tum.cit.fop.maze.ui.GamblingScreen;
 import de.tum.cit.fop.maze.util.AchievementManager;
@@ -47,6 +48,7 @@ public class MazeRunnerGame extends Game {
 
     // Permanent progression (endless unlock + gambling rewards)
     private Progression progression;
+    private RunGambleState runGamble;
 
     // Standard Walking Animations
     private Animation<TextureRegion> animDown, animUp, animLeft, animRight;
@@ -98,6 +100,7 @@ public class MazeRunnerGame extends Game {
         audioManager = new AudioManager();
 
         progression = new Progression();
+        runGamble = new RunGambleState();
 
         audioManager.playBackgroundMusic("music/background.mp3");
 
@@ -153,6 +156,7 @@ public class MazeRunnerGame extends Game {
             Json json = new Json();
             GameState state = json.fromJson(GameState.class, file.readString());
             this.pendingSaveState = state;
+            applyRunGambleFromState(state);
 
             getPreferences().setMaxLevel(Math.max(getPreferences().getMaxLevel(), state.level));
 
@@ -215,11 +219,23 @@ public class MazeRunnerGame extends Game {
         state.skillHealthLevel = player.getSkillHealthLevel();
         state.hasGun = player.hasGun();
         state.hasKey = player.hasKey();
+        state.ammoInClip = player.getAmmoInClip();
+        state.ammoReserve = player.getAmmoReserve();
         state.godMode = player.isGodMode();
         state.noClip = player.isNoClip();
         state.playerX = player.getX();
         state.playerY = player.getY();
         state.shouldRestorePosition = true;
+
+        if (runGamble != null) {
+            state.runGambleSpeed = runGamble.speed;
+            state.runGambleStrength = runGamble.strength;
+            state.runGambleHearts = runGamble.bonusHearts;
+            state.runGambleDamageMult = runGamble.damageMult;
+            state.runGambleSpeedMult = runGamble.speedMult;
+            state.runGambleFreeze = runGamble.freezeWeapon;
+            state.runGamblePoison = runGamble.poisonKnuckles;
+        }
 
         if (enemies != null) {
             for (Enemy e : enemies) {
@@ -249,6 +265,7 @@ public class MazeRunnerGame extends Game {
                 else if (i instanceof SpeedItem) is.type = "speed";
                 else if (i instanceof ShieldItem) is.type = "shield";
                 else if (i instanceof KeyItem) is.type = "key";
+                else if (i instanceof AmmoItem) is.type = "ammo";
 
                 state.items.add(is);
             }
@@ -272,9 +289,20 @@ public class MazeRunnerGame extends Game {
         state.skillSpeedLevel = player.getSkillSpeedLevel();
         state.skillHealthLevel = player.getSkillHealthLevel();
         state.hasGun = player.hasGun();
+        state.ammoInClip = player.getAmmoInClip();
+        state.ammoReserve = player.getAmmoReserve();
         state.godMode = player.isGodMode();
         state.noClip = player.isNoClip();
         state.shouldRestorePosition = true;
+        if (runGamble != null) {
+            state.runGambleSpeed = runGamble.speed;
+            state.runGambleStrength = runGamble.strength;
+            state.runGambleHearts = runGamble.bonusHearts;
+            state.runGambleDamageMult = runGamble.damageMult;
+            state.runGambleSpeedMult = runGamble.speedMult;
+            state.runGambleFreeze = runGamble.freezeWeapon;
+            state.runGamblePoison = runGamble.poisonKnuckles;
+        }
         this.pendingSaveState = state;
 
         if (achievementManager != null) {
@@ -406,4 +434,22 @@ public class MazeRunnerGame extends Game {
     public TextureRegion getBulletRegion() { return bulletRegion; }
 
     public Progression getProgression() { return progression; }
+    public RunGambleState getRunGamble() { return runGamble; }
+
+    public void resetRunGamble() {
+        if (runGamble == null) runGamble = new RunGambleState();
+        runGamble.resetToDefaults();
+    }
+
+    public void applyRunGambleFromState(GameState state) {
+        if (runGamble == null) runGamble = new RunGambleState();
+        if (state == null) return;
+        runGamble.speed = state.runGambleSpeed;
+        runGamble.strength = state.runGambleStrength;
+        runGamble.bonusHearts = state.runGambleHearts;
+        runGamble.damageMult = state.runGambleDamageMult;
+        runGamble.speedMult = state.runGambleSpeedMult;
+        runGamble.freezeWeapon = state.runGambleFreeze;
+        runGamble.poisonKnuckles = state.runGamblePoison;
+    }
 }

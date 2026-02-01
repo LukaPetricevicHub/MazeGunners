@@ -11,8 +11,10 @@ import com.badlogic.gdx.scenes.scene2d.ui.Window;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import de.tum.cit.fop.maze.util.Achievement;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 import java.util.Collection;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 public class AchievementsWindow extends Window {
 
@@ -58,7 +60,7 @@ public class AchievementsWindow extends Window {
         ScrollPane scrollPane = new ScrollPane(listTable, skin);
         this.add(scrollPane).width(600).height(400).row();
 
-        TextButton closeBtn = new TextButton("Close", skin);
+        TextButton closeBtn = UiButtons.button("Close", skin);
         closeBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -71,3 +73,4 @@ public class AchievementsWindow extends Window {
         this.pack();
     }
 }
+

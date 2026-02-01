@@ -21,43 +21,40 @@ import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.ui.DevConsole;
 
-/**
- * Heads-up display (HUD) for the game.
- *
- * Shows player health, XP, level, coins, key status,
- * boss health bar, hints, objectives, notifications,
- * minimap, and developer console.
- */
-
 public class Hud {
-    // CONFIG
+
+    // --- CONFIG ---
     private static final float TILE_SIZE = 32f;
     private static final float NOTIF_DURATION = 3.0f;
 
-    // CORE
+    // --- CORE ---
     private final Stage stage;
     private final Skin skin;
 
-    // TEXTURES
+    // --- TEXTURES ---
     private final Texture pixelTexture;
     private final Texture keyIconTexture;
     private final Texture arrowTexture;
+    private final Texture bulletIconTexture;
     private final Texture hpBgTexture;
     private final Texture hpFillTexture;
     private final Texture bossBgTexture;
     private final Texture bossFillTexture;
 
-    // UI ELEMENTS
+    // --- UI ELEMENTS ---
     private final Label floorLabel;
     private final Label hintLabel;
     private final Label objectiveLabel;
     private final Image keyIcon;
     private final Label endlessLabel;
 
+    // ✅ NEW: coins
     private final Label coinsLabel;
     private final Label damageLabel;
     private final Label statsLabel;
+    private final Label ammoLabel;
     private final Label multLabel;
+    private final Image bulletIcon;
 
     private final Label levelLabel;
     private final ProgressBar xpBar;
@@ -66,6 +63,7 @@ public class Hud {
     private final Label hpTextLabel;
 
     private final Label notificationLabel;
+    private final Label centerNotificationLabel;
 
     // Arrow pinned top-right
     private final Image arrow;
@@ -94,18 +92,12 @@ public class Hud {
     private final DevConsole devConsole;
     private Window achievementPopup;
 
-
-    /**
-     * Creates and initializes the game HUD.
-     *
-     * @param viewport viewport used by the HUD stage
-     * @param batch sprite batch used for rendering
-     * @param skin UI skin for labels and widgets
-     */
+    // ✅ FIXED: constructor back to 3 params (no Label passed in)
     public Hud(Viewport viewport, SpriteBatch batch, Skin skin) {
         this.stage = new Stage(viewport, batch);
         this.skin = skin;
 
+        // 1x1 pixel texture (for backgrounds/bars)
         Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pm.setColor(Color.WHITE);
         pm.fill();
@@ -119,12 +111,14 @@ public class Hud {
 
         arrowTexture = new Texture("arrow.png");
         keyIconTexture = new Texture("key.png");
+        bulletIconTexture = new Texture("bullet.png");
 
         Drawable panelBg = new TextureRegionDrawable(new TextureRegion(pixelTexture))
                 .tint(new Color(0f, 0f, 0f, 0.55f));
 
-
+        // =========================
         // TOP-LEFT (Hearts + Coins + Key + Floor)
+        // =========================
         Table topLeft = new Table();
         topLeft.pad(6);
         topLeft.left().top();
@@ -132,6 +126,7 @@ public class Hud {
         coinsLabel = new Label("Coins: 0", skin); // ✅ new
         damageLabel = new Label("DMG: bullet 0 | melee 0", skin);
         statsLabel = new Label("Stats: STR 5 | SPD 5", skin);
+        ammoLabel = new Label("Ammo: 0/0", skin);
         multLabel = new Label("Mult: DMG x1.00 | SPD x1.00", skin);
         floorLabel = new Label("Floor: 1", skin);
         endlessLabel = new Label("", skin);
@@ -139,6 +134,8 @@ public class Hud {
         keyIcon = new Image(keyIconTexture);
         keyIcon.setVisible(false);
         keyIcon.setSize(16, 16);
+        bulletIcon = new Image(bulletIconTexture);
+        bulletIcon.setSize(20, 20);
 
         ProgressBar.ProgressBarStyle hpStyle = new ProgressBar.ProgressBarStyle();
         TextureRegionDrawable hpBg = new TextureRegionDrawable(new TextureRegion(hpBgTexture));
@@ -171,6 +168,9 @@ public class Hud {
         topLeftWrap.add(topLeft);
         stage.addActor(topLeftWrap);
 
+        // =========================
+        // TOP-CENTER (BOSS HUD) - OVERLAY GROUP (NO LAYOUT DRIFT)
+        // =========================
         bossLabel = new Label("SWORD", skin);
         bossLabel.setAlignment(Align.center);
         bossLabel.setColor(Color.WHITE);
@@ -201,6 +201,9 @@ public class Hud {
 
         layoutBossHud();
 
+        // =========================
+        // BOTTOM-LEFT (Level + XP + Hint)
+        // =========================
         ProgressBar.ProgressBarStyle xpStyle = new ProgressBar.ProgressBarStyle();
         xpStyle.background = new TextureRegionDrawable(new TextureRegion(pixelTexture)).tint(Color.DARK_GRAY);
         xpStyle.knobBefore = new TextureRegionDrawable(new TextureRegion(pixelTexture)).tint(Color.CYAN);
@@ -228,7 +231,10 @@ public class Hud {
         bottomLeft.add(xpTextLabel).left().padTop(2).row();
         bottomLeft.add(damageLabel).left().padTop(6).row();
         bottomLeft.add(statsLabel).left().padTop(2).row();
-        bottomLeft.add(multLabel).left().padTop(2);
+        Table ammoRow = new Table();
+        ammoRow.add(bulletIcon).size(20, 20).left().padRight(6);
+        ammoRow.add(ammoLabel).left();
+        bottomLeft.add(ammoRow).left().padTop(2).row();
 
         Table bottomLeftWrap = new Table();
         bottomLeftWrap.setFillParent(true);
@@ -236,7 +242,9 @@ public class Hud {
         bottomLeftWrap.add(bottomLeft);
         stage.addActor(bottomLeftWrap);
 
-        // ARROW
+        // =========================
+        // TOP-RIGHT (Arrow)
+        // =========================
         arrow = new Image(arrowTexture);
         arrow.setSize(80, 80);
         arrow.setOrigin(arrow.getWidth() / 2f, arrow.getHeight() / 2f);
@@ -250,8 +258,9 @@ public class Hud {
         topRightWrap.add(arrow).size(80, 80).right();
         stage.addActor(topRightWrap);
 
-
+        // =========================
         // BOTTOM-RIGHT (Minimap container)
+        // =========================
         minimapContainer = new Table();
         minimapContainer.pad(6);
 
@@ -261,6 +270,9 @@ public class Hud {
         bottomRightWrap.add(minimapContainer);
         stage.addActor(bottomRightWrap);
 
+        // =========================
+        // Notification (top-right, under arrow)
+        // =========================
         notificationLabel = new Label("", skin);
         notificationLabel.setVisible(false);
         notificationLabel.setAlignment(Align.right);
@@ -271,6 +283,20 @@ public class Hud {
         notifWrap.top().right().pad(90, 6, 6, 6);
         notifWrap.add(notificationLabel);
         stage.addActor(notifWrap);
+
+        // =========================
+        // Center Notification (round popups)
+        // =========================
+        centerNotificationLabel = new Label("", skin);
+        centerNotificationLabel.setVisible(false);
+        centerNotificationLabel.setAlignment(Align.center);
+        centerNotificationLabel.setColor(Color.WHITE);
+
+        Table centerWrap = new Table();
+        centerWrap.setFillParent(true);
+        centerWrap.center();
+        centerWrap.add(centerNotificationLabel).width(800);
+        stage.addActor(centerWrap);
 
 
         // Console
@@ -291,11 +317,7 @@ public class Hud {
     }
 
     /**
-     * Updates all HUD elements based on the current player state.
-     *
-     * Should be called once per frame.
-     *
-     * @param player the current player
+     * Call this every frame.
      */
     public void update(Player player) {
         int hp = player.getHp();
@@ -305,6 +327,7 @@ public class Hud {
         hpTextLabel.setText("HP: " + hp + " / " + maxHp);
 
 
+        // ✅ Coins text
         coinsLabel.setText("Coins: " + player.getCoins());
 
         // Damage + stats + gambling multipliers
@@ -315,9 +338,15 @@ public class Hud {
         int bulletDamage = Math.max(1, Math.round((5f + strengthBonus) * dmgMult));
         int meleeDamage = Math.max(1, Math.round((1f + strengthBonus * 0.6f) * dmgMult));
 
-        damageLabel.setText("DMG: bullet " + bulletDamage + " | melee " + meleeDamage);
-        statsLabel.setText("Stats: STR " + player.getStrengthStat() + " | SPD " + player.getSpeedStat());
-        multLabel.setText(String.format("Mult: DMG x%.2f | SPD x%.2f", player.getDamageMult(), player.getBonusSpeedMult()));
+        int totalSpeed = Math.max(1, Math.round(player.getSpeedStat() * player.getBonusSpeedMult()));
+        damageLabel.setText("Damage: Bullet " + bulletDamage + " | Melee " + meleeDamage);
+        statsLabel.setText("Speed: " + totalSpeed);
+        if (player.hasGun()) {
+            ammoLabel.setText("Ammo: " + player.getAmmoInClip() + "/" + player.getAmmoReserve());
+        } else {
+            ammoLabel.setText("Ammo: -");
+        }
+        multLabel.setVisible(false);
 
         keyIcon.setVisible(player.hasKey());
 
@@ -352,11 +381,7 @@ public class Hud {
     }
 
     /**
-     * Updates the hot/cold hint based on the player's distance to the exit.
-     *
-     * Requires the player to have the key and an exit target set.
-     *
-     * @param player the current player
+     * Hot/Cold hint based on distance to exit.
      */
     public void updateHeatHint(Player player) {
         if (!player.hasKey() || !hasExitTarget) {
@@ -398,12 +423,6 @@ public class Hud {
         hintLabel.setColor(r, g, b, 1f);
     }
 
-    /**
-     * Updates HUD animations and timed notifications.
-     *
-     * @param dt time since last frame (seconds)
-     */
-
     public void act(float dt) {
         stage.act(dt);
 
@@ -415,34 +434,35 @@ public class Hud {
         }
     }
 
-    /**
-     * Renders the HUD to the screen.
-     */
     public void draw() {
         stage.draw();
     }
 
-    /**
-     * Updates the HUD layout when the window size changes.
-     *
-     * @param width new screen width
-     * @param height new screen height
-     * @param centerCamera whether to center the camera
-     */
     public void resize(int width, int height, boolean centerCamera) {
         stage.getViewport().update(width, height, centerCamera);
         layoutBossHud();
     }
 
-    /**
-     * Displays a temporary notification message.
-     *
-     * @param text message to show
-     */
     public void showNotification(String text) {
         notificationLabel.setText(text);
         notificationLabel.setVisible(true);
         messageTimer = NOTIF_DURATION;
+    }
+
+    public void showCenterNotification(String text, float seconds) {
+        float duration = Math.max(0.5f, seconds);
+        float fade = Math.min(0.6f, duration * 0.35f);
+
+        centerNotificationLabel.clearActions();
+        centerNotificationLabel.setText(text);
+        centerNotificationLabel.setVisible(true);
+        centerNotificationLabel.getColor().a = 1f;
+
+        centerNotificationLabel.addAction(Actions.sequence(
+                Actions.delay(Math.max(0f, duration - fade)),
+                Actions.fadeOut(fade),
+                Actions.run(() -> centerNotificationLabel.setVisible(false))
+        ));
     }
 
     public void showAchievementPopup(String title, String description) {
@@ -482,12 +502,6 @@ public class Hud {
         stage.addActor(achievementPopup);
     }
 
-
-    /**
-     * Updates the displayed floor text.
-     *
-     * @param text floor description
-     */
     public void setFloorText(String text) {
         floorLabel.setText(text);
     }
@@ -501,12 +515,6 @@ public class Hud {
         endlessLabel.setVisible(true);
     }
 
-    /**
-     * Sets the world position of the exit for arrow guidance.
-     *
-     * @param x exit x-position
-     * @param y exit y-position
-     */
     public void setExitTarget(float x, float y) {
         this.exitX = x;
         this.exitY = y;
@@ -521,21 +529,12 @@ public class Hud {
         this.exitRoomWorldRect = rect;
     }
 
-    /**
-     * Removes the exit target and hides the guidance arrow.
-     */
     public void clearExitTarget() {
         this.hasExitTarget = false;
         arrow.setVisible(false);
     }
 
-    /**
-     * Updates the boss health bar.
-     *
-     * @param current current boss HP
-     * @param max maximum boss HP
-     */
-
+    // Boss control (call from GameScreen)
     public void setBossHp(float current, float max) {
         if (max <= 0f) return;
 
@@ -548,11 +547,6 @@ public class Hud {
         lastBossRatio = ratio;
     }
 
-    /**
-     * Shows or hides the boss HUD.
-     *
-     * @param visible true to show, false to hide
-     */
     public void setBossVisible(boolean visible) {
         bossTable.setVisible(visible);
         if (!visible) {
@@ -588,13 +582,6 @@ public class Hud {
         ));
     }
 
-    /**
-     * Sets the minimap actor shown in the HUD.
-     *
-     * @param minimapActor minimap actor
-     * @param width display width
-     * @param height display height
-     */
     public void setMinimapActor(Actor minimapActor, float width, float height) {
         minimapContainer.clearChildren();
         minimapContainer.add(minimapActor).size(width, height);
@@ -608,14 +595,12 @@ public class Hud {
         return devConsole;
     }
 
-    /**
-     * Releases all HUD resources.
-     */
     public void dispose() {
         stage.dispose();
         pixelTexture.dispose();
         arrowTexture.dispose();
         keyIconTexture.dispose();
+        bulletIconTexture.dispose();
         hpBgTexture.dispose();
         hpFillTexture.dispose();
         bossBgTexture.dispose();

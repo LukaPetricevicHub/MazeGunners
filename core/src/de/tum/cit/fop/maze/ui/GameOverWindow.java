@@ -5,11 +5,13 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 import de.tum.cit.fop.maze.GameScreen;
 import de.tum.cit.fop.maze.MazeRunnerGame;
 import de.tum.cit.fop.maze.LevelDiscovery;
 import de.tum.cit.fop.maze.player.Player;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 /**
  * Window shown when the game ends.
@@ -63,7 +65,7 @@ public class GameOverWindow extends Window {
         nameField.setAlignment(Align.center);
         this.add(nameField).width(300).row();
 
-        TextButton submitBtn = new TextButton("Submit Score", skin);
+        TextButton submitBtn = UiButtons.button("Submit Score", skin);
         submitBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -87,7 +89,7 @@ public class GameOverWindow extends Window {
 
         // "Next Level" (Only if you won)
         if (won) {
-            TextButton nextBtn = new TextButton("Next Level", skin);
+            TextButton nextBtn = UiButtons.button("Next Level", skin);
             nextBtn.addListener(new ChangeListener() {
                 @Override
                 public void changed(ChangeEvent event, Actor actor) {
@@ -106,10 +108,11 @@ public class GameOverWindow extends Window {
         }
 
         // "Main Menu" (Always visible)
-        TextButton menuBtn = new TextButton("Main Menu", skin);
+        TextButton menuBtn = UiButtons.button("Main Menu", skin);
         menuBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
+                game.resetRunGamble();
                 game.goToMenu();
             }
         });
@@ -142,3 +145,4 @@ public class GameOverWindow extends Window {
         }
     }
 }
+

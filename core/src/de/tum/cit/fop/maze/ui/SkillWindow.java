@@ -7,6 +7,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import de.tum.cit.fop.maze.player.Player;
+import de.tum.cit.fop.maze.ui.UiButtons;
 
 /**
  * UI window displaying the player's skill tree.
@@ -107,7 +108,7 @@ public class SkillWindow extends Window {
         Table colTank = new Table();
         colTank.add(new Label("TANK", skin)).padBottom(10).row();
 
-        colTank.add(createStatButton("Iron Will", "Max Health +1 Heart",
+        colTank.add(createStatButton("Iron Will", "Max Health +5 HP",
                 player.getSkillHealthLevel(), 5,
                 () -> player.upgradeHealth())).width(160).padBottom(5).row();
 
@@ -134,7 +135,7 @@ public class SkillWindow extends Window {
         this.add(descriptionLabel).width(500).height(50).padBottom(10).row();
 
         // 4. Close Button
-        TextButton closeBtn = new TextButton("Close", skin);
+        TextButton closeBtn = UiButtons.button("Close", skin);
         closeBtn.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
@@ -164,7 +165,7 @@ public class SkillWindow extends Window {
         else if (!isParentUnlocked) text += "\n[LOCKED]";
         else text += "\nCost: 1 Pt";
 
-        TextButton btn = new TextButton(text, skin);
+        TextButton btn = UiButtons.button(text, skin);
         btn.getLabel().setFontScale(0.85f);
         btn.getLabel().setAlignment(Align.center);
 
@@ -217,7 +218,7 @@ public class SkillWindow extends Window {
         if (currentLevel < maxLevel) text += "\nCost: 1 Pt";
         else text += "\n[MAXED]";
 
-        TextButton btn = new TextButton(text, skin);
+        TextButton btn = UiButtons.button(text, skin);
         btn.getLabel().setFontScale(0.85f);
         btn.getLabel().setAlignment(Align.center);
 
@@ -256,3 +257,4 @@ public class SkillWindow extends Window {
         return btn;
     }
 }
+
