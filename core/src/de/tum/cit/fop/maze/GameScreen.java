@@ -36,9 +36,11 @@ import de.tum.cit.fop.maze.obstacles.*;
 import de.tum.cit.fop.maze.player.Player;
 import de.tum.cit.fop.maze.ui.SkillWindow;
 import de.tum.cit.fop.maze.util.GridUtils;
+import de.tum.cit.fop.maze.util.StoryManager;
 import de.tum.cit.fop.maze.world.*;
 import de.tum.cit.fop.maze.ui.PauseMenuWindow;
 import de.tum.cit.fop.maze.ui.GameOverWindow;
+import de.tum.cit.fop.maze.ui.DialogueWindow;
 
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
@@ -72,6 +74,8 @@ public class GameScreen implements Screen {
 
     private boolean isGameOverShown = false;
     private boolean isPaused = false;
+    private boolean storyShown = false;
+    private boolean storyBlocking = false;
     private Stage pauseStage;
     private Window pauseWindow;
     private Window settingsWindow;
@@ -222,10 +226,42 @@ public class GameScreen implements Screen {
             hud.getDevConsole().toggle();
         }
 
-        cameraInput.update(delta);
+        // Story intro (once per level)
+        if (!storyShown && !isPaused && hud != null) {
+            storyShown = true;
+            storyBlocking = true;
+            int introLevel = endlessMode ? floor : level; // TODO verify correct source for story mode level
+
+            String title = StoryManager.getIntroTitle(introLevel);
+            String intro = StoryManager.getIntroText(introLevel);
+            if (!title.isEmpty() && !intro.isEmpty()) {
+                final boolean removedCameraInput = multiplexer != null
+                        && multiplexer.getProcessors().contains(cameraInput, true);
+
+                DialogueWindow dialogue = new DialogueWindow(game.getSkin(), title, intro, () -> {
+                    if (multiplexer != null && removedCameraInput) {
+                        multiplexer.addProcessor(0, cameraInput);
+                    }
+                    storyBlocking = false;
+                });
+
+                hud.getStage().addActor(dialogue);
+                dialogue.centerOnStage();
+
+                if (multiplexer != null && removedCameraInput) {
+                    multiplexer.removeProcessor(cameraInput);
+                }
+            } else {
+                storyBlocking = false;
+            }
+        }
+
+        if (!storyBlocking) {
+            cameraInput.update(delta);
+        }
 
         // Game logic
-        if (!isPaused && gameStateController.isRunning()) {
+        if (!isPaused && !storyBlocking && gameStateController.isRunning()) {
 
             player.update(delta, maze, game, this::collidesWithBlockingObstacle, gameCamera.getCamera());
 
@@ -292,7 +328,7 @@ public class GameScreen implements Screen {
                         item.applyEffect(player);
 
                         if (!hadKey && item instanceof KeyItem) {
-                            game.getAchievementManager().unlock("collector");
+                            game.getAchievementManager().unlockAchievement("collector");
                             if (hud != null) {
                                 hud.showNotification("I found the key.");
                             }
@@ -834,6 +870,9 @@ public class GameScreen implements Screen {
 
     private void createHud() {
         hud = new Hud(uiViewport, game.getSpriteBatch(), game.getSkin());
+        if (game.getAchievementManager() != null) {
+            game.getAchievementManager().setHud(hud);
+        }
     }
 
     private void playLevelMusic() {
@@ -865,6 +904,9 @@ public class GameScreen implements Screen {
 
         GameState saved = game.getPendingSaveState();
         boolean loadingSave = (saved != null);
+        if (loadingSave && saved.shouldRestorePosition) {
+            storyShown = true; // don't show story when resuming mid-level
+        }
 
         if (endlessMode) {
             FileHandle endlessFile = getEndlessLevelFile(floor);
@@ -1007,6 +1049,24 @@ public class GameScreen implements Screen {
 
                     // Center skill window
                     skillWindow.setPosition((uiViewport.getWorldWidth() - skillWindow.getWidth()) / 2f, (uiViewport.getWorldHeight() - skillWindow.getHeight()) / 2f);
+                },
+                () -> {
+                    playClickSound();
+                    pauseWindow.setVisible(false);
+                    de.tum.cit.fop.maze.ui.AchievementsWindow window =
+                            new de.tum.cit.fop.maze.ui.AchievementsWindow(
+                                    game.getSkin(),
+                                    game.getAchievementManager().getAchievements().values(),
+                                    () -> {
+                                        playClickSound();
+                                        pauseWindow.setVisible(true);
+                                    }
+                            );
+                    window.setPosition(
+                            (uiViewport.getWorldWidth() - window.getWidth()) / 2f,
+                            (uiViewport.getWorldHeight() - window.getHeight()) / 2f
+                    );
+                    pauseStage.addActor(window);
                 },
                 () -> { playClickSound(); game.goToMenu(); }
         );

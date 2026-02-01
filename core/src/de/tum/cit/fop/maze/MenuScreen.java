@@ -12,7 +12,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
-import de.tum.cit.fop.maze.ui.AchievementScreen;
 import de.tum.cit.fop.maze.ui.LeaderboardScreen;
 
 /**
@@ -62,6 +61,9 @@ public class MenuScreen implements Screen {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
                 playClickSound();
+                if (game.getAchievementManager() != null) {
+                    game.getAchievementManager().resetAll();
+                }
                 game.setScreen(new ModeSelectScreen(game));
             }
         });
@@ -88,14 +90,6 @@ public class MenuScreen implements Screen {
             }
         });
 
-        TextButton achievementBtn = new TextButton("Achievements", game.getSkin());
-        achievementBtn.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeEvent event, Actor actor) {
-                playClickSound();
-                game.setScreen(new AchievementScreen(game));
-            }
-        });
 
         TextButton leaderboardBtn = new TextButton("Leaderboard", game.getSkin());
         leaderboardBtn.addListener(new ChangeListener() {
@@ -132,7 +126,6 @@ public class MenuScreen implements Screen {
         grid.add(gamblingBtn);
         grid.row();
 
-        grid.add(achievementBtn);
         grid.add(leaderboardBtn);
         grid.add(settingsButton);
         grid.row();

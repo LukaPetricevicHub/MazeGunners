@@ -70,6 +70,8 @@ public class GameState {
     public boolean godMode;
     public boolean noClip;
 
-
-    public GameState() {}
+    // Achievements
+    public ArrayList<String> unlockedAchievements = new ArrayList<>();
+    public GameState() {
+    }
 }

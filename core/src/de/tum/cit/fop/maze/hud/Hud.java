@@ -92,6 +92,8 @@ public class Hud {
 
     // Console
     private final DevConsole devConsole;
+    private Window achievementPopup;
+
 
     /**
      * Creates and initializes the game HUD.
@@ -443,6 +445,44 @@ public class Hud {
         messageTimer = NOTIF_DURATION;
     }
 
+    public void showAchievementPopup(String title, String description) {
+        if (achievementPopup != null) {
+            achievementPopup.remove();
+        }
+
+        achievementPopup = new Window("ACHIEVEMENT", skin);
+        achievementPopup.setMovable(false);
+        achievementPopup.setResizable(false);
+        achievementPopup.pad(10f);
+
+        Label titleLabel = new Label(title, skin);
+        titleLabel.setAlignment(Align.left);
+        Label descLabel = new Label(description, skin);
+        descLabel.setAlignment(Align.left);
+
+        achievementPopup.add(titleLabel).left().row();
+        achievementPopup.add(descLabel).left().padTop(4f);
+        achievementPopup.pack();
+
+        float width = Math.min(achievementPopup.getWidth(), stage.getViewport().getWorldWidth() * 0.6f);
+        achievementPopup.setWidth(width);
+        achievementPopup.setPosition(
+                (stage.getViewport().getWorldWidth() - achievementPopup.getWidth()) / 2f,
+                stage.getViewport().getWorldHeight()
+        );
+
+        float targetY = stage.getViewport().getWorldHeight() - achievementPopup.getHeight() - 10f;
+        achievementPopup.addAction(com.badlogic.gdx.scenes.scene2d.actions.Actions.sequence(
+                com.badlogic.gdx.scenes.scene2d.actions.Actions.moveTo(achievementPopup.getX(), targetY, 0.25f),
+                com.badlogic.gdx.scenes.scene2d.actions.Actions.delay(3f),
+                com.badlogic.gdx.scenes.scene2d.actions.Actions.moveTo(achievementPopup.getX(), stage.getViewport().getWorldHeight(), 0.25f),
+                com.badlogic.gdx.scenes.scene2d.actions.Actions.run(() -> achievementPopup.remove())
+        ));
+
+        stage.addActor(achievementPopup);
+    }
+
+
     /**
      * Updates the displayed floor text.
      *
@@ -452,11 +492,6 @@ public class Hud {
         floorLabel.setText(text);
     }
 
-    /**
-     * Shows or hides endless mode information.
-     *
-     * @param text info text (hidden if empty)
-     */
     public void setEndlessInfo(String text) {
         if (text == null || text.isEmpty()) {
             endlessLabel.setVisible(false);

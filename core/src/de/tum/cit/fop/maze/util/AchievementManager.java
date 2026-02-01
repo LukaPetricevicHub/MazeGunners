@@ -56,22 +56,47 @@ public class AchievementManager {
      *
      * @param id Achievement identifier
      */
-    public void unlock(String id) {
+    public boolean unlockAchievement(String id) {
         Achievement a = achievements.get(id);
         if (a != null && !a.isUnlocked()) {
             // Mark as unlocked
             a.setUnlocked(true);
 
-            // Save to file
-            prefs.putBoolean(id, true);
-            prefs.flush();
-
             // Notify Player
             System.out.println("ACHIEVEMENT UNLOCKED: " + a.getTitle());
             if (hud != null) {
-                hud.showNotification("ACHIEVEMENT UNLOCKED!\n" + a.getTitle());
-                // You can play a specific jingle sound here if you want
+                hud.showAchievementPopup(a.getTitle(), a.getDescription());
             }
+            return true;
+        }
+        return false;
+    }
+
+    public void resetAll() {
+        for (Achievement a : achievements.values()) {
+            a.setUnlocked(false);
+        }
+    }
+
+    // Backwards-compatible wrapper
+    public void unlock(String id) {
+        unlockAchievement(id);
+    }
+
+    public java.util.ArrayList<String> getUnlockedIds() {
+        java.util.ArrayList<String> ids = new java.util.ArrayList<>();
+        for (Achievement a : achievements.values()) {
+            if (a.isUnlocked()) ids.add(a.getId());
+        }
+        return ids;
+    }
+
+    public void applyUnlockedIds(java.util.Collection<String> ids) {
+        resetAll();
+        if (ids == null) return;
+        for (String id : ids) {
+            Achievement a = achievements.get(id);
+            if (a != null) a.setUnlocked(true);
         }
     }
 

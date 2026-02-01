@@ -33,7 +33,7 @@ public class InteractionLogic {
             player.giveKey();
 
             MazeRunnerGame game = (MazeRunnerGame) Gdx.app.getApplicationListener();
-            game.getAchievementManager().unlock("collector");
+            game.getAchievementManager().unlockAchievement("collector");
             return true;
         }
         return false;

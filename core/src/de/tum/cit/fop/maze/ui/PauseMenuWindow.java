@@ -14,6 +14,8 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
  */
 public class PauseMenuWindow extends Window {
 
+    private final Runnable onAchievements;
+
     /**
      * Creates a pause menu with callback actions for each button.
      *
@@ -23,11 +25,14 @@ public class PauseMenuWindow extends Window {
      * @param onSkills Action executed when opening the skill tree
      * @param onExit Action executed when exiting to the main menu
      */
-    public PauseMenuWindow(Skin skin, Runnable onResume, Runnable onSettings, Runnable onSkills, Runnable onExit) {
+    public PauseMenuWindow(Skin skin, Runnable onResume, Runnable onSettings, Runnable onSkills, Runnable onAchievements, Runnable onExit) {
+
         super("Paused", skin);
         this.getTitleLabel().setAlignment(1);
         this.setMovable(false);
         this.setModal(true);
+        this.onAchievements = onAchievements;
+
 
         // RESUME BUTTON
         TextButton resumeBtn = new TextButton("Resume", skin);
@@ -48,6 +53,16 @@ public class PauseMenuWindow extends Window {
             }
         });
         add(skillsBtn).width(200).padBottom(10).row();
+
+        // ACHIEVEMENTS BUTTON
+        TextButton achievementsBtn = new TextButton("Achievements", skin);
+        achievementsBtn.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                onAchievements.run();
+            }
+        });
+        add(achievementsBtn).width(200).padBottom(10).row();
 
         // SETTINGS BUTTON
         TextButton settingsBtn = new TextButton("Settings", skin);

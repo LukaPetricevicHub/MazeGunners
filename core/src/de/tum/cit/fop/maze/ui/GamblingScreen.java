@@ -899,7 +899,7 @@ public class GamblingScreen implements Screen {
 
             boolean bigWin = blackjack.bet > 1000;
             if (bigWin && game.getAchievementManager() != null) {
-                game.getAchievementManager().unlock("win_it_big");
+                game.getAchievementManager().unlockAchievement("win_it_big");
             }
 
             setDealerLine("Nice hand. Take your winnings.");
