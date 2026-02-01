@@ -39,6 +39,7 @@ public class Hud {
     // --- UI ELEMENTS ---
     private final Label floorLabel;
     private final Label hintLabel;
+    private final Label objectiveLabel;
     private final Image keyIcon;
     private final Label endlessLabel;
 
@@ -150,7 +151,7 @@ public class Hud {
         // =========================
         // TOP-CENTER (BOSS HUD) - OVERLAY GROUP (NO LAYOUT DRIFT)
         // =========================
-        bossLabel = new Label("BOSS", skin);
+        bossLabel = new Label("SWORD", skin);
         bossLabel.setAlignment(Align.center);
         bossLabel.setColor(Color.WHITE);
 
@@ -196,6 +197,8 @@ public class Hud {
 
         hintLabel = new Label("Hint: ???", skin);
         hintLabel.setColor(Color.SKY);
+        objectiveLabel = new Label("Objective: Find the key", skin);
+        objectiveLabel.setColor(Color.LIGHT_GRAY);
 
         Table bottomLeft = new Table();
         bottomLeft.pad(8);
@@ -204,7 +207,6 @@ public class Hud {
         bottomLeft.add(levelLabel).left().row();
         bottomLeft.add(xpBar).width(260).height(10).left().padTop(4).row();
         bottomLeft.add(xpTextLabel).left().padTop(2).row();
-        bottomLeft.add(hintLabel).left().padTop(6).row();
         bottomLeft.add(damageLabel).left().padTop(6).row();
         bottomLeft.add(statsLabel).left().padTop(2).row();
         bottomLeft.add(multLabel).left().padTop(2);
@@ -226,6 +228,8 @@ public class Hud {
         Table topRightWrap = new Table();
         topRightWrap.setFillParent(true);
         topRightWrap.top().right().pad(6);
+        topRightWrap.add(objectiveLabel).right().padBottom(4).row();
+        topRightWrap.add(hintLabel).right().padBottom(6).row();
         topRightWrap.add(arrow).size(80, 80);
         stage.addActor(topRightWrap);
 
@@ -310,6 +314,8 @@ public class Hud {
         float ratio = (maxXp <= 0f) ? 0f : (currentXp / maxXp);
         xpBar.setValue(MathUtils.clamp(ratio, 0f, 1f));
         xpTextLabel.setText((int) currentXp + " / " + (int) maxXp + " XP");
+
+        objectiveLabel.setText(player.hasKey() ? "Objective: Find the exit" : "Objective: Find the key");
 
         // Hint updates continuously
         updateHeatHint(player);

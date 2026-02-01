@@ -77,9 +77,11 @@ public class MazeLoader {
     private static Tiles parseTileNumericOnly(String raw) {
         try {
             int id = Integer.parseInt(raw.trim());
-            return Tiles.fromId(id);
+            Tiles t = Tiles.fromId(id);
+            return t == Tiles.KEY ? Tiles.FLOOR : t;
         } catch (NumberFormatException e) {
-            return Tiles.valueOf(raw.trim().toUpperCase());
+            Tiles t = Tiles.valueOf(raw.trim().toUpperCase());
+            return t == Tiles.KEY ? Tiles.FLOOR : t;
         }
     }
 

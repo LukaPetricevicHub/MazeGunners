@@ -314,7 +314,7 @@ public class GameScreen implements Screen {
                         items.add(new de.tum.cit.fop.maze.items.BossRelicItem(dropX, dropY));
                     }
 
-                    hud.showNotification("BOSS DEFEATED!\nRelic dropped.");
+                    hud.showNotification("SWORD DEFEATED!\nRelic dropped.");
                 }
             }
 

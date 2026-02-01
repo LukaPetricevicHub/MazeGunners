@@ -829,7 +829,7 @@ public class MazeGenerator {
         if (maze.getTile(key.x, key.y) != Tiles.FLOOR) return new PlaceResult(false, null, null);
 
         maze.setTile(spawn.x, spawn.y, Tiles.SPAWN);
-        maze.setTile(key.x, key.y, Tiles.KEY);
+        maze.setTile(key.x, key.y, Tiles.FLOOR);
 
         BorderExitPlan be = pickBorderExitPlan(exitRoom, maze, rng, hallWidth, rooms);
         if (be == null) return new PlaceResult(false, null, null);
