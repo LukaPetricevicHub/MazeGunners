@@ -47,7 +47,7 @@ public class EnemySpawner {
         }
 
         // 2) Random enemies
-        spawnRandomEnemies(maze, usableRooms, targetPlayer, enemyCount, rng, enemies);
+        spawnRandomEnemies(maze, usableRooms, excludedRoom, targetPlayer, enemyCount, rng, enemies);
 
         System.out.println("[EnemySpawner] Spawned total enemies=" + enemies.size());
         return enemies;
@@ -100,7 +100,7 @@ public class EnemySpawner {
     }
 
     // Random enemies
-    private void spawnRandomEnemies(Maze maze, List<Room> rooms, Player targetPlayer, int maxEnemies, Random rng, List<Enemy> out) {
+    private void spawnRandomEnemies(Maze maze, List<Room> rooms, Room excludedRoom, Player targetPlayer, int maxEnemies, Random rng, List<Enemy> out) {
         List<Point> candidates;
 
         // Prefer room interiors
@@ -110,10 +110,10 @@ public class EnemySpawner {
             // Fallback if room detection fails
             if (candidates.isEmpty()) {
                 System.out.println("[EnemySpawner] Room interiors empty -> fallback to floor cells");
-                candidates = collectFloorCells(maze);
+                candidates = collectFloorCells(maze, excludedRoom);
             }
         } else {
-            candidates = collectFloorCells(maze);
+            candidates = collectFloorCells(maze, excludedRoom);
         }
 
         Collections.shuffle(candidates, rng);
@@ -187,11 +187,17 @@ public class EnemySpawner {
     }
 
     // Helpers
-    private List<Point> collectFloorCells(Maze maze) {
+    private List<Point> collectFloorCells(Maze maze, Room excludedRoom) {
         List<Point> cells = new ArrayList<>();
         for (int y = 1; y < maze.getHeight() - 1; y++) {
             for (int x = 1; x < maze.getWidth() - 1; x++) {
                 if (maze.getTile(x, y) == Tiles.FLOOR) {
+                    if (excludedRoom != null) {
+                        if (x >= excludedRoom.x() && x < excludedRoom.x() + excludedRoom.w()
+                                && y >= excludedRoom.y() && y < excludedRoom.y() + excludedRoom.h()) {
+                            continue;
+                        }
+                    }
                     cells.add(new Point(x, y));
                 }
             }

@@ -35,6 +35,10 @@ public class Hud {
     private final Texture pixelTexture;
     private final Texture keyIconTexture;
     private final Texture arrowTexture;
+    private final Texture hpBgTexture;
+    private final Texture hpFillTexture;
+    private final Texture bossBgTexture;
+    private final Texture bossFillTexture;
 
     // --- UI ELEMENTS ---
     private final Label floorLabel;
@@ -95,6 +99,11 @@ public class Hud {
         pixelTexture = new Texture(pm);
         pm.dispose();
 
+        hpBgTexture = createSolidTexture(new Color(0.2f, 0f, 0f, 0.8f));
+        hpFillTexture = createSolidTexture(Color.RED);
+        bossBgTexture = createSolidTexture(new Color(0f, 0f, 0f, 0.70f));
+        bossFillTexture = createSolidTexture(Color.RED);
+
         arrowTexture = new Texture("arrow.png");
         keyIconTexture = new Texture("key.png");
 
@@ -120,10 +129,12 @@ public class Hud {
         keyIcon.setSize(16, 16);
 
         ProgressBar.ProgressBarStyle hpStyle = new ProgressBar.ProgressBarStyle();
-        hpStyle.background = new TextureRegionDrawable(new TextureRegion(pixelTexture))
-                .tint(new Color(0.2f, 0f, 0f, 0.8f));
-        hpStyle.knobBefore = new TextureRegionDrawable(new TextureRegion(pixelTexture))
-                .tint(Color.RED);
+        TextureRegionDrawable hpBg = new TextureRegionDrawable(new TextureRegion(hpBgTexture));
+        TextureRegionDrawable hpFill = new TextureRegionDrawable(new TextureRegion(hpFillTexture));
+        hpBg.setMinHeight(20);
+        hpFill.setMinHeight(20);
+        hpStyle.background = hpBg;
+        hpStyle.knobBefore = hpFill;
 
         hpBar = new ProgressBar(0f, 1f, 0.001f, false, hpStyle);
         hpBar.setValue(1f);
@@ -133,7 +144,7 @@ public class Hud {
 
         Table hpRow = new Table();
         hpRow.left().top();
-        hpRow.add(hpBar).width(140).height(10).left();
+        hpRow.add(hpBar).width(140).height(20).left();
         hpRow.add(keyIcon).size(16, 16).left().padLeft(6);
         topLeft.add(hpRow).left().row();
         topLeft.add(hpTextLabel).left().padTop(2).row();
@@ -156,12 +167,14 @@ public class Hud {
         bossLabel.setColor(Color.WHITE);
 
         ProgressBar.ProgressBarStyle bossStyle = new ProgressBar.ProgressBarStyle();
-        bossStyle.background =
-                new TextureRegionDrawable(new TextureRegion(pixelTexture))
-                        .tint(new Color(0f, 0f, 0f, 0.70f));
-        bossStyle.knobBefore =
-                new TextureRegionDrawable(new TextureRegion(pixelTexture))
-                        .tint(Color.RED);
+        TextureRegionDrawable bossBg =
+                new TextureRegionDrawable(new TextureRegion(bossBgTexture));
+        TextureRegionDrawable bossFill =
+                new TextureRegionDrawable(new TextureRegion(bossFillTexture));
+        bossBg.setMinHeight(30);
+        bossFill.setMinHeight(30);
+        bossStyle.background = bossBg;
+        bossStyle.knobBefore = bossFill;
 
         bossHpBar = new ProgressBar(0f, 1f, 0.001f, false, bossStyle);
         bossHpBar.setValue(1f);
@@ -170,7 +183,7 @@ public class Hud {
         bossTable = new Table();
         bossTable.pad(8);
         bossTable.add(bossLabel).padBottom(4).row();
-        bossTable.add(bossHpBar).width(700).height(14);
+        bossTable.add(bossHpBar).width(700).height(30);
         bossTable.setVisible(false);
 
         bossGroup = new Group();
@@ -230,7 +243,7 @@ public class Hud {
         topRightWrap.top().right().pad(6);
         topRightWrap.add(objectiveLabel).right().padBottom(4).row();
         topRightWrap.add(hintLabel).right().padBottom(6).row();
-        topRightWrap.add(arrow).size(80, 80);
+        topRightWrap.add(arrow).size(80, 80).right();
         stage.addActor(topRightWrap);
 
         // =========================
@@ -503,5 +516,18 @@ public class Hud {
         pixelTexture.dispose();
         arrowTexture.dispose();
         keyIconTexture.dispose();
+        hpBgTexture.dispose();
+        hpFillTexture.dispose();
+        bossBgTexture.dispose();
+        bossFillTexture.dispose();
+    }
+
+    private Texture createSolidTexture(Color color) {
+        Pixmap pm = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pm.setColor(color);
+        pm.fill();
+        Texture tex = new Texture(pm);
+        pm.dispose();
+        return tex;
     }
 }
