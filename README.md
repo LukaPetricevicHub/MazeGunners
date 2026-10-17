@@ -8,8 +8,12 @@ Built by a team of four for the Fundamentals of Programming course at the Techni
 
 ## Team and contributions
 
-- **Luka Petricevic** – enemy AI and combat: A* grid pathfinding, finite-state enemy behaviors (patrol, chase, idle, return to patrol) behind a common `BehaviorState` interface, the enemy types (MutantWorker, RobotGuard, FlyingDrone with laser attacks), enemy spawning, the combat system, and traps and hazards (spike, lightning and floor hazards) with their placement.
-- **Anton**, **Tim Hufnagel**, **Andrew Shin** – remaining game systems (maps, UI and screens, items, progression, casino, boss).
+- **Andrew** – researched and sourced the game's animations and sound effects, and set up the initial project structure.
+- **Antonio** – procedural maze generation, map loading and rendering, the boss fight, the casino (slots and blackjack), the HUD, the developer console and the camera.
+- **Luka** – enemy AI and combat: A* grid pathfinding, finite-state enemy behaviors (patrol, chase, idle, return to patrol), the enemy types (MutantWorker, RobotGuard, FlyingDrone with laser attacks), the combat system, and the traps and hazards (spike, lightning and floor hazards).
+- **Tim** – the player character (movement, shooting, stats), the skill tree, achievements, the settings and story screens, and the audio and save systems.
+
+Menus, items, progression and the leaderboard were built jointly.
 
 ## How to Run
 
