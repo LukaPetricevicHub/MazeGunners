@@ -1,6 +1,22 @@
-# Maze Runner
+# MazeGunners
 
-A top-down 2D action maze game built with libGDX. The player navigates sci-fi lab mazes, collects a key, survives enemies and traps, and reaches the exit. The project includes story mode levels, a procedural endless mode, a skill tree, a casino with run-only buffs, achievements, leaderboards, and a developer console.
+A top-down 2D action maze game in Java (libGDX). The player navigates sci-fi lab mazes, collects a key, survives enemies and traps, and reaches the exit. The project includes story mode levels, a procedural endless mode, a skill tree, a casino with run-only buffs, achievements, leaderboards, and a developer console.
+
+Built by a team of four for the Fundamentals of Programming course at the Technical University of Munich (winter semester 2025/26).
+
+## Team and contributions
+
+- **Luka Petricevic** â€“ enemy AI and combat: A* grid pathfinding, finite-state enemy behaviors (patrol, chase, evade, retreat, return) behind a common `BehaviorState` interface, the enemy types (MutantWorker, RobotGuard, FlyingDrone with laser attacks), enemy spawning, the combat system, and traps and hazards (spike, lightning and floor hazards) with their placement.
+- **Anton**, **Tim Hufnagel**, **Andrew Shin** â€“ remaining game systems (maps, UI and screens, items, progression, casino, boss).
+
+## How to Run
+
+Requirements: Java 17 (Gradle wrapper included).
+
+```
+./gradlew desktop:run        # macOS/Linux
+./gradlew.bat desktop:run    # Windows
+```
 
 ## Project Structure
 
@@ -34,9 +50,9 @@ Core code packages (`core/src/de/tum/cit/fop/maze`):
 
 Key entry points:
 
-- `MazeRunnerGame` (core) – global assets, preferences, screen switching.
-- `DesktopLauncher` (desktop) – starts the game.
-- `GameScreen` – main gameplay loop (story + endless).
+- `MazeRunnerGame` (core) â€“ global assets, preferences, screen switching.
+- `DesktopLauncher` (desktop) â€“ starts the game.
+- `GameScreen` â€“ main gameplay loop (story + endless).
 
 ## Class Hierarchy Overview
 
@@ -137,21 +153,7 @@ classDiagram
     Obstacle <|-- FloorHazard
 ```
 
-## How to Run
-
-**Requirements**
-- Java 17
-- Gradle (wrapper included)
-
-**Run (Windows):**
-```
-./gradlew.bat desktop:run
-```
-
-**Run (macOS/Linux):**
-```
-./gradlew desktop:run
-```
+## Maps and Saves
 
 ### Maps / Properties Files
 

@@ -201,3 +201,7 @@ $RECYCLE.BIN/
 !gradle/wrapper/gradle-wrapper.jar
 assets/desktop/
 
+
+# IDE and AI-assistant local files
+.idea/
+.aider*
