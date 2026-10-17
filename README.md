@@ -1,5 +1,7 @@
 # MazeGunners
 
+![MazeGunners gameplay: a lightning trap, an enemy chasing the player, a drone's laser, picking up the key and escaping through the exit](docs/gameplay.gif)
+
 A top-down 2D action maze game in Java (libGDX). The player navigates sci-fi lab mazes, collects a key, survives enemies and traps, and reaches the exit. The project includes story mode levels, a procedural endless mode, a skill tree, a casino with run-only buffs, achievements, leaderboards, and a developer console.
 
 Built by a team of four for the Fundamentals of Programming course at the Technical University of Munich (winter semester 2025/26).
