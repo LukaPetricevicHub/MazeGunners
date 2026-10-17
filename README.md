@@ -157,7 +157,7 @@ classDiagram
 
 ### Maps / Properties Files
 
-- Built-in maps live in `assets/maps/level-*.properties`.
+- Built-in maps live in `maps/level-*.properties`.
 - Custom maps can be dropped into `maps/` (local). Local files override internal ones if names match.
 - The Level Select screen lists all `.properties` files from both locations.
 

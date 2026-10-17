@@ -12,7 +12,9 @@ tasks.register('run', JavaExec) {
     mainClass = project.mainClassName
     classpath = sourceSets.main.runtimeClasspath
     standardInput = System.in
-    workingDir = project.assetsDir
+    // Run from the project root: the game reads and writes maps/, saves/ and scores.json there;
+    // asset files load from the classpath (resources = ../assets).
+    workingDir = rootProject.projectDir
     ignoreExitValue = true
 
     if (OperatingSystem.current() == OperatingSystem.MAC_OS) {
@@ -26,7 +28,9 @@ tasks.register('debug', JavaExec) {
     mainClass = project.mainClassName
     classpath = sourceSets.main.runtimeClasspath
     standardInput = System.in
-    workingDir = project.assetsDir
+    // Run from the project root: the game reads and writes maps/, saves/ and scores.json there;
+    // asset files load from the classpath (resources = ../assets).
+    workingDir = rootProject.projectDir
     ignoreExitValue = true
     debug = true
 }
