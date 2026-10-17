@@ -6,7 +6,7 @@ Built by a team of four for the Fundamentals of Programming course at the Techni
 
 ## Team and contributions
 
-- **Luka Petricevic** – enemy AI and combat: A* grid pathfinding, finite-state enemy behaviors (patrol, chase, evade, retreat, return) behind a common `BehaviorState` interface, the enemy types (MutantWorker, RobotGuard, FlyingDrone with laser attacks), enemy spawning, the combat system, and traps and hazards (spike, lightning and floor hazards) with their placement.
+- **Luka Petricevic** – enemy AI and combat: A* grid pathfinding, finite-state enemy behaviors (patrol, chase, idle, return to patrol) behind a common `BehaviorState` interface, the enemy types (MutantWorker, RobotGuard, FlyingDrone with laser attacks), enemy spawning, the combat system, and traps and hazards (spike, lightning and floor hazards) with their placement.
 - **Anton**, **Tim Hufnagel**, **Andrew Shin** – remaining game systems (maps, UI and screens, items, progression, casino, boss).
 
 ## How to Run
@@ -196,7 +196,7 @@ This project includes additional mechanics and systems beyond the baseline requi
 ## Notes on Requirements Alignment
 
 - The game loads any `.properties` maze via the Level Select menu and supports procedural generation for endless mode.
-- Enemies use pathfinding plus behavior states (patrol/chase/evade/retreat/return).
+- Enemies use A* pathfinding plus behavior states (patrol/chase/idle/return to patrol).
 - Achievements are tracked and persisted with libGDX preferences and surfaced via a dedicated screen.
 
 If you want a more detailed UML (per-package or per-feature), add more diagrams and classes here.
